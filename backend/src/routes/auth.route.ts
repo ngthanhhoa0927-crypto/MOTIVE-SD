@@ -56,7 +56,7 @@ authRouter.post(
                 email: user[0].email,
                 full_name: user[0].full_name,
                 role: user[0].role,
-                exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24, // 24 hours
+                exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
             }
 
             const token = await sign(payload, process.env.JWT_SECRET!);
