@@ -14,12 +14,92 @@ export default function HomePage() {
         { title: "Free Shipping", desc: "Any Order", color: "bg-blue-600 hover:bg-blue-700" },
     ];
 
-    const recommendations = Array(12).fill({
-        name: "Plaid dog ear baseball cap",
-        price: "$19.00",
-        oldPrice: "$29.00",
-        discount: "-32%",
-    });
+    const recommendations = [
+        {
+            name: "Black Dog Ear Baseball Cap",
+            price: "$19.00",
+            oldPrice: "$29.00",
+            discount: "-34%",
+            image: "/images/hat-dog-black.png"
+        },
+        {
+            name: "Polka Dot Dog Ear Baseball Cap",
+            price: "$21.00",
+            oldPrice: "$29.00",
+            discount: "-27%",
+            image: "/images/hat-dog-dot.png"
+        },
+        {
+            name: "Bear Cub Ear Baseball Cap",
+            price: "$22.00",
+            oldPrice: "$32.00",
+            discount: "-31%",
+            image: "/images/hat-bear.png"
+        },
+        {
+            name: "White Bear Ear Baseball Cap",
+            price: "$20.00",
+            oldPrice: "$30.00",
+            discount: "-33%",
+            image: "/images/hat-bear-white.png"
+        },
+        {
+            name: "White Rabbit Ear Baseball Cap",
+            price: "$24.00",
+            oldPrice: "$35.00",
+            discount: "-31%",
+            image: "/images/placeholder-hat.png"
+        },
+        {
+            name: "Classic Beige Bucket Hat",
+            price: "$15.00",
+            oldPrice: "$25.00",
+            discount: "-40%",
+            image: "/images/hat-rabbit-white.png"
+        },
+        {
+            name: "Vintage Denim Cap",
+            price: "$18.00",
+            oldPrice: "$28.00",
+            discount: "-35%",
+            image: "/images/placeholder-hat.png"
+        },
+        {
+            name: "Minimalist Beanie",
+            price: "$12.00",
+            oldPrice: "$20.00",
+            discount: "-40%",
+            image: "/images/hat-dog-dot.png"
+        },
+        {
+            name: "Sport Visor Cap",
+            price: "$16.00",
+            oldPrice: "$26.00",
+            discount: "-38%",
+            image: "/images/placeholder-hat.png"
+        },
+        {
+            name: "Knit Winter Hat",
+            price: "$25.00",
+            oldPrice: "$40.00",
+            discount: "-37%",
+            image: "/images/hat-dog-black.png"
+        },
+        {
+            name: "Wide Brim Sun Hat",
+            price: "$28.00",
+            oldPrice: "$45.00",
+            discount: "-37%",
+            image: "/images/hat-rabbit-white.png"
+        },
+        {
+            name: "Kids Animal Ear Cap",
+            price: "$18.00",
+            oldPrice: "$28.00",
+            discount: "-35%",
+            image: "/images/placeholder-hat.png"
+        }
+    ];
 
     const renderStars = (rating: number) => (
         <div className="flex gap-[2px]">
@@ -131,7 +211,7 @@ export default function HomePage() {
                                     {item.discount}
                                 </span>
                                 <Link href="/user/productdetail" className="block aspect-square bg-gray-50 rounded mb-2 relative overflow-hidden flex items-center justify-center border border-gray-100">
-                                    <Image src="/images/placeholder-hat.png" alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                                    <Image src={item.image || "/images/placeholder-hat.png"} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
                                 </Link>
                                 <Link href="/user/productdetail">
                                     <h4 className="text-xs font-medium text-gray-800 line-clamp-2 mb-1 h-8 hover:text-blue-600 transition">{item.name}</h4>

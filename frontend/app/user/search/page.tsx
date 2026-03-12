@@ -18,8 +18,6 @@ export default function SearchPage() {
         { name: "Red", color: "bg-red-600" },
         { name: "Grey", color: "bg-gray-400" },
     ];
-    const filterGenders = ["Men", "Women", "Unisex"];
-    const filterAges = ["Kids (2-12)", "Teens (13-19)", "Adults (20+)"];
     const filterPrices = ["Under $5", "$5 - $10", "$10 - $15", "Over $15"];
 
     // Mock data cho sản phẩm
@@ -52,7 +50,7 @@ export default function SearchPage() {
             <main className="flex-grow max-w-[1400px] mx-auto w-full px-8 py-6">
                 {/* --- BREADCRUMBS --- */}
                 <div className="flex items-center gap-2 text-xs text-gray-500 mb-8">
-                    <Link href="/" className="hover:text-blue-600 transition">Homepage</Link>
+                    <Link href="/user/homepage" className="hover:text-blue-600 transition">Homepage</Link>
                     <ChevronRight className="w-3 h-3" />
                     <span className="text-gray-900 font-medium">Baseball Hat</span>
                 </div>
@@ -93,31 +91,6 @@ export default function SearchPage() {
                                 </div>
                             </div>
 
-                            {/* Gender Filter */}
-                            <div>
-                                <h3 className="font-semibold mb-3">Gender</h3>
-                                <div className="space-y-2.5">
-                                    {filterGenders.map((gender, idx) => (
-                                        <label key={idx} className="flex items-center gap-3 cursor-pointer group">
-                                            <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
-                                            <span className="group-hover:text-blue-600 transition">{gender}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Age Filter */}
-                            <div>
-                                <h3 className="font-semibold mb-3">Age</h3>
-                                <div className="space-y-2.5">
-                                    {filterAges.map((age, idx) => (
-                                        <label key={idx} className="flex items-center gap-3 cursor-pointer group">
-                                            <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
-                                            <span className="group-hover:text-blue-600 transition">{age}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
 
                             {/* Price Filter */}
                             <div>
