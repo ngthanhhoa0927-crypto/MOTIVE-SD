@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Playfair_Display, Inter } from "next/font/google";
 import Link from "next/link";
@@ -5,6 +9,51 @@ const playfair = Playfair_Display({ subsets: ["latin"], style: ["normal", "itali
 const inter = Inter({ subsets: ["latin"] });
 
 export default function SignUpPage() {
+    const router = useRouter();
+    const [fullName, setFullName] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [error, setError] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError("");
+
+        if (password !== confirmPassword) {
+            setError("Passwords do not match");
+            return;
+        }
+
+        setIsLoading(true);
+
+        try {
+            const res = await fetch("http://localhost:8000/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ full_name: fullName, email, password }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                // Formatting Zod validation errors if available
+                if (data.errors && data.errors.length > 0) {
+                    throw new Error(data.errors.map((e: any) => `${e.field}: ${e.message}`).join(", "));
+                }
+                throw new Error(data.message || "Registration failed");
+            }
+
+            // Redirect to login page on success
+            router.push("/user/login?registered=true");
+        } catch (err: any) {
+            setError(err.message || "An unexpected error occurred");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div className={`min-h-screen flex ${inter.className}`}>
             {/* Cột trái: Hình ảnh */}
@@ -35,13 +84,21 @@ export default function SignUpPage() {
                     </h1>
 
                     {/* Form */}
-                    <form className="space-y-4">
+                    <form className="space-y-4" onSubmit={handleSubmit}>
+                        {error && (
+                            <div className="p-3 text-xs text-red-600 bg-red-50 rounded-md border border-red-100 mb-4">
+                                {error}
+                            </div>
+                        )}
                         {/* Full Name */}
                         <div className="relative">
                             <input
                                 type="text"
                                 placeholder="Full Name"
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
                                 className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                                required
                             />
                             <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -68,7 +125,10 @@ export default function SignUpPage() {
                             <input
                                 type="email"
                                 placeholder="Email Address"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                                required
                             />
                             <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -92,7 +152,10 @@ export default function SignUpPage() {
                             <input
                                 type="password"
                                 placeholder="Password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
                                 className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                                required
                             />
                             <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 cursor-pointer hover:text-gray-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -105,7 +168,10 @@ export default function SignUpPage() {
                             <input
                                 type="password"
                                 placeholder="Confirm Password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
                                 className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                                required
                             />
                             <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 cursor-pointer hover:text-gray-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -113,11 +179,12 @@ export default function SignUpPage() {
                             </svg>
                         </div>
 
-                        {/* Checkbox (Dùng items-start vì text có thể rớt dòng) */}
+                        {/* Checkbox */}
                         <div className="flex items-start gap-3 pt-2 pb-2">
                             <input
                                 type="checkbox"
                                 id="terms"
+                                required
                                 className="mt-1 w-4 h-4 border-gray-300 rounded text-black focus:ring-black accent-black shrink-0"
                             />
                             <label htmlFor="terms" className="text-xs text-gray-500 cursor-pointer leading-relaxed">
@@ -128,9 +195,10 @@ export default function SignUpPage() {
                         {/* Submit Button */}
                         <button
                             type="submit"
-                            className="w-full py-4 bg-[#2C2B29] hover:bg-black text-white rounded-md text-sm font-semibold tracking-widest uppercase transition-colors"
+                            disabled={isLoading}
+                            className={`w-full py-4 bg-[#2C2B29] hover:bg-black text-white rounded-md text-sm font-semibold tracking-widest uppercase transition-colors ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
                         >
-                            Create My Account
+                            {isLoading ? "Creating Account..." : "Create My Account"}
                         </button>
                     </form>
 

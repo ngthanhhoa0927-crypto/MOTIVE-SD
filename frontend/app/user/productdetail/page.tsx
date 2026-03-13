@@ -138,7 +138,9 @@ export default function ProductDetailsPage() {
                                     <button onClick={() => setQuantity(quantity + 1)} className="w-10 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 text-lg">+</button>
                                 </div>
                                 <Button className="bg-blue-600 hover:bg-blue-700 h-12 px-10 rounded-md font-semibold text-sm">Add to Cart</Button>
-                                <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50 h-12 px-10 rounded-md font-semibold text-sm">Buy now</Button>
+                                <Link href="/user/checkout">
+                                    <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50 h-12 px-10 rounded-md font-semibold text-sm">Buy now</Button>
+                                </Link>
                             </div>
                         </div>
 

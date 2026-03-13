@@ -1,11 +1,52 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import { Playfair_Display, Inter } from "next/font/google";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+
 // Khởi tạo font chữ để giống với thiết kế
 const playfair = Playfair_Display({ subsets: ["latin"], style: ["normal", "italic"] });
 const inter = Inter({ subsets: ["latin"] });
 
 export default function LoginPage() {
+    const router = useRouter();
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError("");
+        setIsLoading(true);
+
+        try {
+            const res = await fetch("http://localhost:8000/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.message || "Login failed");
+            }
+
+            // Save token to localStorage
+            localStorage.setItem("token", data.token);
+            
+            // Redirect to homepage
+            router.push("/user/homepage");
+        } catch (err: any) {
+            setError(err.message || "An unexpected error occurred");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div className={`min-h-screen flex ${inter.className}`}>
             {/* Cột trái: Hình ảnh */}
@@ -75,12 +116,20 @@ export default function LoginPage() {
                     </div>
 
                     {/* Form */}
-                    <form className="space-y-4">
+                    <form className="space-y-4" onSubmit={handleSubmit}>
+                        {error && (
+                            <div className="p-3 text-xs text-red-600 bg-red-50 rounded-md border border-red-100 mb-4">
+                                {error}
+                            </div>
+                        )}
                         <div className="relative">
                             <input
-                                type="text"
-                                placeholder="Username or email"
+                                type="email"
+                                placeholder="Email address"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                                required
                             />
                             {/* User Icon */}
                             <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -92,7 +141,10 @@ export default function LoginPage() {
                             <input
                                 type="password"
                                 placeholder="Password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
                                 className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                                required
                             />
                             {/* Eye Icon */}
                             <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,9 +166,10 @@ export default function LoginPage() {
 
                         <button
                             type="submit"
-                            className="w-full py-4 mt-4 bg-[#2C2B29] hover:bg-black text-white rounded-md text-sm font-semibold tracking-widest uppercase transition-colors"
+                            disabled={isLoading}
+                            className={`w-full py-4 mt-4 bg-[#2C2B29] hover:bg-black text-white rounded-md text-sm font-semibold tracking-widest uppercase transition-colors ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
                         >
-                            Login
+                            {isLoading ? "Logging in..." : "Login"}
                         </button>
                     </form>
 
@@ -128,4 +181,4 @@ export default function LoginPage() {
             </div>
         </div>
     );
-}
+}
