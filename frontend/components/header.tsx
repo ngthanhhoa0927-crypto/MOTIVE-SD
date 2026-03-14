@@ -1,17 +1,20 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
-import Image from "next/image";
+import { useState, useEffect, useRef } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { Playfair_Display, Inter } from "next/font/google";
+import Link from "next/link";
 import { Search, User, ShoppingCart, Bell, Globe, LogOut } from "lucide-react";
 
 export default function Header() {
-    const [searchQuery, setSearchQuery] = useState("");
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [isCartOpen, setIsCartOpen] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState(false); // Default false, will check localStorage
     const [userMenuOpen, setUserMenuOpen] = useState(false);
-    const searchRef = useRef<HTMLDivElement>(null);
+    const [searchQuery, setSearchQuery] = useState("");
+    const dropdownRef = useRef<HTMLDivElement>(null);
     const userMenuRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
 
@@ -96,7 +99,7 @@ export default function Header() {
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
-            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsDropdownOpen(false);
             }
             if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
@@ -107,12 +110,12 @@ export default function Header() {
 
         // Check login status
         const token = localStorage.getItem("token");
-        if (token) {
+        if (token && !isLoggedIn) {
             setIsLoggedIn(true);
         }
 
         return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    }, [isLoggedIn]);
 
     const handleLogout = () => {
         localStorage.removeItem("token");
@@ -148,7 +151,7 @@ export default function Header() {
                 </Link>
 
                 {/* Search Bar */}
-                <div className="flex-1 max-w-2xl mx-8 relative" ref={searchRef}>
+                <div className="flex-1 max-w-2xl mx-8 relative" ref={dropdownRef}>
                     <div className="flex border-2 border-blue-600 rounded-md overflow-hidden h-10 bg-white">
                         <input
                             type="text"
@@ -195,7 +198,7 @@ export default function Header() {
                                     <div className="bg-gray-100 p-3 rounded-full mb-3">
                                         <Search className="w-6 h-6 text-gray-400" />
                                     </div>
-                                    <p className="text-sm">No products found matching "<span className="font-semibold text-gray-700">{searchQuery}</span>"</p>
+                                    <p className="text-sm">No products found matching &quot;<span className="font-semibold text-gray-700">{searchQuery}</span>&quot;</p>
                                     <p className="text-xs mt-1 text-gray-400">Try checking your spelling or use more general terms</p>
                                 </div>
                             )}

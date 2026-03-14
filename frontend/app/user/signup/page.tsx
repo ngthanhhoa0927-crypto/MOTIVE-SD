@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import type { ChangeEvent, FormEvent, MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Playfair_Display, Inter } from "next/font/google";
@@ -10,15 +11,49 @@ const inter = Inter({ subsets: ["latin"] });
 
 export default function SignUpPage() {
     const router = useRouter();
+
+    // Form states
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [dob, setDob] = useState("");
+    const [phoneNumber, setPhoneNumber] = useState("");
+    const [otp, setOtp] = useState("");
+
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [step, setStep] = useState(1); // 1: Input Info, 2: Input OTP
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleDobChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const input = e.target.value;
+        const isDeleting = input.length < dob.length;
+        let value = input.replace(/\D/g, "");
+        
+        if (value.length > 8) value = value.slice(0, 8);
+
+        let formattedValue = "";
+        if (value.length > 0) {
+            formattedValue = value.slice(0, 2);
+            if (value.length > 2 || (value.length === 2 && !isDeleting)) {
+                formattedValue += "/";
+                if (value.length > 2) {
+                    formattedValue += value.slice(2, 4);
+                    if (value.length > 4 || (value.length === 4 && !isDeleting)) {
+                        formattedValue += "/";
+                        if (value.length > 4) {
+                            formattedValue += value.slice(4, 8);
+                        }
+                    }
+                }
+            }
+        }
+        setDob(formattedValue);
+    };
+
+    // Xử lý Gửi OTP (Bước 1)
+    const handleSendOtp = async (e?: FormEvent<HTMLFormElement> | MouseEvent) => {
+        e?.preventDefault();
         setError("");
 
         if (password !== confirmPassword) {
@@ -29,26 +64,71 @@ export default function SignUpPage() {
         setIsLoading(true);
 
         try {
-            const res = await fetch("http://localhost:8000/auth/register", {
+            const res = await fetch("http://localhost:8000/auth/send-otp", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ full_name: fullName, email, password }),
+                body: JSON.stringify({ email }),
             });
 
             const data = await res.json();
 
             if (!res.ok) {
-                // Formatting Zod validation errors if available
                 if (data.errors && data.errors.length > 0) {
-                    throw new Error(data.errors.map((e: any) => `${e.field}: ${e.message}`).join(", "));
+                    throw new Error(data.errors.map((e: { field: string; message: string }) => `${e.field}: ${e.message}`).join(", "));
+                }
+                throw new Error(data.message || "Failed to send OTP");
+            }
+
+            // Gửi OTP thành công -> chuyển sang form nhập OTP
+            setStep(2);
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError("An unexpected error occurred");
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Xử lý tạo tài khoản (Bước 2)
+    const handleRegister = async (e?: FormEvent<HTMLFormElement>) => {
+        e?.preventDefault();
+        setError("");
+        setIsLoading(true);
+
+        try {
+            const res = await fetch("http://localhost:8000/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    full_name: fullName, 
+                    email, 
+                    password, 
+                    otp,
+                    phone_number: phoneNumber,
+                    date_of_birth: dob
+                }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                if (data.errors && data.errors.length > 0) {
+                    throw new Error(data.errors.map((e: { field: string; message: string }) => `${e.field}: ${e.message}`).join(", "));
                 }
                 throw new Error(data.message || "Registration failed");
             }
 
             // Redirect to login page on success
             router.push("/user/login?registered=true");
-        } catch (err: any) {
-            setError(err.message || "An unexpected error occurred");
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError("An unexpected error occurred");
+            }
         } finally {
             setIsLoading(false);
         }
@@ -83,127 +163,192 @@ export default function SignUpPage() {
                         Create Your <span className="text-gray-500 italic">Account</span>
                     </h1>
 
-                    {/* Form */}
-                    <form className="space-y-4" onSubmit={handleSubmit}>
-                        {error && (
-                            <div className="p-3 text-xs text-red-600 bg-red-50 rounded-md border border-red-100 mb-4">
-                                {error}
+                    {step === 1 ? (
+                        /* Form Bước 1: Thông tin người dùng */
+                        <form className="space-y-4" onSubmit={handleSendOtp}>
+                            {error && (
+                                <div className="p-3 text-xs text-red-600 bg-red-50 rounded-md border border-red-100 mb-4">
+                                    {error}
+                                </div>
+                            )}
+                            {/* Full Name */}
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Full Name"
+                                    value={fullName}
+                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
+                                    className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                                    required
+                                />
+                                <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
                             </div>
-                        )}
-                        {/* Full Name */}
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder="Full Name"
-                                value={fullName}
-                                onChange={(e) => setFullName(e.target.value)}
-                                className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
-                                required
-                            />
-                            <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                        </div>
 
-                        {/* Date of Birth - Custom layout để text nhỏ nằm trên */}
-                        <div className="relative border border-gray-200 bg-white rounded-md px-4 py-2 focus-within:border-gray-400 focus-within:ring-1 focus-within:ring-gray-400 transition-all">
-                            <label className="block text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">
-                                Date of Birth
-                            </label>
-                            <input
-                                type="text"
-                                placeholder="mm/dd/yyyy"
-                                className="w-full text-sm outline-none bg-transparent placeholder-gray-300 text-gray-700"
-                            />
-                            <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                        </div>
+                            {/* Date of Birth - Custom layout để text nhỏ nằm trên */}
+                            <div className="relative border border-gray-200 bg-white rounded-md px-4 py-2 focus-within:border-gray-400 focus-within:ring-1 focus-within:ring-gray-400 transition-all">
+                                <label className="block text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">
+                                    Date of Birth
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="dd/mm/yyyy"
+                                    value={dob}
+                                    onChange={handleDobChange}
+                                    maxLength={10}
+                                    className="w-full text-sm outline-none bg-transparent placeholder-gray-300 text-gray-700"
+                                />
+                                <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
 
-                        {/* Email */}
-                        <div className="relative">
-                            <input
-                                type="email"
-                                placeholder="Email Address"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
-                                required
-                            />
-                            <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                        </div>
+                            {/* Email */}
+                            <div className="relative">
+                                <input
+                                    type="email"
+                                    placeholder="Email Address"
+                                    value={email}
+                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                                    className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                                    required
+                                />
+                                <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                            </div>
 
-                        {/* Phone Number */}
-                        <div className="relative">
-                            <input
-                                type="tel"
-                                placeholder="Phone Number (Optional)"
-                                className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
-                            />
-                            <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                            </svg>
-                        </div>
+                            {/* Phone Number */}
+                            <div className="relative">
+                                <input
+                                    type="tel"
+                                    placeholder="Phone Number (Optional)"
+                                    value={phoneNumber}
+                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setPhoneNumber(e.target.value)}
+                                    className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                                />
+                                <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                </svg>
+                            </div>
 
-                        {/* Password */}
-                        <div className="relative">
-                            <input
-                                type="password"
-                                placeholder="Password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
-                                required
-                            />
-                            <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 cursor-pointer hover:text-gray-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                        </div>
+                            {/* Password */}
+                            <div className="relative">
+                                <input
+                                    type="password"
+                                    placeholder="Password"
+                                    value={password}
+                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                                    className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                                    required
+                                />
+                                <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 cursor-pointer hover:text-gray-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </div>
 
-                        {/* Confirm Password */}
-                        <div className="relative">
-                            <input
-                                type="password"
-                                placeholder="Confirm Password"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
-                                required
-                            />
-                            <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 cursor-pointer hover:text-gray-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                        </div>
+                            {/* Confirm Password */}
+                            <div className="relative">
+                                <input
+                                    type="password"
+                                    placeholder="Confirm Password"
+                                    value={confirmPassword}
+                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+                                    className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                                    required
+                                />
+                                <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 cursor-pointer hover:text-gray-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </div>
 
-                        {/* Checkbox */}
-                        <div className="flex items-start gap-3 pt-2 pb-2">
-                            <input
-                                type="checkbox"
-                                id="terms"
-                                required
-                                className="mt-1 w-4 h-4 border-gray-300 rounded text-black focus:ring-black accent-black shrink-0"
-                            />
-                            <label htmlFor="terms" className="text-xs text-gray-500 cursor-pointer leading-relaxed">
-                                I agree to Motive SD's Terms of Service and Privacy Policy. I consent to receiving curated style updates and exclusive offers.
-                            </label>
-                        </div>
+                            {/* Checkbox */}
+                            <div className="flex items-start gap-3 pt-2 pb-2">
+                                <input
+                                    type="checkbox"
+                                    id="terms"
+                                    required
+                                    className="mt-1 w-4 h-4 border-gray-300 rounded text-black focus:ring-black accent-black shrink-0"
+                                />
+                                <label htmlFor="terms" className="text-xs text-gray-500 cursor-pointer leading-relaxed">
+                                    I agree to Motive SD&apos;s Terms of Service and Privacy Policy. I consent to receiving curated style updates and exclusive offers.
+                                </label>
+                            </div>
 
-                        {/* Submit Button */}
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className={`w-full py-4 bg-[#2C2B29] hover:bg-black text-white rounded-md text-sm font-semibold tracking-widest uppercase transition-colors ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
-                        >
-                            {isLoading ? "Creating Account..." : "Create My Account"}
-                        </button>
-                    </form>
+                            {/* Submit Button */}
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className={`w-full py-4 bg-[#2C2B29] hover:bg-black text-white rounded-md text-sm font-semibold tracking-widest uppercase transition-colors ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
+                            >
+                                {isLoading ? "Sending OTP..." : "Continue"}
+                            </button>
+                        </form>
+                    ) : (
+                        /* Form Bước 2: Nhập OTP */
+                        <form className="space-y-4" onSubmit={handleRegister}>
+                            {error && (
+                                <div className="p-3 text-xs text-red-600 bg-red-50 rounded-md border border-red-100 mb-4">
+                                    {error}
+                                </div>
+                            )}
+
+                            <div className="p-4 text-center">
+                                <p className="text-sm text-gray-600 mb-6">
+                                    We&apos;ve sent a 6-digit verification code to <span className="font-semibold">{email}</span>. Please enter it below.
+                                </p>
+                                
+                                <div className="relative max-w-[200px] mx-auto">
+                                    <input
+                                        type="text"
+                                        placeholder="000000"
+                                        maxLength={6}
+                                        value={otp}
+                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setOtp(e.target.value.replace(/\D/g, ""))} // Chỉ cho phép nhập số
+                                        className="w-full py-3.5 text-center text-xl tracking-[0.5em] font-semibold bg-white border border-gray-200 rounded-md outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Submit Button */}
+                            <button
+                                type="submit"
+                                disabled={isLoading || otp.length !== 6}
+                                className={`w-full py-4 mt-4 bg-[#2C2B29] hover:bg-black text-white rounded-md text-sm font-semibold tracking-widest uppercase transition-colors ${(isLoading || otp.length !== 6) ? "opacity-70 cursor-not-allowed" : ""}`}
+                            >
+                                {isLoading ? "Creating Account..." : "Verify & Create Account"}
+                            </button>
+                            
+                            {/* Back/Resend options */}
+                            <div className="flex justify-between mt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setStep(1);
+                                        setOtp("");
+                                    }}
+                                    className="text-xs text-gray-500 hover:text-gray-900 font-semibold"
+                                >
+                                    ← Back to editing
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSendOtp}
+                                    disabled={isLoading}
+                                    className="text-xs text-gray-500 hover:text-gray-900 font-semibold underline"
+                                >
+                                    Resend code
+                                </button>
+                            </div>
+                        </form>
+                    )}
 
                     {/* Footer Text */}
-                    <p className="text-center text-sm text-gray-500 mt-6">
+                    <p className="text-center text-sm text-gray-500 mt-8">
                         Already a member? <Link href="/user/login" className="text-gray-900 font-semibold hover:underline">Sign In</Link>
                     </p>
                 </div>
