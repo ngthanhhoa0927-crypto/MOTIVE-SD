@@ -6,6 +6,7 @@ import { users, otps } from "../db/schema.js";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { sign } from "hono/jwt";
+import { sendOtpEmail } from "../utils/email.js";
 
 const authRouter = new Hono();
 
@@ -83,6 +84,7 @@ authRouter.post(
             return c.json({ message: "Server error" }, 500);
         }
     })
+
 const loginSchema = z.object({
     email: z.string().email(),
     password: z.string().min(6).max(255),
@@ -93,7 +95,7 @@ const sendOtpSchema = z.object({
     email: z.string().email(),
 })
 
-// ----------------- API gửi OTP -----------------
+// ----------------- API gửi OTP (đăng ký) -----------------
 authRouter.post(
     "/send-otp",
     zValidator('json', sendOtpSchema, (result, c) => {
@@ -108,7 +110,7 @@ authRouter.post(
         try {
             const { email } = c.req.valid('json');
 
-            // Kiểm tra email đã tồn tại trong hệ thống (nếu là đăng ký thì email chưa được tồn tại)
+            // Kiểm tra email đã tồn tại trong hệ thống
             const existingUser = await db.select().from(users).where(eq(users.email, email));
             if (existingUser.length > 0) {
                 return c.json({ message: "Email already exists" }, 400);
@@ -120,7 +122,7 @@ authRouter.post(
             // Sinh mã OTP 6 số ngẫu nhiên
             const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
             
-            // Thiết lập thời gian hết hạn (ví dụ: 10 phút = 10 * 60 * 1000 ms)
+            // Thiết lập thời gian hết hạn (10 phút)
             const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
             // Lưu vào DB
@@ -130,12 +132,8 @@ authRouter.post(
                 expiresAt,
             });
 
-            // Ghi log ra console thay vì gửi email thật
-            console.log(`\n========================================`);
-            console.log(`[MOCK EMAIL] Gửi OTP đến: ${email}`);
-            console.log(`[MOCK EMAIL] Mã OTP của bạn là: ${otpCode}`);
-            console.log(`[MOCK EMAIL] Sẽ hết hạn vào: ${expiresAt.toLocaleString()}`);
-            console.log(`========================================\n`);
+            // Gửi email thật qua Nodemailer
+            await sendOtpEmail(email, otpCode);
 
             return c.json({ message: "OTP sent successfully" }, 200);
 

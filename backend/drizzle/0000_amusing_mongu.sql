@@ -3,6 +3,7 @@ CREATE TABLE "users" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"role" "role" DEFAULT 'user' NOT NULL,
 	"full_name" varchar NOT NULL,
+	"phone_number" varchar(20),
 	"email" varchar NOT NULL,
 	"password_hash" varchar NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
