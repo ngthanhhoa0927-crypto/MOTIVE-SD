@@ -10,6 +10,36 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d motiveSD"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  back-end:
+    build:
+      context: ./backend
+      dockerfile: dockerfile.be
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql://admin:secretPasswd@db:5432/motiveSD
+    depends_on:
+      - db
+
+  front-end:
+    build:
+      context: ./frontend
+      dockerfile: dockerfile.fe
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - back-end
 
 volumes:
   postgres_data:

@@ -16,28 +16,115 @@ export default function ProfilePage() {
     const router = useRouter();
     const [isEditing, setIsEditing] = useState(false);
     
-    // Mock user data
     const [user, setUser] = useState({
-        fullName: "John Doe",
-        email: "john.doe@example.com",
-        phone: "+1 (555) 000-0000",
-        dob: "1990-01-01",
-        address: "123 Fashion Ave, Suite 456, New York, NY 10001",
-        avatar: "/images/avatar-placeholder.jpg"
+        fullName: "",
+        email: "",
+        phone: "",
+        dob: "",
+        address: "",
+        avatar: "/images/avatar-placeholder.jpg",
+        avatarKey: ""
     });
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Simple auth check - commented out temporarily for viewing
-        // if (!localStorage.getItem("token")) {
-        //     router.push("/user/login");
-        // }
+        const token = localStorage.getItem("token");
+        if (!token) {
+            router.push("/user/login");
+            return;
+        }
+
+        const fetchProfile = async () => {
+            try {
+                const res = await fetch("http://localhost:8000/auth/me", {
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
+                if (!res.ok) throw new Error("Failed to fetch profile");
+                
+                const data = await res.json();
+                const p = data.profile;
+                setUser({
+                    fullName: p.full_name || "",
+                    email: p.email || "",
+                    phone: p.phone_number || "",
+                    dob: p.date_of_birth || "",
+                    address: p.address || "",
+                    avatar: p.avatar_view_url || "/images/avatar-placeholder.jpg",
+                    avatarKey: p.avatar_url || ""
+                });
+            } catch (err) {
+                console.error(err);
+                router.push("/user/login");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchProfile();
     }, [router]);
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsEditing(false);
-        // Here you would typically send an API request to update the user
+        const token = localStorage.getItem("token");
+        const bodyData: any = {
+            full_name: user.fullName,
+            phone_number: user.phone,
+            date_of_birth: user.dob,
+            address: user.address,
+        };
+        if (user.avatarKey) {
+            bodyData.avatar_url = user.avatarKey;
+        }
+
+        try {
+            const res = await fetch("http://localhost:8000/auth/me", {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(bodyData)
+            });
+            
+            if (res.ok) {
+                setIsEditing(false);
+            } else {
+                console.error("Failed to update profile");
+            }
+        } catch (err) {
+            console.error(err);
+        }
     };
+
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("folder", "profiles");
+
+        try {
+            const res = await fetch("http://localhost:8000/files/upload", {
+                method: "POST",
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setUser(prev => ({ ...prev, avatar: data.url, avatarKey: data.key }));
+                window.dispatchEvent(new CustomEvent('avatarUpdated', { detail: data.url }));
+            }
+        } catch (err) {
+            console.error("Avatar upload failed:", err);
+        }
+    };
+
+    if (isLoading) {
+        return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    }
 
     return (
         <div className={`min-h-screen flex flex-col bg-[#F9F8F4] ${inter.className}`}>
@@ -121,7 +208,7 @@ export default function ProfilePage() {
                                                     <Camera className="w-6 h-6 mb-1" />
                                                     <span className="text-xs font-medium">Update</span>
                                                 </div>
-                                                <input type="file" className="hidden" accept="image/*" />
+                                                <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
                                             </label>
                                         )}
                                     </div>

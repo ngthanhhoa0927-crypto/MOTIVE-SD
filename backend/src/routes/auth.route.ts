@@ -5,10 +5,28 @@ import { db } from "../db/index.js";
 import { users, otps } from "../db/schema.js";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
-import { sign } from "hono/jwt";
+import { sign, verify } from "hono/jwt";
 import { sendOtpEmail } from "../utils/email.js";
+import { getPresignedDownloadUrl } from "../utils/s3.js";
 
 const authRouter = new Hono();
+
+// Middleware to protect routes that require authentication
+export const authMiddleware = async (c: any, next: any) => {
+    const authHeader = c.req.header("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return c.json({ message: "Unauthorized" }, 401);
+    }
+
+    const token = authHeader.split(" ")[1];
+    try {
+        const decoded = await verify(token, process.env.JWT_SECRET!, "HS256");
+        c.set("jwtPayload", decoded);
+        await next();
+    } catch (error) {
+        return c.json({ message: "Invalid token" }, 401);
+    }
+};
 
 // Validate thông tin đăng ký
 const registerSchema = z.object({
@@ -190,5 +208,114 @@ authRouter.post(
             return c.json({ message: "Server error" }, 500);
         }
     })
+
+// ----------------- API lấy thông tin Profile -----------------
+authRouter.get("/me", authMiddleware, async (c) => {
+    try {
+        const userPayload = c.get("jwtPayload") as { sub: number };
+        const userId = userPayload.sub;
+
+        const userRecord = await db.select().from(users).where(eq(users.id, userId));
+        if (userRecord.length === 0) {
+            return c.json({ message: "User not found" }, 404);
+        }
+
+        const u = userRecord[0];
+        
+        let signedAvatarUrl = u.avatar_url;
+        if (signedAvatarUrl && !signedAvatarUrl.startsWith("http")) {
+            signedAvatarUrl = await getPresignedDownloadUrl(signedAvatarUrl);
+        }
+
+        // Don't send password hash to client
+        const profile = {
+            id: u.id,
+            role: u.role,
+            full_name: u.full_name,
+            email: u.email,
+            phone_number: u.phone_number,
+            date_of_birth: u.date_of_birth,
+            address: u.address,
+            avatar_url: u.avatar_url, // raw key
+            avatar_view_url: signedAvatarUrl, // signed URL for display
+            createdAt: u.createdAt,
+        };
+
+        return c.json({ profile }, 200);
+
+    } catch (error) {
+        console.error("Error fetching profile:", error);
+        return c.json({ message: "Server error" }, 500);
+    }
+});
+
+// Validate thông tin cập nhật Profile
+const updateProfileSchema = z.object({
+    full_name: z.string().min(3).max(255).optional(),
+    phone_number: z.string().optional(),
+    date_of_birth: z.string().optional(),
+    address: z.string().optional(),
+    avatar_url: z.string().optional()
+});
+
+// ----------------- API cập nhật thông tin Profile -----------------
+authRouter.put(
+    "/me",
+    authMiddleware,
+    zValidator('json', updateProfileSchema, (result, c) => {
+        if (!result.success) {
+            return c.json({
+                message: "Validation failed",
+                errors: result.error.issues.map(i => ({ field: i.path[0], message: i.message }))
+            }, 400);
+        }
+    }),
+    async (c) => {
+        try {
+            const userPayload = c.get("jwtPayload") as { sub: number };
+            const userId = userPayload.sub;
+            const updateData = c.req.valid('json');
+
+            // Find user
+            const userRecord = await db.select().from(users).where(eq(users.id, userId));
+            if (userRecord.length === 0) {
+                return c.json({ message: "User not found" }, 404);
+            }
+
+            // Update user
+            const [updatedUser] = await db.update(users)
+                .set({
+                    ...updateData,
+                    updatedAt: new Date()
+                })
+                .where(eq(users.id, userId))
+                .returning({
+                    id: users.id,
+                    full_name: users.full_name,
+                    phone_number: users.phone_number,
+                    date_of_birth: users.date_of_birth,
+                    address: users.address,
+                    avatar_url: users.avatar_url, // raw key
+                });
+
+            let signedAvatarUrl = updatedUser.avatar_url;
+            if (signedAvatarUrl && !signedAvatarUrl.startsWith("http")) {
+                signedAvatarUrl = await getPresignedDownloadUrl(signedAvatarUrl);
+            }
+
+            return c.json({ 
+                message: "Profile updated successfully", 
+                profile: {
+                    ...updatedUser,
+                    avatar_view_url: signedAvatarUrl
+                }
+            }, 200);
+
+        } catch (error) {
+            console.error("Error updating profile:", error);
+            return c.json({ message: "Server error" }, 500);
+        }
+    }
+);
 
 export default authRouter;

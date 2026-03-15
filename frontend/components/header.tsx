@@ -12,6 +12,7 @@ export default function Header() {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false); // Default false, will check localStorage
+    const [avatar, setAvatar] = useState("/images/avatar-placeholder.jpg");
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -108,13 +109,32 @@ export default function Header() {
         }
         document.addEventListener("mousedown", handleClickOutside);
 
+        const handleAvatarUpdate = (e: any) => {
+            if (e.detail) setAvatar(e.detail);
+        };
+        window.addEventListener('avatarUpdated', handleAvatarUpdate as EventListener);
+
         // Check login status
         const token = localStorage.getItem("token");
         if (token && !isLoggedIn) {
             setIsLoggedIn(true);
+            // Fetch profile data for avatar
+            fetch("http://localhost:8000/auth/me", {
+                headers: { "Authorization": `Bearer ${token}` }
+            })
+            .then(res => res.ok ? res.json() : Promise.reject(res))
+            .then(data => {
+                if (data.profile?.avatar_view_url) {
+                    setAvatar(data.profile.avatar_view_url);
+                }
+            })
+            .catch(err => console.error("Failed to fetch header avatar:", err));
         }
 
-        return () => document.removeEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            window.removeEventListener('avatarUpdated', handleAvatarUpdate as EventListener);
+        };
     }, [isLoggedIn]);
 
     const handleLogout = () => {
@@ -215,7 +235,7 @@ export default function Header() {
                                 className="flex items-center gap-2 hover:opacity-80 transition focus:outline-none"
                             >
                                 <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center border border-blue-200 overflow-hidden shadow-sm">
-                                    <Image src="/images/avatar-placeholder.jpg" alt="User Avatar" width={40} height={40} className="object-cover" />
+                                    <Image src={avatar} alt="User Avatar" width={40} height={40} className="object-cover w-full h-full" />
                                 </div>
                             </button>
                             

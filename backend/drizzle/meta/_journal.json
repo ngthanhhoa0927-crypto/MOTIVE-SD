@@ -15,6 +15,20 @@
       "when": 1773571778378,
       "tag": "0001_icy_miracleman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773574113189,
+      "tag": "0002_lonely_changeling",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1773574361609,
+      "tag": "0003_demonic_xorn",
+      "breakpoints": true
     }
   ]
 }
