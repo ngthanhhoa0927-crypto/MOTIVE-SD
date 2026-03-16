@@ -23,6 +23,24 @@ export default function LoginPage() {
         setError("");
         setIsLoading(true);
 
+        // DEV BYPASS: Allow logging in as admin without backend, xóa đi khi backend đã có acc admin
+        if (email === "admin@motive.sd" && password === "admin") {
+            // Create a fake token with admin role
+            const fakePayload = {
+                sub: 1,
+                email: "admin@motive.sd",
+                full_name: "Admin User",
+                role: "admin",
+                exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+            };
+            const fakeToken = `fake.${btoa(JSON.stringify(fakePayload))}.fake`;
+
+            localStorage.setItem("token", fakeToken);
+            router.push('/admin/customers');
+            setIsLoading(false);
+            return;
+        }
+
         try {
             const res = await fetch("http://localhost:8000/auth/login", {
                 method: "POST",
@@ -38,8 +56,19 @@ export default function LoginPage() {
 
             // Save token to localStorage
             localStorage.setItem("token", data.token);
-            
-            // Redirect to homepage
+
+            // Check role from token and redirect
+            try {
+                const payload = JSON.parse(atob(data.token.split('.')[1]));
+                if (payload.role === 'admin') {
+                    router.push('/admin/customers');
+                    return;
+                }
+            } catch (e) {
+                console.error("Failed to parse token", e);
+            }
+
+            // Redirect to homepage for normal users
             router.push("/user/homepage");
         } catch (err: unknown) {
             if (err instanceof Error) {
