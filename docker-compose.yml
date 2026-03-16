@@ -27,7 +27,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://admin:secretPasswd@db:5432/motiveSD
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   front-end:
     build:
