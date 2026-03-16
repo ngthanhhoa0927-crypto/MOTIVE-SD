@@ -12,6 +12,25 @@ import { useRouter } from "next/navigation";
 const playfair = Playfair_Display({ subsets: ["latin"], style: ["normal", "italic"] });
 const inter = Inter({ subsets: ["latin"] });
 
+// Helper to convert YYYY-MM-DD (from BE/Input) to DD/MM/YYYY
+const formatDateToDisplay = (dateStr: string) => {
+    if (!dateStr) return "";
+    if (dateStr.includes("/")) return dateStr; // Already in DD/MM/YYYY
+    const [year, month, day] = dateStr.split("-");
+    if (!year || !month || !day) return dateStr;
+    return `${day}/${month}/${year}`;
+};
+
+// Helper to convert DD/MM/YYYY (from User Input) back to YYYY-MM-DD (for BE/Date Input)
+const formatDateToISO = (dateStr: string) => {
+    if (!dateStr) return "";
+    if (dateStr.includes("-")) return dateStr; // Already in YYYY-MM-DD
+    const [day, month, year] = dateStr.split("/");
+    if (!day || !month || !year) return dateStr;
+    return `${year}-${month}-${day}`;
+};
+
+
 export default function ProfilePage() {
     const router = useRouter();
     const [isEditing, setIsEditing] = useState(false);
@@ -25,6 +44,7 @@ export default function ProfilePage() {
         avatar: "/images/avatar-placeholder.jpg",
         avatarKey: ""
     });
+    const [dobError, setDobError] = useState("");
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -43,7 +63,7 @@ export default function ProfilePage() {
                         fullName: payload.full_name || "Regular User",
                         email: payload.email || "user@motive.sd",
                         phone: "0123456789",
-                        dob: "1995-01-01",
+                        dob: "01/01/1995",
                         address: "123 Fashion Street, Motive City",
                         avatar: "/images/avatar-placeholder.jpg",
                         avatarKey: ""
@@ -67,7 +87,7 @@ export default function ProfilePage() {
                     fullName: p.full_name || "",
                     email: p.email || "",
                     phone: p.phone_number || "",
-                    dob: p.date_of_birth || "",
+                    dob: formatDateToDisplay(p.date_of_birth) || "",
                     address: p.address || "",
                     avatar: p.avatar_view_url || "/images/avatar-placeholder.jpg",
                     avatarKey: p.avatar_url || ""
@@ -91,14 +111,29 @@ export default function ProfilePage() {
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         const token = localStorage.getItem("token");
+        if (!token) return;
+
+        // DEV BYPASS: Just close editing mode for fake tokens
+        if (token.startsWith("fake.")) {
+            setIsEditing(false);
+            return;
+        }
+
         const bodyData: any = {
             full_name: user.fullName,
             phone_number: user.phone,
-            date_of_birth: user.dob,
+            date_of_birth: formatDateToISO(user.dob), // Convert DD/MM/YYYY to YYYY-MM-DD for BE
             address: user.address,
         };
         if (user.avatarKey) {
             bodyData.avatar_url = user.avatarKey;
+        }
+
+        // Validate date before saving
+        const parts = user.dob.split("/");
+        if (user.dob && (parts.length !== 3 || user.dob.length !== 10)) {
+            alert("Please enter a valid date (DD/MM/YYYY)");
+            return;
         }
 
         try {
@@ -111,13 +146,28 @@ export default function ProfilePage() {
                 body: JSON.stringify(bodyData)
             });
             
+            const data = await res.json();
+
             if (res.ok) {
+                const p = data.profile;
+                setUser({
+                    fullName: p.full_name || "",
+                    email: p.email || "",
+                    phone: p.phone_number || "",
+                    dob: formatDateToDisplay(p.date_of_birth) || "", // Keep in display format
+                    address: p.address || "",
+                    avatar: p.avatar_view_url || "/images/avatar-placeholder.jpg",
+                    avatarKey: p.avatar_url || ""
+                });
                 setIsEditing(false);
+                alert("Profile updated successfully!");
             } else {
-                console.error("Failed to update profile");
+                console.error("Failed to update profile:", data.message);
+                alert(data.message || "Failed to update profile");
             }
         } catch (err) {
             console.error(err);
+            alert("An error occurred while updating profile");
         }
     };
 
@@ -299,12 +349,65 @@ export default function ProfilePage() {
                                             Date of Birth
                                         </label>
                                         <input 
-                                            type="date" 
+                                            type="text" 
                                             disabled={!isEditing}
                                             value={user.dob}
-                                            onChange={(e) => setUser({...user, dob: e.target.value})}
-                                            className="w-full px-4 py-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed transition-all text-gray-900" 
+                                            onChange={(e) => {
+                                                let val = e.target.value;
+                                                
+                                                // 1. Remove non-digits
+                                                let digits = val.replace(/\D/g, "");
+                                                
+                                                // 2. Limit to 8 digits (DDMMYYYY)
+                                                if (digits.length > 8) digits = digits.substring(0, 8);
+                                                
+                                                // 3. Format as DD/MM/YYYY
+                                                let formatted = "";
+                                                if (digits.length > 0) {
+                                                    formatted += digits.substring(0, 2);
+                                                    if (digits.length > 2) {
+                                                        formatted += "/" + digits.substring(2, 4);
+                                                        if (digits.length > 4) {
+                                                            formatted += "/" + digits.substring(4, 8);
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                setUser({...user, dob: formatted});
+
+                                                // 4. Validation logic
+                                                if (digits.length === 8) {
+                                                    const d = parseInt(digits.substring(0, 2));
+                                                    const m = parseInt(digits.substring(2, 4));
+                                                    const y = parseInt(digits.substring(4, 8));
+                                                    
+                                                    const dateObj = new Date(y, m - 1, d);
+                                                    const isValid = 
+                                                        dateObj.getFullYear() === y && 
+                                                        dateObj.getMonth() === m - 1 && 
+                                                        dateObj.getDate() === d &&
+                                                        y > 1900 && y <= new Date().getFullYear();
+
+                                                    if (!isValid) {
+                                                        setDobError("Invalid date (e.g. 31/02 or future year)");
+                                                    } else {
+                                                        setDobError("");
+                                                    }
+                                                } else {
+                                                    setDobError("");
+                                                }
+                                            }}
+                                            placeholder="DD/MM/YYYY"
+                                            className={`w-full px-4 py-3 rounded-lg border bg-gray-50 focus:bg-white focus:ring-1 transition-all text-gray-900 disabled:opacity-70 disabled:cursor-not-allowed ${
+                                                dobError ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                                            }`} 
                                         />
+                                        {isEditing && (
+                                            <div className="flex justify-between mt-1">
+                                                <p className="text-[10px] text-gray-400">Format: DD/MM/YYYY</p>
+                                                {dobError && <p className="text-[10px] text-red-500 font-medium">{dobError}</p>}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Address */}
