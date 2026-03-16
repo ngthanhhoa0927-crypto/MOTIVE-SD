@@ -1,5 +1,10 @@
-CREATE TYPE "public"."role" AS ENUM('user', 'admin');--> statement-breakpoint
-CREATE TABLE "users" (
+DO $$ BEGIN
+ CREATE TYPE "public"."role" AS ENUM('user', 'admin');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "users" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"role" "role" DEFAULT 'user' NOT NULL,
 	"full_name" varchar NOT NULL,

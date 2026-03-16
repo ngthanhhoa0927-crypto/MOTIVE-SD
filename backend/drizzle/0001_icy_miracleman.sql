@@ -1,4 +1,4 @@
-CREATE TABLE "otps" (
+CREATE TABLE IF NOT EXISTS "otps" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"email" varchar NOT NULL,
 	"otp" varchar NOT NULL,
@@ -6,5 +6,4 @@ CREATE TABLE "otps" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "users" ADD COLUMN "phone_number" varchar;--> statement-breakpoint
-ALTER TABLE "users" ADD COLUMN "date_of_birth" varchar;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "date_of_birth" varchar;

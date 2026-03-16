@@ -5,6 +5,7 @@ import authRouter from './routes/auth.route.js';
 import fileRouter from './routes/file.route.js';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { db } from './db/index.js';
+import { seedData } from './db/seed.js';
 const app = new Hono();
 app.use('*', cors());
 app.get('/', (c) => {
@@ -18,6 +19,7 @@ async function startServer() {
         console.log('Running database migrations...');
         await migrate(db, { migrationsFolder: './drizzle' });
         console.log('Database migrations completed successfully.');
+        await seedData();
     }
     catch (error) {
         console.error('Error running database migrations:', error);

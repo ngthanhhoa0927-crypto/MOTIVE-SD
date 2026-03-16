@@ -25,6 +25,14 @@ export const authMiddleware = async (c, next) => {
         return c.json({ message: "Invalid token" }, 401);
     }
 };
+// Middleware to check if user is Admin
+export const adminMiddleware = async (c, next) => {
+    const payload = c.get("jwtPayload");
+    if (!payload || payload.role !== "admin") {
+        return c.json({ message: "Forbidden: Admin access required" }, 403);
+    }
+    await next();
+};
 // Validate thông tin đăng ký
 const registerSchema = z.object({
     full_name: z.string().min(3).max(255),

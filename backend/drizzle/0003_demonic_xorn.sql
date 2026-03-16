@@ -1,2 +1,2 @@
-ALTER TABLE "users" ADD COLUMN "address" text;--> statement-breakpoint
-ALTER TABLE "users" ADD COLUMN "avatar_url" varchar(500);
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "address" text;--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "avatar_url" varchar(500);

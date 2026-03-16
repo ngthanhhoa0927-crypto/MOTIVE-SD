@@ -5,6 +5,7 @@ import { db } from "../db/index.js";
 import { eq } from "drizzle-orm";
 import { products, productImages, productVariants, productPromotions, categories, collections } from "../db/schema.js";
 import { getPresignedDownloadUrl } from "../utils/s3.js";
+import { authMiddleware, adminMiddleware } from "./auth.route.js";
 const productRouter = new Hono();
 // Validate product
 const createProductSchema = z.object({
@@ -33,7 +34,7 @@ const createProductSchema = z.object({
     promotion_ids: z.array(z.number().int().positive()).optional()
 });
 // Create a new product (Admin)
-productRouter.post("/", zValidator('json', createProductSchema, (result, c) => {
+productRouter.post("/", authMiddleware, adminMiddleware, zValidator('json', createProductSchema, (result, c) => {
     if (!result.success) {
         return c.json({
             message: "Validation failed",

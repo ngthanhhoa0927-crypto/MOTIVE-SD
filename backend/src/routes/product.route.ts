@@ -5,6 +5,7 @@ import { db } from "../db/index.js";
 import { eq } from "drizzle-orm";
 import { products, productImages, productVariants, productPromotions, categories, collections } from "../db/schema.js";
 import { getPresignedDownloadUrl } from "../utils/s3.js";
+import { authMiddleware, adminMiddleware } from "./auth.route.js";
 
 const productRouter = new Hono();
 
@@ -38,6 +39,8 @@ const createProductSchema = z.object({
 // Create a new product (Admin)
 productRouter.post(
     "/",
+    authMiddleware,
+    adminMiddleware,
     zValidator('json', createProductSchema, (result, c) => {
         if (!result.success) {
             return c.json({

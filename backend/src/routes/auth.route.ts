@@ -28,6 +28,15 @@ export const authMiddleware = async (c: any, next: any) => {
     }
 };
 
+// Check if user is Admin
+export const adminMiddleware = async (c: any, next: any) => {
+    const payload = c.get("jwtPayload");
+    if (!payload || payload.role !== "admin") {
+        return c.json({ message: "Forbidden: Admin access required" }, 403);
+    }
+    await next();
+};
+
 // Validate thông tin đăng ký
 const registerSchema = z.object({
     full_name: z.string().min(3).max(255),
@@ -139,7 +148,7 @@ authRouter.post(
 
             // Sinh mã OTP 6 số ngẫu nhiên
             const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-            
+
             // Thiết lập thời gian hết hạn (10 phút)
             const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -221,7 +230,7 @@ authRouter.get("/me", authMiddleware, async (c) => {
         }
 
         const u = userRecord[0];
-        
+
         let signedAvatarUrl = u.avatar_url;
         if (signedAvatarUrl && !signedAvatarUrl.startsWith("http")) {
             signedAvatarUrl = await getPresignedDownloadUrl(signedAvatarUrl);
@@ -303,8 +312,8 @@ authRouter.put(
                 signedAvatarUrl = await getPresignedDownloadUrl(signedAvatarUrl);
             }
 
-            return c.json({ 
-                message: "Profile updated successfully", 
+            return c.json({
+                message: "Profile updated successfully",
                 profile: {
                     ...updatedUser,
                     avatar_view_url: signedAvatarUrl
@@ -317,5 +326,106 @@ authRouter.put(
         }
     }
 );
+
+// ----------------- ADMIN: Quản lý User -----------------
+
+// Lấy danh sách tất cả người dùng
+authRouter.get("/users", authMiddleware, adminMiddleware, async (c) => {
+    try {
+        const allUsers = await db.select().from(users);
+
+        // Loại bỏ mật khẩu trước khi gửi về client
+        const safeUsers = allUsers.map(u => {
+            const { password_hash, ...safeUser } = u;
+            return safeUser;
+        });
+
+        return c.json({ users: safeUsers }, 200);
+    } catch (error) {
+        console.error("Error fetching users:", error);
+        return c.json({ message: "Server error" }, 500);
+    }
+});
+
+// Lấy thông tin chi tiết 1 người dùng
+authRouter.get("/users/:id", authMiddleware, adminMiddleware, async (c) => {
+    try {
+        const id = parseInt(c.req.param("id"));
+        const userRecord = await db.select().from(users).where(eq(users.id, id));
+
+        if (userRecord.length === 0) {
+            return c.json({ message: "User not found" }, 404);
+        }
+
+        const { password_hash, ...safeUser } = userRecord[0];
+        return c.json({ user: safeUser }, 200);
+    } catch (error) {
+        console.error("Error fetching user:", error);
+        return c.json({ message: "Server error" }, 500);
+    }
+});
+
+// Admin cập nhật thông tin người dùng (role, status, profile)
+const adminUpdateUserSchema = z.object({
+    full_name: z.string().min(3).max(255).optional(),
+    email: z.string().email().optional(),
+    role: z.enum(["user", "admin"]).optional(),
+    isActive: z.boolean().optional(),
+    phone_number: z.string().optional(),
+    address: z.string().optional(),
+});
+
+authRouter.put(
+    "/users/:id",
+    authMiddleware,
+    adminMiddleware,
+    zValidator('json', adminUpdateUserSchema, (result, c) => {
+        if (!result.success) {
+            return c.json({ message: "Validation failed", errors: result.error.issues }, 400);
+        }
+    }),
+    async (c) => {
+        try {
+            const id = parseInt(c.req.param("id"));
+            const updateData = c.req.valid('json');
+
+            const [updatedUser] = await db.update(users)
+                .set({ ...updateData, updatedAt: new Date() })
+                .where(eq(users.id, id))
+                .returning();
+
+            if (!updatedUser) {
+                return c.json({ message: "User not found" }, 404);
+            }
+
+            const { password_hash, ...safeUser } = updatedUser;
+            return c.json({ message: "User updated successfully", user: safeUser }, 200);
+        } catch (error) {
+            console.error("Error updating user by admin:", error);
+            return c.json({ message: "Server error" }, 500);
+        }
+    }
+);
+
+// Xóa người dùng
+authRouter.delete("/users/:id", authMiddleware, adminMiddleware, async (c) => {
+    try {
+        const id = parseInt(c.req.param("id"));
+
+        // Kiểm tra xem user có tồn tại không
+        const userRecord = await db.select().from(users).where(eq(users.id, id));
+        if (userRecord.length === 0) {
+            return c.json({ message: "User not found" }, 404);
+        }
+
+        // Xóa
+        await db.delete(users).where(eq(users.id, id));
+
+        return c.json({ message: "User deleted successfully" }, 200);
+    } catch (error) {
+        console.error("Error deleting user:", error);
+        return c.json({ message: "Server error" }, 500);
+    }
+});
 
 export default authRouter;
