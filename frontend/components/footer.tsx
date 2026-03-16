@@ -31,10 +31,10 @@ export default function Footer() {
                 <div className="col-span-2">
                     <h4 className="font-bold text-sm mb-4 text-gray-900">FOLLOW US</h4>
                     <div className="flex gap-3 mb-6">
-                        <Link href="#" className="w-8 h-8 bg-blue-600 hover:bg-blue-700 transition rounded-full text-white flex items-center justify-center">
+                        <Link href="https://www.facebook.com/profile.php?id=61565790967524" target="_blank" rel="noopener noreferrer" className="w-8 h-8 bg-blue-600 hover:bg-blue-700 transition rounded-full text-white flex items-center justify-center">
                             <Facebook className="w-4 h-4 fill-white" />
                         </Link>
-                        <Link href="#" className="w-8 h-8 bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-500 hover:opacity-90 transition rounded-full text-white flex items-center justify-center">
+                        <Link href="https://www.instagram.com/2modshop/" target="_blank" rel="noopener noreferrer" className="w-8 h-8 bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-500 hover:opacity-90 transition rounded-full text-white flex items-center justify-center">
                             <Instagram className="w-4 h-4" />
                         </Link>
                     </div>

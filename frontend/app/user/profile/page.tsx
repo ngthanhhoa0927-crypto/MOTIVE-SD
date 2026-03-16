@@ -35,6 +35,24 @@ export default function ProfilePage() {
         }
 
         const fetchProfile = async () => {
+            // DEV BYPASS: Use mock data if token is fake or BE is down
+            if (token.startsWith("fake.")) {
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    setUser({
+                        fullName: payload.full_name || "Regular User",
+                        email: payload.email || "user@motive.sd",
+                        phone: "0123456789",
+                        dob: "1995-01-01",
+                        address: "123 Fashion Street, Motive City",
+                        avatar: "/images/avatar-placeholder.jpg",
+                        avatarKey: ""
+                    });
+                    setIsLoading(false);
+                    return;
+                } catch (e) {}
+            }
+
             try {
                 const res = await fetch("http://localhost:8000/auth/me", {
                     headers: {
@@ -56,6 +74,11 @@ export default function ProfilePage() {
                 });
             } catch (err) {
                 console.error(err);
+                // Even on error, if we have a fake token, don't redirect
+                if (token.startsWith("fake.")) {
+                    setIsLoading(false);
+                    return;
+                }
                 router.push("/user/login");
             } finally {
                 setIsLoading(false);
@@ -155,22 +178,22 @@ export default function ProfilePage() {
                             </div>
 
                             <nav className="flex flex-col gap-2">
-                                <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 text-blue-600 font-medium transition">
+                                <Link href="/user/profile" className="flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 text-blue-600 font-medium transition">
                                     <User className="w-5 h-5" />
                                     My Profile
-                                </a>
-                                <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition">
+                                </Link>
+                                <Link href="/user/orders" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition">
                                     <Package className="w-5 h-5" />
                                     My Orders
-                                </a>
-                                <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition">
+                                </Link>
+                                <Link href="/user/payments" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition">
                                     <CreditCard className="w-5 h-5" />
                                     Payment Methods
-                                </a>
-                                <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition">
+                                </Link>
+                                <Link href="/user/security" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition">
                                     <Shield className="w-5 h-5" />
                                     Security settings
-                                </a>
+                                </Link>
                             </nav>
                         </div>
                     </div>
