@@ -139,62 +139,62 @@ export default function DashboardPage() {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col justify-between">
                     <div>
                         <h3 className="text-lg font-bold text-gray-900 mb-6">Popular Categories</h3>
-                        <div className="space-y-5">
+                        <div className="space-y-6">
                             {/* Category 1 */}
-                            <div>
-                                <div className="flex justify-between items-end mb-1.5">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div>
-                                        <span className="text-sm font-bold text-gray-900">Electronics</span>
+                            <div className="flex items-start gap-3">
+                                <div className="w-2 h-2 mt-1.5 rounded-full bg-[#2563eb] shrink-0"></div>
+                                <div className="flex-1">
+                                    <div className="flex justify-between items-center mb-1.5">
+                                        <span className="text-[14px] font-bold text-gray-900">Baseball Cap</span>
+                                        <span className="text-[14px] font-medium text-gray-500">45%</span>
                                     </div>
-                                    <span className="text-xs font-semibold text-gray-500">45%</span>
-                                </div>
-                                <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                    <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: '45%' }}></div>
+                                    <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                        <div className="bg-[#2563eb] h-full rounded-full" style={{ width: '45%' }}></div>
+                                    </div>
                                 </div>
                             </div>
                             {/* Category 2 */}
-                            <div>
-                                <div className="flex justify-between items-end mb-1.5">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
-                                        <span className="text-sm font-bold text-gray-900">Apparel</span>
+                            <div className="flex items-start gap-3">
+                                <div className="w-2 h-2 mt-1.5 rounded-full bg-[#94a3b8] shrink-0"></div>
+                                <div className="flex-1">
+                                    <div className="flex justify-between items-center mb-1.5">
+                                        <span className="text-[14px] font-bold text-gray-900">Flat Cap</span>
+                                        <span className="text-[14px] font-medium text-gray-500">30%</span>
                                     </div>
-                                    <span className="text-xs font-semibold text-gray-500">30%</span>
-                                </div>
-                                <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                    <div className="bg-gray-400 h-1.5 rounded-full" style={{ width: '30%' }}></div>
+                                    <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                        <div className="bg-[#94a3b8] h-full rounded-full" style={{ width: '30%' }}></div>
+                                    </div>
                                 </div>
                             </div>
                             {/* Category 3 */}
-                            <div>
-                                <div className="flex justify-between items-end mb-1.5">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-800"></div>
-                                        <span className="text-sm font-bold text-gray-900">Home Goods</span>
+                            <div className="flex items-start gap-3">
+                                <div className="w-2 h-2 mt-1.5 rounded-full bg-[#334155] shrink-0"></div>
+                                <div className="flex-1">
+                                    <div className="flex justify-between items-center mb-1.5">
+                                        <span className="text-[14px] font-bold text-gray-900">Sun Protection Cap</span>
+                                        <span className="text-[14px] font-medium text-gray-500">15%</span>
                                     </div>
-                                    <span className="text-xs font-semibold text-gray-500">15%</span>
-                                </div>
-                                <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                    <div className="bg-slate-800 h-1.5 rounded-full" style={{ width: '15%' }}></div>
+                                    <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                        <div className="bg-[#334155] h-full rounded-full" style={{ width: '15%' }}></div>
+                                    </div>
                                 </div>
                             </div>
                             {/* Category 4 */}
-                            <div>
-                                <div className="flex justify-between items-end mb-1.5">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
-                                        <span className="text-sm font-bold text-gray-900">Others</span>
+                            <div className="flex items-start gap-3">
+                                <div className="w-2 h-2 mt-1.5 rounded-full bg-[#cbd5e1] shrink-0"></div>
+                                <div className="flex-1">
+                                    <div className="flex justify-between items-center mb-1.5">
+                                        <span className="text-[14px] font-bold text-gray-900">Bucket Hat</span>
+                                        <span className="text-[14px] font-medium text-gray-500">10%</span>
                                     </div>
-                                    <span className="text-xs font-semibold text-gray-500">10%</span>
-                                </div>
-                                <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                    <div className="bg-gray-300 h-1.5 rounded-full" style={{ width: '10%' }}></div>
+                                    <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                        <div className="bg-[#cbd5e1] h-full rounded-full" style={{ width: '10%' }}></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <button className="w-full mt-8 py-2.5 text-sm font-bold text-[#2563EB] border border-blue-100 bg-blue-50/50 rounded-lg hover:bg-blue-50 transition-colors">
+                    <button className="w-full mt-8 py-2.5 text-[14px] font-bold text-[#1e40af] border border-gray-200 bg-white rounded-[10px] hover:bg-gray-50 transition-colors">
                         View Details
                     </button>
                 </div>

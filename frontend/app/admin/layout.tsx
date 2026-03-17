@@ -75,17 +75,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <aside className="w-[260px] bg-[#161B28] text-white flex flex-col justify-between fixed h-screen left-0 top-0 z-20">
                 <div>
                     <div className="h-20 flex items-center px-6">
-                        <div className="flex items-center gap-3">
-                            {/* Simple logo text */}
-                            <svg viewBox="0 0 40 40" className="w-8 h-8 text-white bg-blue-600 rounded-md p-1" fill="currentColor">
-                                <path d="M20 0C8.954 0 0 8.954 0 20s8.954 20 20 20 20-8.954 20-20S31.046 0 20 0zm0 30l-8-14h16l-8 14z" />
-                                <path d="M20 8l-6 10h12l-6-10z" fill="#161B28" />
-                            </svg>
-                            <div>
-                                <h1 className="font-bold text-lg leading-none tracking-wide">Motive SD</h1>
-                                <span className="text-xs text-blue-400 font-medium tracking-wide">Admin Portal</span>
-                            </div>
-                        </div>
+                        <Link href="/admin/dashboard" className="flex flex-col justify-center gap-1.5 hover:opacity-90 transition">
+                            {/* Logo matching the user header */}
+                            <Image 
+                                src="/images/logo.png" 
+                                alt="Motive SD" 
+                                width={200} 
+                                height={50} 
+                                className="object-contain h-12 w-auto bg-white px-3 py-1.5 rounded-md"
+                            />
+                        </Link>
                     </div>
                     <nav className="px-4 py-6 flex flex-col gap-1.5">
                         {navItems.map((item) => {
