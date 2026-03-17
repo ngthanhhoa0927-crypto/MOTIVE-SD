@@ -6,7 +6,6 @@ import Image from "next/image";
 import { Playfair_Display, Inter } from "next/font/google";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { isValidEmail } from "@/lib/validation";
 
 // Khởi tạo font chữ để giống với thiết kế
 const playfair = Playfair_Display({ subsets: ["latin"], style: ["normal", "italic"] });
@@ -18,26 +17,12 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
-    const [emailError, setEmailError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleEmailBlur = () => {
-        if (email && !isValidEmail(email)) {
-            setEmailError("Please enter a valid email address.");
-        } else {
-            setEmailError("");
-        }
-    };
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError("");
-
-        if (!isValidEmail(email)) {
-            setEmailError("Please enter a valid email address.");
-            return;
-        }
-        setEmailError("");
 
         setIsLoading(true);
 
@@ -176,17 +161,14 @@ export default function LoginPage() {
                                 value={email}
                                 onChange={(e) => {
                                     setEmail(e.target.value);
-                                    if (emailError) setEmailError("");
                                 }}
-                                onBlur={handleEmailBlur}
-                                className={`w-full py-3.5 pl-4 pr-12 bg-white border ${emailError ? 'border-red-500' : 'border-gray-200'} rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all`}
+                                className={`w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all`}
                                 required
                             />
                             {/* User Icon */}
-                            <svg className={`absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 ${emailError ? 'text-red-400' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className={`absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
-                            {emailError && <p className="text-[10px] text-red-500 mt-1 ml-1">{emailError}</p>}
                         </div>
 
                         <div className="relative">
