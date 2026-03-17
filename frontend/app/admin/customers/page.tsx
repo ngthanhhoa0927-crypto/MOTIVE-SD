@@ -58,10 +58,22 @@ const MOCK_USERS = [
         bgColor: 'bg-pink-100',
         textColor: 'text-pink-600',
         email: 'chen.lily@webmail.com',
-        status: 'Active',
+        status: 'Suspended',
         lastLogin: 'Oct 24, 2023',
         role: 'Customer',
         registrationDate: 'May 12, 2025'
+    },
+    {
+        id: '6',
+        name: 'David Miller',
+        initials: 'DM',
+        bgColor: 'bg-red-100',
+        textColor: 'text-red-600',
+        email: 'david.m@example.com',
+        status: 'Banned',
+        lastLogin: 'Dec 01, 2025',
+        role: 'Customer',
+        registrationDate: 'June 10, 2024'
     }
 ];
 
@@ -154,8 +166,18 @@ export default function CustomersPage() {
                             </td>
                             <td className="py-4 px-6">
                                 <div className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full ${user.status === 'Active' ? 'bg-[#10B981]' : 'bg-gray-300'}`}></div>
-                                    <span className={`font-semibold ${user.status === 'Active' ? 'text-gray-900' : 'text-gray-500'}`}>{user.status}</span>
+                                    <div className={`w-2 h-2 rounded-full ${
+                                        user.status === 'Active' ? 'bg-[#10B981]' : 
+                                        user.status === 'Inactive' ? 'bg-gray-300' :
+                                        user.status === 'Suspended' ? 'bg-orange-400' :
+                                        'bg-red-500'
+                                    }`}></div>
+                                    <span className={`font-semibold ${
+                                        user.status === 'Active' ? 'text-gray-900' : 
+                                        user.status === 'Suspended' ? 'text-orange-600' :
+                                        user.status === 'Banned' ? 'text-red-600' :
+                                        'text-gray-500'
+                                    }`}>{user.status}</span>
                                 </div>
                             </td>
                             <td className="py-4 px-6 text-gray-500 font-medium">
@@ -210,20 +232,34 @@ export default function CustomersPage() {
                     <div className="space-y-4">
                         <div>
                             <label className="block text-[13px] font-bold text-gray-700 mb-1.5">Full Name</label>
-                            <input type="text" defaultValue={selectedUser.name} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all font-medium outline-none shadow-sm" />
+                            <input 
+                                type="text" 
+                                defaultValue={selectedUser.name} 
+                                disabled 
+                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500 cursor-not-allowed font-medium outline-none shadow-sm" 
+                            />
                         </div>
                         <div>
                             <label className="block text-[13px] font-bold text-gray-700 mb-1.5">Email Address</label>
-                            <input type="email" defaultValue={selectedUser.email} className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all font-medium outline-none shadow-sm" />
+                            <input 
+                                type="email" 
+                                defaultValue={selectedUser.email} 
+                                disabled 
+                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500 cursor-not-allowed font-medium outline-none shadow-sm" 
+                            />
                         </div>
                         <div>
                             <label className="block text-[13px] font-bold text-gray-700 mb-1.5">User Role</label>
                             <div className="relative">
-                                <select defaultValue={selectedUser.role} className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 font-medium focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none shadow-sm">
+                                <select 
+                                    defaultValue={selectedUser.role} 
+                                    disabled 
+                                    className="w-full appearance-none pl-4 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500 font-medium cursor-not-allowed outline-none shadow-sm"
+                                >
                                     <option>Customer</option>
                                     <option>Admin</option>
                                 </select>
-                                <svg className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                <svg className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                             </div>
                         </div>
                         <div>

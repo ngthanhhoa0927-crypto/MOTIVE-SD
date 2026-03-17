@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { ChangeEvent, FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { Playfair_Display, Inter } from "next/font/google";
 import Link from "next/link";
@@ -18,6 +18,7 @@ export default function Header() {
     const dropdownRef = useRef<HTMLDivElement>(null);
     const userMenuRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
+    const pathname = usePathname();
 
     const allProducts = [
         {
@@ -136,6 +137,13 @@ export default function Header() {
             window.removeEventListener('avatarUpdated', handleAvatarUpdate as EventListener);
         };
     }, [isLoggedIn]);
+
+    // Auto-close dropdown on route change
+    useEffect(() => {
+        setUserMenuOpen(false);
+        setIsDropdownOpen(false);
+        setIsCartOpen(false);
+    }, [pathname]);
 
     const handleLogout = () => {
         localStorage.removeItem("token");

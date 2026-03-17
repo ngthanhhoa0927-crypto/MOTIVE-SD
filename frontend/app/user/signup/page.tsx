@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import type { ChangeEvent, FormEvent, MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { isValidEmail, isValidDate } from "@/lib/validation";
 import { Playfair_Display, Inter } from "next/font/google";
 import Link from "next/link";
 const playfair = Playfair_Display({ subsets: ["latin"], style: ["normal", "italic"] });
@@ -17,11 +18,15 @@ export default function SignUpPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [dob, setDob] = useState("");
     const [phoneNumber, setPhoneNumber] = useState("");
     const [otp, setOtp] = useState("");
 
     const [error, setError] = useState("");
+    const [emailError, setEmailError] = useState("");
+    const [dobError, setDobError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [step, setStep] = useState(1); // 1: Input Info, 2: Input OTP
 
@@ -49,15 +54,44 @@ export default function SignUpPage() {
             }
         }
         setDob(formattedValue);
+        if (dobError) setDobError("");
+    };
+
+    const handleEmailBlur = () => {
+        if (email && !isValidEmail(email)) {
+            setEmailError("Please enter a valid email address.");
+        } else {
+            setEmailError("");
+        }
+    };
+
+    const handleDobBlur = () => {
+        if (dob && !isValidDate(dob)) {
+            setDobError("Please enter a valid date (dd/mm/yyyy).");
+        } else {
+            setDobError("");
+        }
     };
 
     // Xử lý Gửi OTP (Bước 1)
     const handleSendOtp = async (e?: FormEvent<HTMLFormElement> | MouseEvent) => {
         e?.preventDefault();
         setError("");
+        setEmailError("");
+        setDobError("");
+
+        if (!isValidEmail(email)) {
+            setEmailError("Please enter a valid email address.");
+            return;
+        }
+
+        if (dob && !isValidDate(dob)) {
+            setDobError("Please enter a valid date (dd/mm/yyyy).");
+            return;
+        }
 
         if (password !== confirmPassword) {
-            setError("Passwords do not match");
+            setError("Passwords do not match.");
             return;
         }
 
@@ -187,8 +221,8 @@ export default function SignUpPage() {
                             </div>
 
                             {/* Date of Birth - Custom layout để text nhỏ nằm trên */}
-                            <div className="relative border border-gray-200 bg-white rounded-md px-4 py-2 focus-within:border-gray-400 focus-within:ring-1 focus-within:ring-gray-400 transition-all">
-                                <label className="block text-[9px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">
+                            <div className={`relative border ${dobError ? 'border-red-500' : 'border-gray-200'} bg-white rounded-md px-4 py-2 focus-within:border-gray-400 focus-within:ring-1 focus-within:ring-gray-400 transition-all`}>
+                                <label className={`block text-[9px] font-semibold ${dobError ? 'text-red-400' : 'text-gray-400'} uppercase tracking-widest mb-0.5`}>
                                     Date of Birth
                                 </label>
                                 <input
@@ -196,13 +230,15 @@ export default function SignUpPage() {
                                     placeholder="dd/mm/yyyy"
                                     value={dob}
                                     onChange={handleDobChange}
+                                    onBlur={handleDobBlur}
                                     maxLength={10}
                                     className="w-full text-sm outline-none bg-transparent placeholder-gray-300 text-gray-700"
                                 />
-                                <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className={`absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 ${dobError ? 'text-red-400' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                             </div>
+                            {dobError && <p className="text-[10px] text-red-500 mt-1 ml-1">{dobError}</p>}
 
                             {/* Email */}
                             <div className="relative">
@@ -210,13 +246,18 @@ export default function SignUpPage() {
                                     type="email"
                                     placeholder="Email Address"
                                     value={email}
-                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                                    className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                        setEmail(e.target.value);
+                                        if (emailError) setEmailError("");
+                                    }}
+                                    onBlur={handleEmailBlur}
+                                    className={`w-full py-3.5 pl-4 pr-12 bg-white border ${emailError ? 'border-red-500' : 'border-gray-200'} rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all`}
                                     required
                                 />
-                                <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className={`absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 ${emailError ? 'text-red-400' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                 </svg>
+                                {emailError && <p className="text-[10px] text-red-500 mt-1 ml-1">{emailError}</p>}
                             </div>
 
                             {/* Phone Number */}
@@ -236,33 +277,57 @@ export default function SignUpPage() {
                             {/* Password */}
                             <div className="relative">
                                 <input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     placeholder="Password"
                                     value={password}
                                     onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                                     className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
                                     required
                                 />
-                                <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 cursor-pointer hover:text-gray-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+                                >
+                                    {showPassword ? (
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.048 10.048 0 012.746-4.53m4.234-1.921A9.982 9.982 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21m-4.223-4.223L3 3m10.8-1.2l-4.2 4.2M12 15a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    ) : (
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    )}
+                                </button>
                             </div>
 
                             {/* Confirm Password */}
                             <div className="relative">
                                 <input
-                                    type="password"
+                                    type={showConfirmPassword ? "text" : "password"}
                                     placeholder="Confirm Password"
                                     value={confirmPassword}
                                     onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
                                     className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
                                     required
                                 />
-                                <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 cursor-pointer hover:text-gray-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+                                >
+                                    {showConfirmPassword ? (
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.048 10.048 0 012.746-4.53m4.234-1.921A9.982 9.982 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21m-4.223-4.223L3 3m10.8-1.2l-4.2 4.2M12 15a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    ) : (
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    )}
+                                </button>
                             </div>
 
                             {/* Checkbox */}
