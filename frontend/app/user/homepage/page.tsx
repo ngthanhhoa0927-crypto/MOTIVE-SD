@@ -231,11 +231,6 @@ export default function HomePage() {
                             </div>
                         ))}
                     </div>
-                    <div className="flex justify-center">
-                        <Button variant="outline" className="border-blue-600 text-blue-600 px-12 py-6 rounded-xl font-bold hover:bg-blue-50">
-                            Load More
-                        </Button>
-                    </div>
                 </section>
 
                 {/* --- ABOUT US --- */}

@@ -121,7 +121,9 @@ export default function CustomersPage() {
                              user.email.toLowerCase().includes(search.toLowerCase());
         const matchesStatus = statusFilter === 'All Status' || 
                              (statusFilter === 'Active' && user.isActive) ||
-                             (statusFilter === 'Inactive' && !user.isActive);
+                             (statusFilter === 'Inactive' && !user.isActive) ||
+                             (statusFilter === 'Suspended' && user.status === 'Suspended') ||
+                             (statusFilter === 'Banned' && user.status === 'Banned');
         return matchesSearch && matchesStatus;
     });
 
@@ -152,6 +154,8 @@ export default function CustomersPage() {
                         <option>All Status</option>
                         <option>Active</option>
                         <option>Inactive</option>
+                        <option>Suspended</option>
+                        <option>Banned</option>
                     </select>
                     <svg className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                 </div>
@@ -192,8 +196,18 @@ export default function CustomersPage() {
                                 </td>
                                 <td className="py-4 px-6">
                                     <div className="flex items-center gap-2">
-                                        <div className={`w-2 h-2 rounded-full ${user.isActive ? 'bg-[#10B981]' : 'bg-red-400'}`}></div>
-                                        <span className={`font-semibold ${user.isActive ? 'text-gray-900' : 'text-gray-500'}`}>{user.isActive ? 'Active' : 'Inactive'}</span>
+                                        <div className={`w-2 h-2 rounded-full ${
+                                            (user.isActive && !user.status) || user.status === 'Active' ? 'bg-[#10B981]' : 
+                                            user.status === 'Suspended' ? 'bg-orange-400' :
+                                            user.status === 'Banned' ? 'bg-red-500' :
+                                            'bg-gray-300'
+                                        }`}></div>
+                                        <span className={`font-semibold ${
+                                            (user.isActive && !user.status) || user.status === 'Active' ? 'text-gray-900' : 
+                                            user.status === 'Suspended' ? 'text-orange-600' :
+                                            user.status === 'Banned' ? 'text-red-600' :
+                                            'text-gray-500'
+                                        }`}>{user.status || (user.isActive ? 'Active' : 'Inactive')}</span>
                                     </div>
                                 </td>
                                 <td className="py-4 px-6 text-right">
@@ -246,8 +260,8 @@ export default function CustomersPage() {
                             <input 
                                 type="text" 
                                 value={editData.full_name} 
-                                onChange={(e) => setEditData({...editData, full_name: e.target.value})}
-                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all font-medium outline-none shadow-sm" 
+                                disabled
+                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500 cursor-not-allowed font-medium outline-none shadow-sm" 
                             />
                         </div>
                         <div>
@@ -255,8 +269,8 @@ export default function CustomersPage() {
                             <input 
                                 type="email" 
                                 value={editData.email} 
-                                onChange={(e) => setEditData({...editData, email: e.target.value})}
-                                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all font-medium outline-none shadow-sm" 
+                                disabled
+                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500 cursor-not-allowed font-medium outline-none shadow-sm" 
                             />
                         </div>
                         <div>
@@ -264,13 +278,13 @@ export default function CustomersPage() {
                             <div className="relative">
                                 <select 
                                     value={editData.role} 
-                                    onChange={(e) => setEditData({...editData, role: e.target.value})}
-                                    className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 font-medium focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none shadow-sm"
+                                    disabled
+                                    className="w-full appearance-none pl-4 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-500 font-medium cursor-not-allowed outline-none shadow-sm"
                                 >
                                     <option value="user">User</option>
                                     <option value="admin">Admin</option>
                                 </select>
-                                <svg className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                                <svg className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                             </div>
                         </div>
                         <div>

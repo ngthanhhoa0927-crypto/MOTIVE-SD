@@ -1,14 +1,18 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Image from 'next/image';
+import { usePathname, useRouter } from 'next/navigation';
 import { Inter } from 'next/font/google';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
-    const [adminProfile, setAdminProfile] = useState<{ full_name: string, role: string } | null>(null);
+    const router = useRouter();
+    const [adminProfile, setAdminProfile] = useState<{ full_name: string, role: string, avatar?: string } | null>(null);
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     useEffect(() => {
         // Fetch or get from token
@@ -17,9 +21,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             try {
                 const payload = JSON.parse(atob(token.split('.')[1]));
                 setAdminProfile({ full_name: payload.full_name, role: payload.role });
+                
+                // Fetch full profile to get avatar
+                fetch("http://localhost:8000/auth/me", {
+                    headers: { "Authorization": `Bearer ${token}` }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.profile?.avatar_view_url) {
+                        setAvatarUrl(data.profile.avatar_view_url);
+                    }
+                })
+                .catch(() => {});
             } catch (e) {}
         }
+
+        const handleAvatarUpdate = (e: any) => {
+            setAvatarUrl(e.detail);
+        };
+
+        window.addEventListener('avatarUpdated', handleAvatarUpdate);
+        return () => window.removeEventListener('avatarUpdated', handleAvatarUpdate);
     }, []);
+
+    // Auto-close dropdown on route change
+    useEffect(() => {
+        setIsProfileOpen(false);
+    }, [pathname]);
+
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        setIsProfileOpen(false);
+        router.push('/user/login');
+    };
 
     const navItems = [
         { name: 'Dashboard', href: '/admin/dashboard', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
@@ -88,14 +122,54 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-blue-600 border-2 border-white rounded-full"></span>
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
                         </button>
-                        <div className="flex items-center gap-3 border-l border-gray-200 pl-6 cursor-pointer">
-                            <div className="text-right flex flex-col justify-center">
-                                <p className="text-sm font-bold text-gray-900 leading-tight">{adminProfile?.full_name || 'Hanh Nguyen'}</p>
-                                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mt-0.5">{adminProfile?.role === 'admin' ? 'Admin' : 'Admin'}</p>
+                        <div className="relative">
+                            <div 
+                                className="flex items-center gap-3 border-l border-gray-200 pl-6 cursor-pointer group"
+                                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                            >
+                                <div className="text-right flex flex-col justify-center">
+                                    <p className="text-sm font-bold text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">{adminProfile?.full_name || 'Hanh Nguyen'}</p>
+                                    <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mt-0.5">{adminProfile?.role === 'admin' ? 'Admin' : 'Admin'}</p>
+                                </div>
+                                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border border-gray-300 group-hover:border-blue-300 transition-colors">
+                                    {avatarUrl ? (
+                                        <Image src={avatarUrl} alt="Avatar" width={40} height={40} className="object-cover" />
+                                    ) : (
+                                        <svg className="w-6 h-6 text-gray-500 group-hover:text-blue-500 transition-colors" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg>
+                                    )}
+                                </div>
                             </div>
-                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border border-gray-300">
-                                <svg className="w-6 h-6 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg>
-                            </div>
+
+                            {/* Dropdown Menu */}
+                            {isProfileOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)}></div>
+                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 py-1 z-50 animate-in fade-in zoom-in duration-200 origin-top-right">
+                                        <div className="px-4 py-3 border-b border-gray-50 flex items-center gap-3">
+                                            {avatarUrl && <Image src={avatarUrl} alt="Avatar" width={32} height={32} className="rounded-full object-cover" />}
+                                            <div className="overflow-hidden">
+                                                <p className="text-sm font-bold text-gray-900 truncate">{adminProfile?.full_name || 'Hanh Nguyen'}</p>
+                                                <p className="text-[10px] text-gray-500 truncate">{adminProfile?.role || 'admin'}@motive.sd</p>
+                                            </div>
+                                        </div>
+                                        <Link 
+                                            href="/admin/profile" 
+                                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                            onClick={() => setIsProfileOpen(false)}
+                                        >
+                                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                            My Profile
+                                        </Link>
+                                        <button 
+                                            onClick={handleLogout}
+                                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 w-full text-left transition-colors"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                                            Log Out
+                                        </button>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </header>
