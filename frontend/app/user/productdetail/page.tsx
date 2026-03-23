@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight, Star, Package, RefreshCcw, Truck, Ticket } from "lucide-react";
@@ -13,12 +14,44 @@ export default function ProductDetailsPage() {
     const [selectedImage, setSelectedImage] = useState(0);
     const [selectedColor, setSelectedColor] = useState(0);
     const [selectedSize, setSelectedSize] = useState("S");
-    const [quantity, setQuantity] = useState(1);
+    const [quantity, setQuantity] = useState<number | string>(1);
+    const [quantityError, setQuantityError] = useState("");
     const [activeTab, setActiveTab] = useState("description");
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const router = useRouter();
 
-    // Mock data
-    const images = Array(6).fill("/images/placeholder-hat.png"); // Thay bằng ảnh thật
-    const colors = ["bg-zinc-800", "bg-green-800", "bg-pink-200", "bg-gray-200"];
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (token) {
+            setIsLoggedIn(true);
+        }
+    }, []);
+
+    // Mock data for multiple colors
+    const colorOptions = [
+        {
+            value: "bg-zinc-800",
+            name: "Black",
+            images: Array(6).fill("/images/hat-dog-black.png"),
+        },
+        {
+            value: "bg-green-800",
+            name: "Green",
+            images: Array(6).fill("/images/hat-dog-dot.png"), // just using dot hat as a green placeholder proxy
+        },
+        {
+            value: "bg-pink-200",
+            name: "Pink",
+            images: Array(6).fill("/images/hat-rabbit-white.png"), // using rabbit hat as pink mock
+        },
+        {
+            value: "bg-gray-200",
+            name: "White",
+            images: Array(6).fill("/images/hat-bear-white.png"), // using bear white hat mock
+        }
+    ];
+
+    const currentImages = colorOptions[selectedColor].images;
     const sizes = ["S", "M", "L", "XL", "Free Size"];
 
     const recommendations = [
@@ -60,19 +93,22 @@ export default function ProductDetailsPage() {
                         {/* Ảnh lớn */}
                         <div className="aspect-square bg-white border border-gray-100 rounded-xl relative overflow-hidden flex items-center justify-center mb-4 p-8 shadow-sm">
                             <Image
-                                src={images[selectedImage]}
+                                src={currentImages[selectedImage]}
                                 alt="Product Image"
                                 fill
                                 className="object-contain p-4"
                             />
                             {/* Nút next ảnh (mô phỏng) */}
-                            <button className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border shadow-sm rounded-full flex items-center justify-center hover:bg-gray-50 transition">
+                            <button 
+                                onClick={() => setSelectedImage((prev) => (prev + 1) % currentImages.length)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border shadow-sm rounded-full flex items-center justify-center hover:bg-gray-50 transition"
+                            >
                                 <ChevronRight className="w-4 h-4 text-gray-600" />
                             </button>
                         </div>
                         {/* Thumbnail mờ */}
                         <div className="grid grid-cols-6 gap-3">
-                            {images.map((img, idx) => (
+                            {currentImages.map((img, idx) => (
                                 <div
                                     key={idx}
                                     onClick={() => setSelectedImage(idx)}
@@ -95,13 +131,17 @@ export default function ProductDetailsPage() {
 
                         {/* Màu sắc */}
                         <div className="mt-6">
-                            <span className="text-sm font-semibold text-gray-800 block mb-2">Color</span>
+                            <span className="text-sm font-semibold text-gray-800 block mb-2">Color: {colorOptions[selectedColor].name}</span>
                             <div className="flex gap-3">
-                                {colors.map((color, idx) => (
-                                    <div
+                                {colorOptions.map((color, idx) => (
+                                    <button
                                         key={idx}
-                                        onClick={() => setSelectedColor(idx)}
-                                        className={`w-6 h-6 rounded-full cursor-pointer border-2 transition ${color} ${selectedColor === idx ? 'border-blue-600 ring-2 ring-blue-100' : 'border-gray-300 hover:border-gray-400'}`}
+                                        onClick={() => {
+                                            setSelectedColor(idx);
+                                            setSelectedImage(0); // Reset ảnh về đầu tiên khi đổi màu
+                                        }}
+                                        className={`w-8 h-8 rounded-full cursor-pointer border-2 transition ${color.value} ${selectedColor === idx ? 'border-blue-600 ring-2 ring-blue-100 shadow-md' : 'border-gray-300 hover:border-gray-400'}`}
+                                        aria-label={`Select color ${color.name}`}
                                     />
                                 ))}
                             </div>
@@ -131,11 +171,56 @@ export default function ProductDetailsPage() {
                         {/* Hành động */}
                         <div className="mt-6">
                             <div className="flex items-center gap-4">
-                                {/* Chọn số lượng */}
-                                <div className="flex items-center border border-gray-300 rounded-md h-12 w-28">
-                                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 text-lg">-</button>
-                                    <input type="text" value={quantity} readOnly className="flex-1 h-full w-full text-center text-sm font-medium outline-none" />
-                                    <button onClick={() => setQuantity(quantity + 1)} className="w-10 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 text-lg">+</button>
+                                <div className="flex flex-col gap-1 items-center">
+                                    <div className={`flex items-center border rounded-md h-12 w-28 overflow-hidden transition-colors ${quantityError ? "border-red-500 bg-red-50/10" : "border-gray-300 ring-offset-white focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-500"}`}>
+                                        <button 
+                                            onClick={() => {
+                                                setQuantity(Math.max(1, Number(quantity) - 1));
+                                                setQuantityError(""); // Clear error when use buttons
+                                            }} 
+                                            className="w-10 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 text-lg"
+                                        >
+                                            -
+                                        </button>
+                                        <input 
+                                            type="text" 
+                                            value={quantity} 
+                                            onChange={(e) => {
+                                                const val = e.target.value.replace(/\D/g, ""); // Chỉ lấy số
+                                                setQuantity(val);
+                                                setQuantityError(""); // Xóa lỗi khi người dùng sửa
+                                            }}
+                                            onBlur={(e) => {
+                                                let num = parseInt(e.target.value);
+                                                
+                                                if (isNaN(num) || num < 1) {
+                                                    setQuantity(1);
+                                                    if (num === 0) setQuantityError("Minimum 1");
+                                                } else if (num > 99) {
+                                                    setQuantity(99);
+                                                    setQuantityError("Maximum 99");
+                                                } else {
+                                                    setQuantity(num);
+                                                    setQuantityError("");
+                                                }
+                                            }}
+                                            className="flex-1 h-full w-full text-center text-sm font-medium outline-none bg-transparent" 
+                                        />
+                                        <button 
+                                            onClick={() => {
+                                                setQuantity(Math.min(99, Number(quantity) + 1));
+                                                setQuantityError(""); // Clear error when use buttons
+                                            }} 
+                                            className="w-10 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 text-lg"
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                    {quantityError && (
+                                        <span className="text-[10px] text-red-500 font-semibold animate-in fade-in slide-in-from-top-1 duration-200">
+                                            {quantityError}
+                                        </span>
+                                    )}
                                 </div>
                                 <Button className="bg-blue-600 hover:bg-blue-700 h-12 px-10 rounded-md font-semibold text-sm">Add to Cart</Button>
                                 <Link href="/user/checkout">
@@ -287,27 +372,57 @@ export default function ProductDetailsPage() {
                             {/* ADD REVIEW FORM */}
                             <div className="max-w-xl">
                                 <h3 className="font-bold text-gray-900 text-sm mb-4">Add more review</h3>
-                                <div className="mb-4">
-                                    <label className="block text-[10px] font-semibold text-gray-700 mb-2">Your review *</label>
-                                    <div className="flex gap-1 text-gray-300">
-                                        <Star className="w-4 h-4" /><Star className="w-4 h-4" /><Star className="w-4 h-4" /><Star className="w-4 h-4" /><Star className="w-4 h-4" />
+                                {!isLoggedIn ? (
+                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                                        <p className="text-sm text-gray-600 mb-4">You must be logged in to leave a review. No purchase is required!</p>
+                                        <Button 
+                                            onClick={() => router.push("/user/login")} 
+                                            className="bg-blue-600 hover:bg-blue-700 text-xs font-bold px-8 h-9 rounded-sm"
+                                        >
+                                            LOGIN TO REVIEW
+                                        </Button>
                                     </div>
-                                </div>
-                                <div className="mb-4">
-                                    <label className="block text-[10px] font-semibold text-gray-700 mb-2">Your Feedback *</label>
-                                    <textarea className="w-full border border-gray-200 rounded text-sm p-3 h-24 outline-none focus:border-blue-400 transition" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4 mb-6">
+                                ) : (
                                     <div>
-                                        <label className="block text-[10px] font-semibold text-gray-700 mb-2">Name *</label>
-                                        <input type="text" className="w-full border border-gray-200 rounded h-10 px-3 text-sm outline-none focus:border-blue-400 transition" />
+                                        <div className="mb-4">
+                                            <label className="block text-[10px] font-semibold text-gray-700 mb-2">Your review *</label>
+                                            <div className="flex gap-1 text-gray-300">
+                                                <Star className="w-4 h-4 cursor-pointer hover:text-yellow-400" />
+                                                <Star className="w-4 h-4 cursor-pointer hover:text-yellow-400" />
+                                                <Star className="w-4 h-4 cursor-pointer hover:text-yellow-400" />
+                                                <Star className="w-4 h-4 cursor-pointer hover:text-yellow-400" />
+                                                <Star className="w-4 h-4 cursor-pointer hover:text-yellow-400" />
+                                            </div>
+                                        </div>
+                                        <div className="mb-4">
+                                            <label className="block text-[10px] font-semibold text-gray-700 mb-2">Your Feedback *</label>
+                                            <textarea className="w-full border border-gray-200 rounded text-sm p-3 h-24 outline-none focus:border-blue-400 transition" />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4 mb-6">
+                                            <div>
+                                                <label className="block text-[10px] font-semibold text-gray-700 mb-2">Name *</label>
+                                                <input type="text" className="w-full border border-gray-200 rounded h-10 px-3 text-sm outline-none focus:border-blue-400 transition" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-semibold text-gray-700 mb-2">Email *</label>
+                                                <input type="email" className="w-full border border-gray-200 rounded h-10 px-3 text-sm outline-none focus:border-blue-400 transition" />
+                                            </div>
+                                        </div>
+                                        <Button 
+                                            onClick={() => {
+                                                if (!localStorage.getItem("token")) {
+                                                    alert("Session expired. Please log in again.");
+                                                    router.push("/user/login");
+                                                    return;
+                                                }
+                                                alert("Review sent successfully!");
+                                            }}
+                                            className="bg-blue-600 hover:bg-blue-700 text-xs font-bold px-8 h-9 rounded-sm"
+                                        >
+                                            SEND
+                                        </Button>
                                     </div>
-                                    <div>
-                                        <label className="block text-[10px] font-semibold text-gray-700 mb-2">Email *</label>
-                                        <input type="email" className="w-full border border-gray-200 rounded h-10 px-3 text-sm outline-none focus:border-blue-400 transition" />
-                                    </div>
-                                </div>
-                                <Button className="bg-blue-600 hover:bg-blue-700 text-xs font-bold px-8 h-9 rounded-sm">SEND</Button>
+                                )}
                             </div>
                         </div>
                     )}

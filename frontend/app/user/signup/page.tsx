@@ -23,12 +23,55 @@ export default function SignUpPage() {
     const [dob, setDob] = useState("");
     const [phoneNumber, setPhoneNumber] = useState("");
     const [otp, setOtp] = useState("");
+    const [termsAccepted, setTermsAccepted] = useState(false);
 
     const [error, setError] = useState("");
+    const [fullNameError, setFullNameError] = useState("");
     const [emailError, setEmailError] = useState("");
     const [dobError, setDobError] = useState("");
+    const [passwordError, setPasswordError] = useState("");
+    const [confirmPasswordError, setConfirmPasswordError] = useState("");
+    
     const [isLoading, setIsLoading] = useState(false);
     const [step, setStep] = useState(1); // 1: Input Info, 2: Input OTP
+
+    const isValidName = (name: string) => {
+        const nameRegex = /^[a-zA-ZÀ-ỹ\s]+$/;
+        return nameRegex.test(name);
+    };
+
+    const isPastDate = (dateString: string) => {
+        const [day, month, year] = dateString.split("/");
+        if (!day || !month || !year || year.length !== 4) return false;
+        const dobDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return dobDate < today;
+    };
+
+    const isStrictEmail = (emailStr: string) => {
+        if (emailStr.split('@').length !== 2) return false; // Có đúng 1 dấu @
+        if (/\s/.test(emailStr)) return false; // Không có khoảng trắng
+        if (emailStr.startsWith('.') || emailStr.endsWith('.')) return false; // Không bắt đầu/kết thúc bằng dấu .
+        const parts = emailStr.split('@');
+        const domainPart = parts[1];
+        if (!domainPart || !domainPart.includes('.')) return false; // Có ít nhất 1 dấu (.) sau @
+        if (domainPart.startsWith('.') || domainPart.endsWith('.')) return false; // Domain không bắt đầu/kết thúc bằng .
+        return true;
+    };
+
+    const isValidPassword = (pwd: string) => {
+        // Ít nhất 8 ký tự, có chứa cả chữ cái và số
+        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&._-]{8,}$/;
+        return passwordRegex.test(pwd);
+    };
+
+    const isFormValid = fullName.trim() !== "" && isValidName(fullName) && 
+                        dob.trim() !== "" && isValidDate(dob) && isPastDate(dob) && 
+                        email.trim() !== "" && isStrictEmail(email) && !emailError && 
+                        password !== "" && isValidPassword(password) &&
+                        confirmPassword !== "" && password === confirmPassword && 
+                        termsAccepted;
 
     const handleDobChange = (e: ChangeEvent<HTMLInputElement>) => {
         const input = e.target.value;
@@ -57,20 +100,75 @@ export default function SignUpPage() {
         if (dobError) setDobError("");
     };
 
-    const handleEmailBlur = () => {
-        if (email && !isValidEmail(email)) {
-            setEmailError("Please enter a valid email address.");
-        } else {
-            setEmailError("");
+    const handleFullNameBlur = () => {
+        if (!fullName.trim()) setFullNameError("Full name is required");
+        else if (!isValidName(fullName)) setFullNameError("Name cannot contain numbers or special characters.");
+        else setFullNameError("");
+    };
+
+    const handleEmailBlur = async () => {
+        if (!email.trim()) {
+            setEmailError("Email is required");
+            return;
         }
+        if (!isStrictEmail(email)) {
+            setEmailError("Please enter a valid email address.");
+            return;
+        }
+
+        // Kiểm tra xem email đã tồn tại hay chưa
+        try {
+            const res = await fetch("http://localhost:8000/auth/check-email?email=" + encodeURIComponent(email));
+            if (res.ok) {
+                const data = await res.json();
+                // Tùy theo response từ backend nhưng nếu có "exists": true hoặc data.message là "exists"
+                if (data.exists || data.message === "Email already exists" || data.message === "Email already exits") {
+                    setEmailError("Email already exits");
+                    return;
+                }
+            } else if (res.status === 409 || res.status === 400) {
+                // Đôi khi check email lỗi sẽ ra 409 Conflict
+                const data = await res.json().catch(() => ({}));
+                if (data.message && data.message.toLowerCase().includes("exist")) {
+                    setEmailError("Email already exits");
+                    return;
+                }
+            }
+        } catch (error) {
+            // Không làm gì nếu API chết hoặc chưa có sẵn (front-end only tests)
+        }
+
+        setEmailError("");
     };
 
     const handleDobBlur = () => {
-        if (dob && !isValidDate(dob)) {
-            setDobError("Please enter a valid date (dd/mm/yyyy).");
+        if (!dob.trim()) setDobError("Date of Birth is required");
+        else if (!isValidDate(dob)) setDobError("Please enter a valid date (dd/mm/yyyy).");
+        else if (!isPastDate(dob)) setDobError("Date of Birth must be in the past.");
+        else setDobError("");
+    };
+
+    const handlePasswordBlur = () => {
+        if (!password) {
+            setPasswordError("Password is required");
+        } else if (!isValidPassword(password)) {
+            setPasswordError("Password must be at least 8 characters and contain both letters and numbers.");
         } else {
-            setDobError("");
+            setPasswordError("");
         }
+        
+        // Re-validate confirm password if it has been typed already
+        if (confirmPassword && password !== confirmPassword) {
+            setConfirmPasswordError("Passwords do not match.");
+        } else if (confirmPassword && password === confirmPassword) {
+            setConfirmPasswordError("");
+        }
+    };
+
+    const handleConfirmPasswordBlur = () => {
+        if (!confirmPassword) setConfirmPasswordError("Confirm password is required");
+        else if (password !== confirmPassword) setConfirmPasswordError("Passwords do not match.");
+        else setConfirmPasswordError("");
     };
 
     // Xử lý Gửi OTP (Bước 1)
@@ -80,7 +178,7 @@ export default function SignUpPage() {
         setEmailError("");
         setDobError("");
 
-        if (!isValidEmail(email)) {
+        if (!isStrictEmail(email)) {
             setEmailError("Please enter a valid email address.");
             return;
         }
@@ -107,6 +205,10 @@ export default function SignUpPage() {
             const data = await res.json();
 
             if (!res.ok) {
+                if (data.message && data.message.toLowerCase().includes("exist")) {
+                    setEmailError("Email already exits");
+                    return;
+                }
                 if (data.errors && data.errors.length > 0) {
                     throw new Error(data.errors.map((e: { field: string; message: string }) => `${e.field}: ${e.message}`).join(", "));
                 }
@@ -209,49 +311,51 @@ export default function SignUpPage() {
                             <div className="relative">
                                 <input
                                     type="text"
-                                    placeholder="Full Name"
+                                    placeholder="Full Name*"
                                     value={fullName}
-                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
-                                    className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                        setFullName(e.target.value);
+                                        if (fullNameError) setFullNameError("");
+                                    }}
+                                    onBlur={handleFullNameBlur}
+                                    className={`w-full py-3.5 pl-4 pr-12 bg-white border ${fullNameError ? 'border-red-500 text-red-500 placeholder-red-300' : 'border-gray-200'} rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all`}
                                     required
                                 />
-                                <svg className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className={`absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 ${fullNameError ? 'text-red-400' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
+                                {fullNameError && <p className="text-[10px] text-red-500 mt-1 ml-1">{fullNameError}</p>}
                             </div>
 
-                            {/* Date of Birth - Custom layout để text nhỏ nằm trên */}
-                            <div className={`relative border ${dobError ? 'border-red-500' : 'border-gray-200'} bg-white rounded-md px-4 py-2 focus-within:border-gray-400 focus-within:ring-1 focus-within:ring-gray-400 transition-all`}>
-                                <label className={`block text-[9px] font-semibold ${dobError ? 'text-red-400' : 'text-gray-400'} uppercase tracking-widest mb-0.5`}>
-                                    Date of Birth
-                                </label>
+                            {/* Date of Birth */}
+                            <div className="relative">
                                 <input
                                     type="text"
-                                    placeholder="dd/mm/yyyy"
+                                    placeholder="Date of Birth*"
                                     value={dob}
                                     onChange={handleDobChange}
                                     onBlur={handleDobBlur}
                                     maxLength={10}
-                                    className="w-full text-sm outline-none bg-transparent placeholder-gray-300 text-gray-700"
+                                    className={`w-full py-3.5 pl-4 pr-12 bg-white border ${dobError ? 'border-red-500 text-red-500 placeholder-red-300' : 'border-gray-200'} rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all`}
                                 />
                                 <svg className={`absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 ${dobError ? 'text-red-400' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
+                                {dobError && <p className="text-[10px] text-red-500 mt-1 ml-1">{dobError}</p>}
                             </div>
-                            {dobError && <p className="text-[10px] text-red-500 mt-1 ml-1">{dobError}</p>}
 
                             {/* Email */}
                             <div className="relative">
                                 <input
                                     type="email"
-                                    placeholder="Email Address"
+                                    placeholder="Email Address*"
                                     value={email}
                                     onChange={(e: ChangeEvent<HTMLInputElement>) => {
                                         setEmail(e.target.value);
                                         if (emailError) setEmailError("");
                                     }}
                                     onBlur={handleEmailBlur}
-                                    className={`w-full py-3.5 pl-4 pr-12 bg-white border ${emailError ? 'border-red-500' : 'border-gray-200'} rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all`}
+                                    className={`w-full py-3.5 pl-4 pr-12 bg-white border ${emailError ? 'border-red-500 text-red-500 placeholder-red-300' : 'border-gray-200'} rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all`}
                                     required
                                 />
                                 <svg className={`absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 ${emailError ? 'text-red-400' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -278,16 +382,20 @@ export default function SignUpPage() {
                             <div className="relative">
                                 <input
                                     type={showPassword ? "text" : "password"}
-                                    placeholder="Password"
+                                    placeholder="Password*"
                                     value={password}
-                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                                    className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                        setPassword(e.target.value);
+                                        if (passwordError) setPasswordError("");
+                                    }}
+                                    onBlur={handlePasswordBlur}
+                                    className={`w-full py-3.5 pl-4 pr-12 bg-white border ${passwordError ? 'border-red-500 text-red-500 placeholder-red-300' : 'border-gray-200'} rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all`}
                                     required
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+                                    className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${passwordError ? 'text-red-400 hover:text-red-500' : 'text-gray-300 hover:text-gray-500'}`}
                                 >
                                     {showPassword ? (
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -300,22 +408,27 @@ export default function SignUpPage() {
                                         </svg>
                                     )}
                                 </button>
+                                {passwordError && <p className="text-[10px] text-red-500 mt-1 ml-1">{passwordError}</p>}
                             </div>
 
                             {/* Confirm Password */}
                             <div className="relative">
                                 <input
                                     type={showConfirmPassword ? "text" : "password"}
-                                    placeholder="Confirm Password"
+                                    placeholder="Confirm Password*"
                                     value={confirmPassword}
-                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
-                                    className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
+                                    onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                                        setConfirmPassword(e.target.value);
+                                        if (confirmPasswordError) setConfirmPasswordError("");
+                                    }}
+                                    onBlur={handleConfirmPasswordBlur}
+                                    className={`w-full py-3.5 pl-4 pr-12 bg-white border ${confirmPasswordError ? 'border-red-500 text-red-500 placeholder-red-300' : 'border-gray-200'} rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all`}
                                     required
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+                                    className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${confirmPasswordError ? 'text-red-400 hover:text-red-500' : 'text-gray-300 hover:text-gray-500'}`}
                                 >
                                     {showConfirmPassword ? (
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -328,6 +441,7 @@ export default function SignUpPage() {
                                         </svg>
                                     )}
                                 </button>
+                                {confirmPasswordError && <p className="text-[10px] text-red-500 mt-1 ml-1">{confirmPasswordError}</p>}
                             </div>
 
                             {/* Checkbox */}
@@ -336,6 +450,8 @@ export default function SignUpPage() {
                                     type="checkbox"
                                     id="terms"
                                     required
+                                    checked={termsAccepted}
+                                    onChange={(e) => setTermsAccepted(e.target.checked)}
                                     className="mt-1 w-4 h-4 border-gray-300 rounded text-black focus:ring-black accent-black shrink-0"
                                 />
                                 <label htmlFor="terms" className="text-xs text-gray-500 cursor-pointer leading-relaxed">
@@ -346,10 +462,10 @@ export default function SignUpPage() {
                             {/* Submit Button */}
                             <button
                                 type="submit"
-                                disabled={isLoading}
-                                className={`w-full py-4 bg-[#2C2B29] hover:bg-black text-white rounded-md text-sm font-semibold tracking-widest uppercase transition-colors ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
+                                disabled={isLoading || !isFormValid}
+                                className={`w-full py-4 mt-2 rounded-md text-sm font-semibold tracking-widest uppercase transition-colors ${isLoading || !isFormValid ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#2C2B29] hover:bg-black text-white"}`}
                             >
-                                {isLoading ? "Sending OTP..." : "Continue"}
+                                {isLoading ? "Sending OTP..." : "CREATE MY ACCOUNT"}
                             </button>
                         </form>
                     ) : (

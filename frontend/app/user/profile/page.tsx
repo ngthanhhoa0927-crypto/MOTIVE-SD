@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Playfair_Display, Inter } from "next/font/google";
-import { User, Mail, Phone, Calendar, MapPin, Camera, Edit2, Shield, CreditCard, Package } from "lucide-react";
+import { User, Mail, Phone, Calendar, MapPin, Camera, Edit2, Shield, CreditCard, Package, AlertTriangle, X } from "lucide-react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { useRouter } from "next/navigation";
@@ -34,6 +34,8 @@ const formatDateToISO = (dateStr: string) => {
 export default function ProfilePage() {
     const router = useRouter();
     const [isEditing, setIsEditing] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     
     const [user, setUser] = useState({
         fullName: "",
@@ -192,6 +194,47 @@ export default function ProfilePage() {
             }
         } catch (err) {
             console.error("Avatar upload failed:", err);
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        // DEV BYPASS: Just clear token and redirect for fake tokens
+        if (token.startsWith("fake.")) {
+            setIsDeleting(true);
+            setTimeout(() => {
+                localStorage.removeItem("token");
+                router.push("/user/login");
+            }, 500);
+            return;
+        }
+
+        setIsDeleting(true);
+        try {
+            const res = await fetch("http://localhost:8000/auth/me", {
+                method: "DELETE",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            if (res.ok) {
+                localStorage.removeItem("token");
+                router.push("/user/login");
+            } else {
+                const data = await res.json();
+                console.error("Failed to delete account:", data.message);
+                alert(data.message || "Failed to delete account");
+                setIsDeleting(false);
+                setShowDeleteModal(false);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("An error occurred while deleting the account");
+            setIsDeleting(false);
+            setShowDeleteModal(false);
         }
     };
 
@@ -445,12 +488,86 @@ export default function ProfilePage() {
                                     </div>
                                 )}
                             </form>
+
+                            {/* Account Management Section */}
+                            <div className="mt-12 pt-8 border-t border-gray-100">
+                                <div className="border border-red-100 rounded-xl p-6 bg-red-50/10">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <AlertTriangle className="w-5 h-5 text-red-600" />
+                                        <h2 className="text-lg font-semibold text-gray-900">Account Management</h2>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div>
+                                            <h3 className="text-sm font-medium text-gray-900">Delete Account</h3>
+                                            <p className="text-xs text-gray-500 mt-1">Once you delete your account, there is no going back</p>
+                                        </div>
+                                        <button 
+                                            onClick={() => setShowDeleteModal(true)}
+                                            className="px-6 py-2.5 rounded-lg bg-[#bf0e38] text-white text-sm font-medium hover:bg-[#a00c2f] transition-colors whitespace-nowrap"
+                                        >
+                                            Delete Account
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>
             </main>
 
             <Footer />
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl w-full max-w-md p-8 relative shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                        {/* Close Button */}
+                        <button 
+                            onClick={() => !isDeleting && setShowDeleteModal(false)}
+                            className="absolute right-6 top-6 text-gray-400 hover:text-gray-900 transition-colors"
+                            disabled={isDeleting}
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+
+                        <div className="flex flex-col items-center text-center mt-4">
+                            {/* Alert Icon */}
+                            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-6">
+                                <AlertTriangle className="w-8 h-8 text-[#bf0e38]" />
+                            </div>
+
+                            {/* Title */}
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">
+                                Confirm account deletion?
+                            </h2>
+
+                            {/* Description */}
+                            <p className="text-sm text-gray-500 mb-8">
+                                This action <span className="font-bold text-gray-900">cannot be undone</span>.
+                            </p>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center gap-4 w-full">
+                                <button 
+                                    onClick={() => setShowDeleteModal(false)}
+                                    disabled={isDeleting}
+                                    className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={handleDeleteAccount}
+                                    disabled={isDeleting}
+                                    className="flex-1 px-4 py-3 rounded-xl bg-[#bf0e38] text-white text-sm font-semibold hover:bg-[#a00c2f] transition-colors disabled:opacity-50 flex justify-center items-center"
+                                >
+                                    {isDeleting ? "Deleting..." : "Delete Account"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -53,7 +53,7 @@ export const products = pgTable("products", {
     base_price: decimal("base_price", { precision: 18, scale: 2 }).notNull(),
     weight: decimal("weight", { precision: 10, scale: 2 }),
     description: text("description"),
-    status: productStatusEnum("status").default("Draft"), 
+    status: productStatusEnum("status").default("Draft"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
     deletedAt: timestamp("deleted_at"),
