@@ -154,23 +154,6 @@ export default function Header() {
 
     return (
         <div className="w-full">
-            {/* --- TOP BAR --- */}
-            <div className="bg-gray-100 py-1.5 px-8 flex justify-between items-center text-xs text-gray-500">
-                <div className="flex gap-4">
-                    <Link href="/seller" className="hover:text-blue-600 transition">
-                        Seller Center
-                    </Link>
-                </div>
-                <div className="flex gap-4 items-center">
-                    <Link href="/notifications" className="flex items-center gap-1 hover:text-blue-600 transition">
-                        <Bell className="w-3 h-3" /> Notifications
-                    </Link>
-                    <div className="flex items-center gap-1 cursor-pointer hover:text-blue-600 transition">
-                        <Globe className="w-3 h-3" /> Language
-                    </div>
-                </div>
-            </div>
-
             {/* --- MAIN HEADER --- */}
             <header className="bg-white px-8 py-4 flex items-center justify-between border-b border-gray-100">
                 {/* Logo */}

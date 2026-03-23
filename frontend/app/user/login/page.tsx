@@ -17,12 +17,40 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
+    const [emailError, setEmailError] = useState("");
+    const [passwordError, setPasswordError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+
+    const handleEmailBlur = async () => {
+        if (!email.trim()) {
+            setEmailError("Email is required");
+            return;
+        }
+
+        try {
+            const res = await fetch("http://localhost:8000/auth/check-email?email=" + encodeURIComponent(email));
+            if (res.ok) {
+                const data = await res.json();
+                if (data.exists === false || data.message === "Email does not exist") {
+                    setEmailError("Email does not exist in the system.");
+                    return;
+                }
+            } else if (res.status === 404) {
+                setEmailError("Email does not exist in the system.");
+                return;
+            }
+        } catch (err) {
+            // Ignore API connection errors for front-end fallback
+        }
+        setEmailError("");
+    };
 
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError("");
+        setEmailError("");
+        setPasswordError("");
 
         setIsLoading(true);
 
@@ -72,6 +100,16 @@ export default function LoginPage() {
             const data = await res.json();
 
             if (!res.ok) {
+                const errorMsg = data.message?.toLowerCase() || "";
+                
+                // Specific checks for email not found or incorrect password
+                if (errorMsg.includes("not found") || errorMsg.includes("exist") || errorMsg.includes("no user")) {
+                    throw new Error("EMAIL_NOT_FOUND");
+                }
+                if (errorMsg.includes("password") || errorMsg.includes("incorrect") || errorMsg.includes("wrong") || errorMsg.includes("credential")) {
+                    throw new Error("INCORRECT_PASSWORD");
+                }
+
                 // Handle specific status-based errors from backend if available
                 if (data.status === 'suspended') {
                     throw new Error("Your account is temporarily suspended. Please contact support.");
@@ -100,7 +138,13 @@ export default function LoginPage() {
             router.push("/user/homepage");
         } catch (err: unknown) {
             if (err instanceof Error) {
-                setError(err.message);
+                if (err.message === "EMAIL_NOT_FOUND") {
+                    setEmailError("Email does not exist in the system.");
+                } else if (err.message === "INCORRECT_PASSWORD") {
+                    setPasswordError("Incorrect password. Please try again.");
+                } else {
+                    setError(err.message);
+                }
             } else {
                 setError("An unexpected error occurred");
             }
@@ -161,14 +205,17 @@ export default function LoginPage() {
                                 value={email}
                                 onChange={(e) => {
                                     setEmail(e.target.value);
+                                    if (emailError) setEmailError("");
                                 }}
-                                className={`w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all`}
+                                onBlur={handleEmailBlur}
+                                className={`w-full py-3.5 pl-4 pr-12 bg-white border ${emailError ? 'border-red-500 text-red-500 placeholder-red-300' : 'border-gray-200'} rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all`}
                                 required
                             />
                             {/* User Icon */}
-                            <svg className={`absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className={`absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 ${emailError ? 'text-red-400' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                             </svg>
+                            {emailError && <p className="text-[10px] text-red-500 mt-1 ml-1">{emailError}</p>}
                         </div>
 
                         <div className="relative">
@@ -176,15 +223,18 @@ export default function LoginPage() {
                                 type={showPassword ? "text" : "password"}
                                 placeholder="Password"
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all font-medium"
+                                onChange={(e) => {
+                                    setPassword(e.target.value);
+                                    if (passwordError) setPasswordError("");
+                                }}
+                                className={`w-full py-3.5 pl-4 pr-12 bg-white border ${passwordError ? 'border-red-500 text-red-500 placeholder-red-300' : 'border-gray-200'} rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all font-medium`}
                                 required
                             />
                             {/* Eye Icon */}
                             <button 
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${passwordError ? 'text-red-400 hover:text-red-500' : 'text-gray-400 hover:text-gray-600'}`}
                             >
                                 {showPassword ? (
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,6 +247,7 @@ export default function LoginPage() {
                                     </svg>
                                 )}
                             </button>
+                            {passwordError && <p className="text-[10px] text-red-500 mt-1 ml-1">{passwordError}</p>}
                         </div>
 
                         <div className="flex items-center gap-2 pt-2">
@@ -212,8 +263,8 @@ export default function LoginPage() {
 
                         <button
                             type="submit"
-                            disabled={isLoading}
-                            className={`w-full py-4 mt-4 bg-[#2C2B29] hover:bg-black text-white rounded-md text-sm font-semibold tracking-widest uppercase transition-colors ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
+                            disabled={isLoading || !email.trim() || !password.trim()}
+                            className={`w-full py-4 mt-4 rounded-md text-sm font-semibold tracking-widest uppercase transition-colors ${isLoading || !email.trim() || !password.trim() ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#2C2B29] hover:bg-black text-white"}`}
                         >
                             {isLoading ? "Logging in..." : "Login"}
                         </button>
