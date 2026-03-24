@@ -4,14 +4,16 @@ import { useState } from "react";
 import Image from "next/image";
 import { Playfair_Display, Inter } from "next/font/google";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "500", "600", "700"], style: ["normal", "italic"] });
 const inter = Inter({ subsets: ["latin"] });
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
     const router = useRouter();
-    // const searchParams = useSearchParams(); // Real implementation uses token from URL: const token = searchParams.get('token');
+    const searchParams = useSearchParams();
+    const token = searchParams.get('token');
     
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -35,17 +37,19 @@ export default function ResetPasswordPage() {
             return;
         }
 
+        if (!token) {
+            setError("Invalid or missing reset token.");
+            return;
+        }
+
         setIsLoading(true);
-        // FIXME: Backend currently has no reset password API.
-        // Mocking the API request delay.
         try {
-            // const res = await fetch("http://localhost:8000/auth/reset-password", {
-            //     method: "POST",
-            //     headers: { "Content-Type": "application/json" },
-            //     body: JSON.stringify({ token: "mock-token", new_password: password }),
-            // });
-            await new Promise((resolve) => setTimeout(resolve, 800));
-            // if (!res.ok) throw new Error("Failed to reset password");
+            const res = await fetch("http://localhost:8000/auth/reset-password", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token, new_password: password }),
+            });
+            if (!res.ok) throw new Error("Failed to reset password");
             
             setIsSuccess(true);
         } catch (error) {
@@ -154,5 +158,13 @@ export default function ResetPasswordPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function ResetPasswordPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#F9F8F4]">Loading...</div>}>
+            <ResetPasswordContent />
+        </Suspense>
     );
 }

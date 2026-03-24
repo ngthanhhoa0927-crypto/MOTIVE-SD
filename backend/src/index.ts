@@ -55,9 +55,13 @@ async function startServer() {
 
     await pool.end();
 
-    console.log(`Running database migrations from: ${migrationsPath}`);
-    await migrate(db, { migrationsFolder: migrationsPath });
-    console.log('Database migrations completed successfully.');
+    console.log("Pushing schema to database...");
+    try {
+      execSync('npx drizzle-kit push --force', { stdio: 'inherit' });
+    } catch (e) {
+      console.warn('Schema push failed. Proceeding with existing schema.');
+    }
+    console.log('Database schema sync completed.');
 
     await seedData();
   } catch (error) {

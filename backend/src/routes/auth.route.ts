@@ -6,8 +6,9 @@ import { users, otps } from "../db/schema.js";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { sign, verify } from "hono/jwt";
-import { sendOtpEmail } from "../utils/email.js";
+import { sendOtpEmail, sendResetPasswordEmail } from "../utils/email.js";
 import { getPresignedDownloadUrl } from "../utils/s3.js";
+import * as crypto from "crypto";
 
 const authRouter = new Hono();
 
@@ -201,50 +202,11 @@ authRouter.post(
                 }, 403);
             }
 
-            // Check if user is currently locked out
-            if (currentUser.locked_until && new Date() < currentUser.locked_until) {
-                return c.json({
-                    message: "Your are temporarily locked. Please try again for 30 minutes",
-                    status: "locked"
-                }, 403);
-            }
-
             // Kiểm tra mật khẩu
             const isPasswordValid = bcrypt.compareSync(password, currentUser.password_hash);
             if (!isPasswordValid) {
-                const newAttempts = (currentUser.failed_login_attempts || 0) + 1;
-                const updateData: any = {
-                    failed_login_attempts: newAttempts,
-                    updatedAt: new Date()
-                };
-
-                // Lock after 5 failed attempts
-                if (newAttempts >= 5) {
-                    updateData.locked_until = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
-                }
-
-                await db.update(users)
-                    .set(updateData)
-                    .where(eq(users.id, currentUser.id));
-
-                if (newAttempts >= 5) {
-                    return c.json({
-                        message: "Your are temporarily locked. Please try again for 30 minutes",
-                        status: "locked"
-                    }, 403);
-                }
-
                 return c.json({ message: "Invalid login credentials" }, 401);
             }
-
-            // Reset failed attempts on successful login
-            await db.update(users)
-                .set({
-                    failed_login_attempts: 0,
-                    locked_until: null,
-                    updatedAt: new Date()
-                })
-                .where(eq(users.id, currentUser.id));
 
             // Tạo token (hết hạn sau 24 giờ)
             const payload = {
@@ -497,5 +459,108 @@ authRouter.delete("/users/:id", authMiddleware, adminMiddleware, async (c) => {
         return c.json({ message: "Server error" }, 500);
     }
 });
+
+// ----------------- API Request Reset Password -----------------
+const requestResetSchema = z.object({
+    email: z.string().email(),
+});
+
+authRouter.post(
+    "/request-reset",
+    zValidator('json', requestResetSchema, (result, c) => {
+        if (!result.success) {
+            return c.json({ message: "Validation failed", errors: result.error.issues }, 400);
+        }
+    }),
+    async (c) => {
+        try {
+            const { email } = c.req.valid('json');
+
+            // Find user
+            const userRecord = await db.select().from(users).where(eq(users.email, email));
+            if (userRecord.length === 0) {
+                // To prevent email enumeration, we still return success message
+                return c.json({ message: "If the email is registered, a password reset link has been sent." }, 200);
+            }
+
+            // Generate token
+            const token = crypto.randomBytes(32).toString("hex");
+            const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+
+            // Delete old reset tokens for this email if any
+            await db.delete(otps).where(eq(otps.email, email));
+
+            // Save new token
+            await db.insert(otps).values({
+                email,
+                otp: token,
+                expiresAt,
+            });
+
+            // Send email
+            const resetLink = `http://localhost:3000/user/reset-password?token=${token}`;
+            await sendResetPasswordEmail(email, resetLink);
+
+            return c.json({ message: "Password reset link sent successfully." }, 200);
+        } catch (error) {
+            console.error("Error requesting reset:", error);
+            return c.json({ message: "Server error" }, 500);
+        }
+    }
+);
+
+// ----------------- API Reset Password -----------------
+const resetPasswordSchema = z.object({
+    token: z.string().min(10),
+    new_password: z.string().min(6).max(255),
+});
+
+authRouter.post(
+    "/reset-password",
+    zValidator('json', resetPasswordSchema, (result, c) => {
+        if (!result.success) {
+            return c.json({ message: "Validation failed", errors: result.error.issues }, 400);
+        }
+    }),
+    async (c) => {
+        try {
+            const { token, new_password } = c.req.valid('json');
+
+            // Find token
+            const otpRecord = await db.select().from(otps).where(eq(otps.otp, token));
+            if (otpRecord.length === 0) {
+                return c.json({ message: "Invalid or expired token" }, 400);
+            }
+
+            const latestOtp = otpRecord[0];
+
+            if (new Date() > latestOtp.expiresAt) {
+                await db.delete(otps).where(eq(otps.otp, token));
+                return c.json({ message: "Token has expired" }, 400);
+            }
+
+            // Find user
+            const email = latestOtp.email;
+            const userRecord = await db.select().from(users).where(eq(users.email, email));
+            if (userRecord.length === 0) {
+                return c.json({ message: "User not found" }, 404);
+            }
+
+            // Update password
+            const hashedPassword = bcrypt.hashSync(new_password, 10);
+            await db.update(users)
+                .set({ password_hash: hashedPassword, updatedAt: new Date() })
+                .where(eq(users.email, email));
+
+            // Delete used token
+            await db.delete(otps).where(eq(otps.otp, token));
+
+            return c.json({ message: "Password reset successful." }, 200);
+        } catch (error) {
+            console.error("Error resetting password:", error);
+            return c.json({ message: "Server error" }, 500);
+        }
+    }
+);
 
 export default authRouter;

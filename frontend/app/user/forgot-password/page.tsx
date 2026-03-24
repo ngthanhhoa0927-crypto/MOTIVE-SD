@@ -26,16 +26,13 @@ export default function ForgotPasswordPage() {
         }
 
         setIsLoading(true);
-        // FIXME: Backend currently has no reset password API.
-        // Mocking the API request delay.
         try {
-            // const res = await fetch("http://localhost:8000/auth/request-reset", {
-            //     method: "POST",
-            //     headers: { "Content-Type": "application/json" },
-            //     body: JSON.stringify({ email }),
-            // });
-            await new Promise((resolve) => setTimeout(resolve, 800));
-            // if (!res.ok) throw new Error("Failed to request reset");
+            const res = await fetch("http://localhost:8000/auth/request-reset", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email }),
+            });
+            if (!res.ok) throw new Error("Failed to request reset");
             
             setIsSubmitted(true);
         } catch (error) {
@@ -111,20 +108,22 @@ export default function ForgotPasswordPage() {
                         </>
                     ) : (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="flex justify-center mb-6">
+                                <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center border border-green-200">
+                                    <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" />
+                                    </svg>
+                                </div>
+                            </div>
                             <h1 className={`${playfair.className} text-[40px] text-gray-900 mb-4 leading-tight`}>
                                 Check your Email
                             </h1>
-                            <p className="text-[13px] text-gray-500 leading-relaxed max-w-[340px]">
-                                We've sent a password reset link to your email. Please check your inbox and spam folder.
+                            <p className="text-[13px] text-gray-500 leading-relaxed max-w-[340px] mb-2">
+                                We&apos;ve sent a password reset link to <strong className="text-gray-700">{email}</strong>.
                             </p>
-                            
-                            {/* DEV HINT: Chỗ này để giả lập click vào link trong email để tới trang reset */}
-                            <div className="mt-6 p-4 bg-blue-50 border border-blue-100 rounded-md">
-                                <p className="text-[11px] text-blue-600 font-bold uppercase tracking-wider mb-2">[Dev Simulation]</p>
-                                <Link href="/user/reset-password?token=mocked-token" className="text-xs text-blue-700 hover:underline font-medium break-all block leading-relaxed">
-                                    https://motive.sd/user/reset-password?token=mocked-token
-                                </Link>
-                            </div>
+                            <p className="text-[13px] text-gray-500 leading-relaxed max-w-[340px]">
+                                Please check your inbox and click the &quot;Reset Password&quot; button in the email to set a new password. The link will expire in 15 minutes.
+                            </p>
                             
                             <div className="mt-8">
                                 <Link href="/user/login" className="block w-full py-4 rounded-md text-xs font-semibold tracking-widest uppercase transition-colors bg-[#2C2B29] hover:bg-black text-white text-center">

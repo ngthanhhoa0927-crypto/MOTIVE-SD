@@ -29,6 +29,20 @@
       "when": 1773574361609,
       "tag": "0003_demonic_xorn",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774371217734,
+      "tag": "0004_steep_toad",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774371300000,
+      "tag": "0005_fix_phone_varchar",
+      "breakpoints": true
     }
   ]
 }

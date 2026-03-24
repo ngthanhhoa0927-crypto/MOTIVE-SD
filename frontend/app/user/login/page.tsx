@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import Image from "next/image";
 import { Playfair_Display, Inter } from "next/font/google";
@@ -21,6 +21,28 @@ export default function LoginPage() {
     const [emailError, setEmailError] = useState("");
     const [passwordError, setPasswordError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        const checkLockStatus = () => {
+            const lockedUntil = localStorage.getItem("locked_until");
+            if (lockedUntil && Date.now() < parseInt(lockedUntil)) {
+                const minutesLeft = Math.ceil((parseInt(lockedUntil) - Date.now()) / 60000);
+                setErrorType("locked");
+                setError(`Too many login attempts. Please try again in ${minutesLeft} minute${minutesLeft > 1 ? 's' : ''}.`);
+            } else if (lockedUntil && Date.now() >= parseInt(lockedUntil)) {
+                localStorage.removeItem("locked_until");
+                localStorage.setItem("failed_login_attempts", "0");
+                if (errorType === "locked") {
+                    setError("");
+                    setErrorType("");
+                }
+            }
+        };
+        
+        checkLockStatus();
+        const interval = setInterval(checkLockStatus, 60000);
+        return () => clearInterval(interval);
+    }, [errorType]);
 
     const handleEmailBlur = async () => {
         if (!email.trim()) {
@@ -53,6 +75,17 @@ export default function LoginPage() {
         setErrorType("");
         setEmailError("");
         setPasswordError("");
+
+        const lockedUntil = localStorage.getItem("locked_until");
+        if (lockedUntil && Date.now() < parseInt(lockedUntil)) {
+            const minutesLeft = Math.ceil((parseInt(lockedUntil) - Date.now()) / 60000);
+            setErrorType("locked");
+            setError(`Too many login attempts. Please try again in ${minutesLeft} minute${minutesLeft > 1 ? 's' : ''}.`);
+            return;
+        } else if (lockedUntil && Date.now() >= parseInt(lockedUntil)) {
+            localStorage.removeItem("locked_until");
+            localStorage.setItem("failed_login_attempts", "0");
+        }
 
         setIsLoading(true);
 
@@ -142,6 +175,10 @@ export default function LoginPage() {
                 console.error("Failed to parse token", e);
             }
 
+            // Reset failed attempts on successful login
+            localStorage.removeItem("failed_login_attempts");
+            localStorage.removeItem("locked_until");
+
             // Redirect to homepage for normal users
             router.push("/user/homepage");
         } catch (err: unknown) {
@@ -149,7 +186,18 @@ export default function LoginPage() {
                 if (err.message === "EMAIL_NOT_FOUND") {
                     setEmailError("Email does not exist in the system.");
                 } else if (err.message === "INCORRECT_PASSWORD") {
-                    setPasswordError("Incorrect password. Please try again.");
+                    let attempts = parseInt(localStorage.getItem("failed_login_attempts") || "0");
+                    attempts += 1;
+                    localStorage.setItem("failed_login_attempts", attempts.toString());
+                    
+                    if (attempts >= 5) {
+                        const lockTime = Date.now() + 30 * 60 * 1000;
+                        localStorage.setItem("locked_until", lockTime.toString());
+                        setErrorType("locked");
+                        setError("Too many login attempts. Please try again in 30 minutes.");
+                    } else {
+                        setPasswordError(`Incorrect password. Please try again. (${5 - attempts} attempts remaining)`);
+                    }
                 } else if (err.message.startsWith("LOCKED|")) {
                     setErrorType("locked");
                     setError(err.message.split("|")[1]);
