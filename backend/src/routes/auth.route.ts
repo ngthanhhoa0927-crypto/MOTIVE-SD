@@ -191,18 +191,59 @@ authRouter.post(
                 return c.json({ message: "Invalid login credentials" }, 401);
             }
 
+            const currentUser = user[0];
+
+            // Check if user is currently locked out
+            if (currentUser.locked_until && new Date() < currentUser.locked_until) {
+                return c.json({
+                    message: "Your are temporarily locked. Please try again for 30 minutes",
+                    status: "locked"
+                }, 403);
+            }
+
             // Kiểm tra mật khẩu
-            const isPasswordValid = bcrypt.compareSync(password, user[0].password_hash);
+            const isPasswordValid = bcrypt.compareSync(password, currentUser.password_hash);
             if (!isPasswordValid) {
+                const newAttempts = (currentUser.failed_login_attempts || 0) + 1;
+                const updateData: any = {
+                    failed_login_attempts: newAttempts,
+                    updatedAt: new Date()
+                };
+
+                // Lock after 5 failed attempts
+                if (newAttempts >= 5) {
+                    updateData.locked_until = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+                }
+
+                await db.update(users)
+                    .set(updateData)
+                    .where(eq(users.id, currentUser.id));
+
+                if (newAttempts >= 5) {
+                    return c.json({
+                        message: "Your are temporarily locked. Please try again for 30 minutes",
+                        status: "locked"
+                    }, 403);
+                }
+
                 return c.json({ message: "Invalid login credentials" }, 401);
             }
 
+            // Reset failed attempts on successful login
+            await db.update(users)
+                .set({
+                    failed_login_attempts: 0,
+                    locked_until: null,
+                    updatedAt: new Date()
+                })
+                .where(eq(users.id, currentUser.id));
+
             // Tạo token (hết hạn sau 24 giờ)
             const payload = {
-                sub: user[0].id, // Subject (thường là ID của user)
-                email: user[0].email,
-                full_name: user[0].full_name,
-                role: user[0].role,
+                sub: currentUser.id,
+                email: currentUser.email,
+                full_name: currentUser.full_name,
+                role: currentUser.role,
                 exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
             }
 
@@ -260,9 +301,19 @@ authRouter.get("/me", authMiddleware, async (c) => {
 
 // Validate thông tin cập nhật Profile
 const updateProfileSchema = z.object({
-    full_name: z.string().min(3).max(255).optional(),
-    phone_number: z.string().optional(),
-    date_of_birth: z.string().optional(),
+    full_name: z.string({ error: "Name cannot be empty." })
+        .min(1, "Name cannot be empty.")
+        .max(255),
+    email: z.string({ error: "Email address is required." })
+        .min(1, "Email address is required.")
+        .email("Invalid email format."),
+    phone_number: z.string()
+        .refine(val => !val || /^\d+$/.test(val), {
+            message: "Phone number must be numeric."
+        })
+        .optional(),
+    date_of_birth: z.string({ error: "DoB cannot be empty" })
+        .min(1, "DoB cannot be empty"),
     address: z.string().optional(),
     avatar_url: z.string().optional()
 });
@@ -291,6 +342,16 @@ authRouter.put(
                 return c.json({ message: "User not found" }, 404);
             }
 
+            const currentUser = userRecord[0];
+
+            // If email is being changed, check if new email is already taken
+            if (updateData.email && updateData.email !== currentUser.email) {
+                const existingUser = await db.select().from(users).where(eq(users.email, updateData.email));
+                if (existingUser.length > 0) {
+                    return c.json({ message: "Email already exists" }, 400);
+                }
+            }
+
             // Update user
             const [updatedUser] = await db.update(users)
                 .set({
@@ -301,6 +362,7 @@ authRouter.put(
                 .returning({
                     id: users.id,
                     full_name: users.full_name,
+                    email: users.email,
                     phone_number: users.phone_number,
                     date_of_birth: users.date_of_birth,
                     address: users.address,

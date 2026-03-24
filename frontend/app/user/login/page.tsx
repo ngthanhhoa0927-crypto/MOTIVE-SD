@@ -83,7 +83,7 @@ export default function LoginPage() {
                 exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
             };
             const fakeToken = `fake.${btoa(JSON.stringify(fakePayload))}.fake`;
-            
+
             localStorage.setItem("token", fakeToken);
             router.push('/user/homepage');
             setIsLoading(false);
@@ -101,7 +101,7 @@ export default function LoginPage() {
 
             if (!res.ok) {
                 const errorMsg = data.message?.toLowerCase() || "";
-                
+
                 // Specific checks for email not found or incorrect password
                 if (errorMsg.includes("not found") || errorMsg.includes("exist") || errorMsg.includes("no user")) {
                     throw new Error("EMAIL_NOT_FOUND");
@@ -231,7 +231,7 @@ export default function LoginPage() {
                                 required
                             />
                             {/* Eye Icon */}
-                            <button 
+                            <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
                                 className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${passwordError ? 'text-red-400 hover:text-red-500' : 'text-gray-400 hover:text-gray-600'}`}
@@ -268,6 +268,8 @@ export default function LoginPage() {
                         >
                             {isLoading ? "Logging in..." : "Login"}
                         </button>
+
+
                     </form>
 
                     {/* Footer Text */}

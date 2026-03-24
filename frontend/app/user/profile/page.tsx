@@ -46,7 +46,7 @@ export default function ProfilePage() {
         avatar: "/images/avatar-placeholder.jpg",
         avatarKey: ""
     });
-    const [dobError, setDobError] = useState("");
+    const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -110,6 +110,53 @@ export default function ProfilePage() {
         fetchProfile();
     }, [router]);
 
+    const validateForm = () => {
+        const newErrors: { [key: string]: string } = {};
+
+        // Name validation
+        if (!user.fullName.trim()) {
+            newErrors.fullName = "Name cannot be empty.";
+        }
+
+        // Email validation
+        if (!user.email.trim()) {
+            newErrors.email = "Email address is required.";
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email)) {
+            newErrors.email = "Invalid email format.";
+        }
+
+        // Phone validation
+        if (user.phone && !/^\d+$/.test(user.phone)) {
+            newErrors.phone = "Phone number must be numeric.";
+        }
+
+        // DoB validation
+        if (!user.dob.trim()) {
+            newErrors.dob = "DoB cannot be empty";
+        } else {
+            const parts = user.dob.split("/");
+            if (parts.length !== 3 || user.dob.length !== 10) {
+                newErrors.dob = "Invalid date format (DD/MM/YYYY).";
+            } else {
+                const d = parseInt(parts[0]);
+                const m = parseInt(parts[1]);
+                const y = parseInt(parts[2]);
+                const dateObj = new Date(y, m - 1, d);
+                const isValid = 
+                    dateObj.getFullYear() === y && 
+                    dateObj.getMonth() === m - 1 && 
+                    dateObj.getDate() === d &&
+                    y > 1900 && y <= new Date().getFullYear();
+                if (!isValid) {
+                    newErrors.dob = "Invalid date (e.g. 31/02 or future year).";
+                }
+            }
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         const token = localStorage.getItem("token");
@@ -121,21 +168,17 @@ export default function ProfilePage() {
             return;
         }
 
+        if (!validateForm()) return;
+
         const bodyData: any = {
             full_name: user.fullName,
+            email: user.email,
             phone_number: user.phone,
             date_of_birth: formatDateToISO(user.dob), // Convert DD/MM/YYYY to YYYY-MM-DD for BE
             address: user.address,
         };
         if (user.avatarKey) {
             bodyData.avatar_url = user.avatarKey;
-        }
-
-        // Validate date before saving
-        const parts = user.dob.split("/");
-        if (user.dob && (parts.length !== 3 || user.dob.length !== 10)) {
-            alert("Please enter a valid date (DD/MM/YYYY)");
-            return;
         }
 
         try {
@@ -351,8 +394,13 @@ export default function ProfilePage() {
                                             disabled={!isEditing}
                                             value={user.fullName}
                                             onChange={(e) => setUser({...user, fullName: e.target.value})}
-                                            className="w-full px-4 py-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed transition-all text-gray-900" 
+                                            className={`w-full px-4 py-3 rounded-lg border bg-gray-50 focus:bg-white focus:ring-1 transition-all text-gray-900 disabled:opacity-70 disabled:cursor-not-allowed ${
+                                                errors.fullName ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                                            }`} 
                                         />
+                                        {isEditing && errors.fullName && (
+                                            <p className="text-[10px] text-red-500 font-medium mt-1">{errors.fullName}</p>
+                                        )}
                                     </div>
 
                                     {/* Email */}
@@ -366,8 +414,13 @@ export default function ProfilePage() {
                                             disabled={!isEditing}
                                             value={user.email}
                                             onChange={(e) => setUser({...user, email: e.target.value})}
-                                            className="w-full px-4 py-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed transition-all text-gray-900" 
+                                            className={`w-full px-4 py-3 rounded-lg border bg-gray-50 focus:bg-white focus:ring-1 transition-all text-gray-900 disabled:opacity-70 disabled:cursor-not-allowed ${
+                                                errors.email ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                                            }`} 
                                         />
+                                        {isEditing && errors.email && (
+                                            <p className="text-[10px] text-red-500 font-medium mt-1">{errors.email}</p>
+                                        )}
                                     </div>
 
                                     {/* Phone */}
@@ -381,8 +434,13 @@ export default function ProfilePage() {
                                             disabled={!isEditing}
                                             value={user.phone}
                                             onChange={(e) => setUser({...user, phone: e.target.value})}
-                                            className="w-full px-4 py-3 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed transition-all text-gray-900" 
+                                            className={`w-full px-4 py-3 rounded-lg border bg-gray-50 focus:bg-white focus:ring-1 transition-all text-gray-900 disabled:opacity-70 disabled:cursor-not-allowed ${
+                                                errors.phone ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                                            }`} 
                                         />
+                                        {isEditing && errors.phone && (
+                                            <p className="text-[10px] text-red-500 font-medium mt-1">{errors.phone}</p>
+                                        )}
                                     </div>
 
                                     {/* Date of Birth */}
@@ -432,23 +490,23 @@ export default function ProfilePage() {
                                                         y > 1900 && y <= new Date().getFullYear();
 
                                                     if (!isValid) {
-                                                        setDobError("Invalid date (e.g. 31/02 or future year)");
+                                                        // setDobError("Invalid date (e.g. 31/02 or future year)");
                                                     } else {
-                                                        setDobError("");
+                                                        // setDobError("");
                                                     }
                                                 } else {
-                                                    setDobError("");
+                                                    // setDobError("");
                                                 }
                                             }}
                                             placeholder="DD/MM/YYYY"
                                             className={`w-full px-4 py-3 rounded-lg border bg-gray-50 focus:bg-white focus:ring-1 transition-all text-gray-900 disabled:opacity-70 disabled:cursor-not-allowed ${
-                                                dobError ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                                                errors.dob ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                                             }`} 
                                         />
                                         {isEditing && (
                                             <div className="flex justify-between mt-1">
                                                 <p className="text-[10px] text-gray-400">Format: DD/MM/YYYY</p>
-                                                {dobError && <p className="text-[10px] text-red-500 font-medium">{dobError}</p>}
+                                                {errors.dob && <p className="text-[10px] text-red-500 font-medium">{errors.dob}</p>}
                                             </div>
                                         )}
                                     </div>

@@ -13,6 +13,8 @@ export const users = pgTable("users", {
     avatar_url: varchar("avatar_url", { length: 500 }),
     password_hash: varchar("password_hash").notNull(),
     isActive: boolean("is_active").notNull().default(true),
+    failed_login_attempts: integer("failed_login_attempts").notNull().default(0),
+    locked_until: timestamp("locked_until"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
     deletedAt: timestamp("deleted_at"),
