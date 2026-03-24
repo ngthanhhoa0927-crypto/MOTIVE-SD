@@ -17,6 +17,7 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
+    const [errorType, setErrorType] = useState<"locked" | "inactive" | "error" | "">("");
     const [emailError, setEmailError] = useState("");
     const [passwordError, setPasswordError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -49,6 +50,7 @@ export default function LoginPage() {
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError("");
+        setErrorType("");
         setEmailError("");
         setPasswordError("");
 
@@ -112,10 +114,16 @@ export default function LoginPage() {
 
                 // Handle specific status-based errors from backend if available
                 if (data.status === 'suspended') {
-                    throw new Error("Your account is temporarily suspended. Please contact support.");
+                    throw new Error("SUSPENDED|Your account is temporarily suspended. Please contact support.");
                 }
                 if (data.status === 'banned') {
-                    throw new Error("Your account has been permanently banned due to violations of our terms.");
+                    throw new Error("BANNED|Your account has been permanently banned due to violations of our terms.");
+                }
+                if (data.status === 'locked') {
+                    throw new Error("LOCKED|" + (data.message || "Your account is temporarily locked."));
+                }
+                if (data.status === 'inactive') {
+                    throw new Error("INACTIVE|" + (data.message || "Your account is inactive."));
                 }
                 throw new Error(data.message || "Login failed");
             }
@@ -142,10 +150,24 @@ export default function LoginPage() {
                     setEmailError("Email does not exist in the system.");
                 } else if (err.message === "INCORRECT_PASSWORD") {
                     setPasswordError("Incorrect password. Please try again.");
+                } else if (err.message.startsWith("LOCKED|")) {
+                    setErrorType("locked");
+                    setError(err.message.split("|")[1]);
+                } else if (err.message.startsWith("INACTIVE|")) {
+                    setErrorType("inactive");
+                    setError(err.message.split("|")[1]);
+                } else if (err.message.startsWith("BANNED|")) {
+                    setErrorType("error");
+                    setError(err.message.split("|")[1]);
+                } else if (err.message.startsWith("SUSPENDED|")) {
+                    setErrorType("error");
+                    setError(err.message.split("|")[1]);
                 } else {
+                    setErrorType("error");
                     setError(err.message);
                 }
             } else {
+                setErrorType("error");
                 setError("An unexpected error occurred");
             }
         } finally {
@@ -194,8 +216,27 @@ export default function LoginPage() {
                     {/* Form */}
                     <form className="space-y-4" onSubmit={handleSubmit}>
                         {error && (
-                            <div className="p-3 text-xs text-red-600 bg-red-50 rounded-md border border-red-100 mb-4">
-                                {error}
+                            <div className={`p-4 text-sm font-medium rounded-lg border mb-4 flex items-start gap-3 shadow-sm ${
+                                errorType === 'locked' ? 'bg-orange-50 text-orange-800 border-orange-200' :
+                                errorType === 'inactive' ? 'bg-yellow-50 text-yellow-800 border-yellow-200' :
+                                'bg-red-50 text-red-800 border-red-200'
+                            }`}>
+                                {errorType === 'locked' ? (
+                                    <svg className="w-5 h-5 shrink-0 text-orange-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                ) : errorType === 'inactive' ? (
+                                    <svg className="w-5 h-5 shrink-0 text-yellow-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-5 h-5 shrink-0 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                )}
+                                <div className="leading-relaxed">
+                                    {error}
+                                </div>
                             </div>
                         )}
                         <div className="relative">
@@ -250,15 +291,20 @@ export default function LoginPage() {
                             {passwordError && <p className="text-[10px] text-red-500 mt-1 ml-1">{passwordError}</p>}
                         </div>
 
-                        <div className="flex items-center gap-2 pt-2">
-                            <input
-                                type="checkbox"
-                                id="remember"
-                                className="w-4 h-4 border-gray-300 rounded text-black focus:ring-black accent-black"
-                            />
-                            <label htmlFor="remember" className="text-sm text-gray-500 cursor-pointer">
-                                Remember my Password
-                            </label>
+                        <div className="flex items-center justify-between pt-2">
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="remember"
+                                    className="w-4 h-4 border-gray-300 rounded text-black focus:ring-black accent-black"
+                                />
+                                <label htmlFor="remember" className="text-sm text-gray-500 cursor-pointer">
+                                    Remember my Password
+                                </label>
+                            </div>
+                            <Link href="/user/forgot-password" className="text-sm font-semibold text-gray-800 hover:text-black hover:underline transition-colors">
+                                Forgot your password?
+                            </Link>
                         </div>
 
                         <button

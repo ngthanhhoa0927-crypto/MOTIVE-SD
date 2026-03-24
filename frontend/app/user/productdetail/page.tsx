@@ -9,59 +9,140 @@ import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { Button } from "@/components/ui/button";
 
+// ====== BE INTERFACES ======
+interface ProductImage {
+    id: number;
+    image_url: string;
+    is_primary: boolean;
+    display_order: number;
+}
+
+interface ProductVariant {
+    id: number;
+    color: string | null;
+    color_hex: string | null;
+    size: string | null;
+    sku: string;
+    price: string;
+    stock_quantity: number;
+    image_url: string | null;
+    is_active: boolean;
+}
+
+interface Product {
+    id: number;
+    name: string;
+    description: string;
+    base_price: string;
+    images: ProductImage[];
+    variants: ProductVariant[];
+}
+
 export default function ProductDetailsPage() {
-    // State quản lý lựa chọn của người dùng
-    const [selectedImage, setSelectedImage] = useState(0);
-    const [selectedColor, setSelectedColor] = useState(0);
-    const [selectedSize, setSelectedSize] = useState("S");
+    const router = useRouter();
+
+    // ====== CORE STATES ======
+    const [product, setProduct] = useState<Product | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+    // ====== USER SELECTION STATES ======
+    const [selectedColor, setSelectedColor] = useState<string | null>(null);
+    const [selectedSize, setSelectedSize] = useState<string | null>(null);
+    const [selectedImageIdx, setSelectedImageIdx] = useState(0);
     const [quantity, setQuantity] = useState<number | string>(1);
     const [quantityError, setQuantityError] = useState("");
     const [activeTab, setActiveTab] = useState("description");
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const router = useRouter();
 
     useEffect(() => {
         const token = localStorage.getItem("token");
-        if (token) {
-            setIsLoggedIn(true);
-        }
+        if (token) setIsLoggedIn(true);
+
+        const fetchProduct = async () => {
+            try {
+                // FIXME: Thay bằng Endpoint thật cần tích hợp, 
+                // Ở đây gán mặc định URL fetch Product của bạn.
+                const res = await fetch("http://localhost:8000/products");
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.products && data.products.length > 0) {
+                        const p: Product = data.products[0];
+                        setProduct(p);
+                        
+                        // Set state mặc định với variant đầu tiên
+                        if (p.variants && p.variants.length > 0) {
+                            setSelectedColor(p.variants[0].color);
+                            setSelectedSize(p.variants[0].size);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch product from BE:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProduct();
     }, []);
 
-    // Mock data for multiple colors
-    const colorOptions = [
-        {
-            value: "bg-zinc-800",
-            name: "Black",
-            images: Array(6).fill("/images/hat-dog-black.png"),
-        },
-        {
-            value: "bg-green-800",
-            name: "Green",
-            images: Array(6).fill("/images/hat-dog-dot.png"), // just using dot hat as a green placeholder proxy
-        },
-        {
-            value: "bg-pink-200",
-            name: "Pink",
-            images: Array(6).fill("/images/hat-rabbit-white.png"), // using rabbit hat as pink mock
-        },
-        {
-            value: "bg-gray-200",
-            name: "White",
-            images: Array(6).fill("/images/hat-bear-white.png"), // using bear white hat mock
-        }
-    ];
+    if (loading) {
+        return (
+            <div className="flex flex-col min-h-screen bg-white">
+                <Header />
+                <main className="flex-grow flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+                </main>
+                <Footer />
+            </div>
+        );
+    }
 
-    const currentImages = colorOptions[selectedColor].images;
-    const sizes = ["S", "M", "L", "XL", "Free Size"];
+    if (!product) {
+        return (
+            <div className="flex flex-col min-h-screen bg-white">
+                <Header />
+                <main className="flex-grow flex items-center justify-center flex-col gap-4">
+                    <Package className="w-12 h-12 text-gray-300" />
+                    <h2 className="text-xl font-bold text-gray-800">Product Ready For Integration</h2>
+                    <p className="text-gray-500 text-sm max-w-sm text-center">
+                        Waiting for backend /products API to provide data. 
+                        No mock data used.
+                    </p>
+                </main>
+                <Footer />
+            </div>
+        );
+    }
 
-    const recommendations = [
-        { name: "Plaid dog ear baseball cap", price: "$19.00", oldPrice: "$29.00", discount: "-32%", image: "/images/hat-dog-black.png" },
-        { name: "Plaid dog ear baseball cap", price: "$19.00", oldPrice: "$29.00", discount: "-32%", image: "/images/hat-dog-dot.png" },
-        { name: "Plaid dog ear baseball cap", price: "$19.00", oldPrice: "$29.00", discount: "-32%", image: "/images/hat-bear.png" },
-        { name: "Plaid dog ear baseball cap", price: "$19.00", oldPrice: "$29.00", discount: "-32%", image: "/images/hat-bear-white.png" },
-        { name: "Plaid dog ear baseball cap", price: "$19.00", oldPrice: "$29.00", discount: "-32%", image: "/images/hat-rabbit-white.png" },
-        { name: "Plaid dog ear baseball cap", price: "$19.00", oldPrice: "$29.00", discount: "-32%", image: "/images/placeholder-hat.png" },
-    ];
+    // ====== DYNAMIC DATA & LOGIC ======
+    
+    // 1. Phân tách danh sách colors, sizes từ biến thể BE
+    const colors = Array.from(new Set(product.variants.map(v => v.color).filter(Boolean))) as string[];
+    const sizes = Array.from(new Set(product.variants.map(v => v.size).filter(Boolean))) as string[];
+
+    // 2. Tìm biến thể (variant) hiện tại user đang chọn
+    const currentVariant = product.variants.find(
+        (v) => v.color === selectedColor && v.size === selectedSize
+    );
+
+    // 3. Logic CHECK Tồn kho (Availability) -> "Available / Out of Stock"
+    // Nếu variant tồn tại, trang bị bật (is_active), và số lượng (stock_quantity) > 0 -> In Stock
+    const inStock = currentVariant ? (currentVariant.is_active && currentVariant.stock_quantity > 0) : false;
+    
+    // Giá tiền (ưu tiên giá variant, sau đó lấy giá gốc)
+    const currentPrice = currentVariant ? currentVariant.price : product.base_price;
+
+    // Hình ảnh (Gộp ảnh Variant nếu có + Ảnh sản phẩm)
+    const displayImages = product.images.length > 0 
+        ? product.images.sort((a,b) => a.display_order - b.display_order).map(img => img.image_url)
+        : ["/images/placeholder-hat.png"];
+        
+    if (currentVariant?.image_url && !displayImages.includes(currentVariant.image_url)) {
+        displayImages.unshift(currentVariant.image_url);
+    }
+
 
     const renderStars = (rating: number) => (
         <div className="flex gap-[2px]">
@@ -80,115 +161,146 @@ export default function ProductDetailsPage() {
                 <div className="flex items-center gap-2 text-xs text-gray-500 mb-8">
                     <Link href="/user/homepage" className="hover:text-blue-600 transition">Homepage</Link>
                     <ChevronRight className="w-3 h-3" />
-                    <Link href="/category/baseball-hat" className="hover:text-blue-600 transition">Baseball Hat</Link>
+                    <Link href="/category/all" className="hover:text-blue-600 transition">Products</Link>
                     <ChevronRight className="w-3 h-3" />
-                    <span className="text-gray-900 font-medium">Plaid dog ear baseball cap</span>
+                    <span className="text-gray-900 font-medium line-clamp-1">{product.name}</span>
                 </div>
 
                 {/* --- PRODUCT MAIN SECTION --- */}
                 <section className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
 
-                    {/* Cột trái: Hình ảnh */}
+                    {/* Left Col: Images */}
                     <div>
-                        {/* Ảnh lớn */}
+                        {/* Big Image */}
                         <div className="aspect-square bg-white border border-gray-100 rounded-xl relative overflow-hidden flex items-center justify-center mb-4 p-8 shadow-sm">
                             <Image
-                                src={currentImages[selectedImage]}
+                                src={displayImages[selectedImageIdx] || "/images/placeholder-hat.png"}
                                 alt="Product Image"
                                 fill
                                 className="object-contain p-4"
                             />
-                            {/* Nút next ảnh (mô phỏng) */}
-                            <button 
-                                onClick={() => setSelectedImage((prev) => (prev + 1) % currentImages.length)}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border shadow-sm rounded-full flex items-center justify-center hover:bg-gray-50 transition"
-                            >
-                                <ChevronRight className="w-4 h-4 text-gray-600" />
-                            </button>
-                        </div>
-                        {/* Thumbnail mờ */}
-                        <div className="grid grid-cols-6 gap-3">
-                            {currentImages.map((img, idx) => (
-                                <div
-                                    key={idx}
-                                    onClick={() => setSelectedImage(idx)}
-                                    className={`aspect-square bg-gray-50 border rounded-lg overflow-hidden relative cursor-pointer hover:border-blue-400 transition ${selectedImage === idx ? 'border-blue-600 ring-1 ring-blue-600' : 'border-gray-200'}`}
+                            {displayImages.length > 1 && (
+                                <button 
+                                    onClick={() => setSelectedImageIdx((prev) => (prev + 1) % displayImages.length)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 bg-white border shadow-sm rounded-full flex items-center justify-center hover:bg-gray-50 transition"
                                 >
-                                    <Image src={img} alt={`Thumb ${idx}`} fill className="object-cover" />
-                                </div>
-                            ))}
+                                    <ChevronRight className="w-4 h-4 text-gray-600" />
+                                </button>
+                            )}
                         </div>
+                        {/* Thumbnails */}
+                        {displayImages.length > 1 && (
+                            <div className="grid grid-cols-6 gap-3">
+                                {displayImages.map((img, idx) => (
+                                    <div
+                                        key={idx}
+                                        onClick={() => setSelectedImageIdx(idx)}
+                                        className={`aspect-square bg-gray-50 border rounded-lg overflow-hidden relative cursor-pointer hover:border-blue-400 transition ${selectedImageIdx === idx ? 'border-blue-600 ring-1 ring-blue-600' : 'border-gray-200'}`}
+                                    >
+                                        <Image src={img} alt={`Thumb ${idx}`} fill className="object-cover" />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
-                    {/* Cột phải: Thông tin sản phẩm */}
+                    {/* Right Col: Info */}
                     <div className="py-2">
                         <div className="mb-6">
-                            <h1 className="text-2xl font-bold text-gray-900 mb-2">Plaid Dog-Ear Baseball</h1>
+                            <h1 className="text-2xl font-bold text-gray-900 mb-3">{product.name}</h1>
+                            
+                            {/* AVAILABILITY TAG */}
+                            <div className="mb-4">
+                                {inStock ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-100 text-emerald-700 text-[11px] font-bold uppercase tracking-wider">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div> Available
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-100 border border-gray-200 text-gray-500 text-[11px] font-bold uppercase tracking-wider">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div> Out of Stock
+                                    </span>
+                                )}
+                            </div>
+
                             <p className="text-sm text-gray-500 leading-relaxed max-w-lg mb-6">
-                                Add a touch of fun and personality to your outfit with this cute puppy baseball cap, designed with an adorable 3D puppy face and soft floppy ears. This cap brings a playful and unique look that instantly stands out.
+                                {product.description || "No description provided for this product."}
                             </p>
                         </div>
 
-                        {/* Màu sắc */}
-                        <div className="mt-6">
-                            <span className="text-sm font-semibold text-gray-800 block mb-2">Color: {colorOptions[selectedColor].name}</span>
-                            <div className="flex gap-3">
-                                {colorOptions.map((color, idx) => (
-                                    <button
-                                        key={idx}
-                                        onClick={() => {
-                                            setSelectedColor(idx);
-                                            setSelectedImage(0); // Reset ảnh về đầu tiên khi đổi màu
-                                        }}
-                                        className={`w-8 h-8 rounded-full cursor-pointer border-2 transition ${color.value} ${selectedColor === idx ? 'border-blue-600 ring-2 ring-blue-100 shadow-md' : 'border-gray-300 hover:border-gray-400'}`}
-                                        aria-label={`Select color ${color.name}`}
-                                    />
-                                ))}
+                        {/* Colors */}
+                        {colors.length > 0 && (
+                            <div className="mt-6">
+                                <span className="text-sm font-semibold text-gray-800 block mb-2">Color: {selectedColor}</span>
+                                <div className="flex gap-3">
+                                    {colors.map((color, idx) => {
+                                        // Tìm mã màu hex tương ứng từ variants
+                                        const varMatch = product.variants.find(v => v.color === color);
+                                        const hex = varMatch?.color_hex || "#888888";
+                                        return (
+                                            <button
+                                                key={idx}
+                                                onClick={() => {
+                                                    setSelectedColor(color);
+                                                    setSelectedImageIdx(0); // Reset ảnh
+                                                }}
+                                                className={`w-8 h-8 rounded-full cursor-pointer border-2 transition ${selectedColor === color ? 'border-blue-600 ring-2 ring-blue-100 shadow-md' : 'border-gray-300 hover:border-gray-400'}`}
+                                                style={{ backgroundColor: hex }}
+                                                title={color}
+                                                aria-label={`Select color ${color}`}
+                                            />
+                                        )
+                                    })}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
-                        <div className="mt-8">
-                            <span className="text-sm font-semibold text-gray-800 block mb-2">Size</span>
-                            <div className="flex gap-2">
-                                {sizes.map((size) => (
-                                    <button
-                                        key={size}
-                                        onClick={() => setSelectedSize(size)}
-                                        className={`px-4 py-1.5 border rounded-md text-xs font-medium transition ${selectedSize === size ? 'border-gray-800 text-gray-800 bg-white ring-1 ring-gray-800' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
-                                    >
-                                        {size}
-                                    </button>
-                                ))}
+                        {/* Sizes */}
+                        {sizes.length > 0 && (
+                            <div className="mt-8">
+                                <span className="text-sm font-semibold text-gray-800 block mb-2">Size</span>
+                                <div className="flex flex-wrap gap-2">
+                                    {sizes.map((size) => (
+                                        <button
+                                            key={size}
+                                            onClick={() => setSelectedSize(size)}
+                                            className={`px-4 py-1.5 border rounded-md text-xs font-medium transition ${selectedSize === size ? 'border-gray-800 text-gray-800 bg-white ring-1 ring-gray-800' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                                        >
+                                            {size}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
-                        {/* Giá */}
+                        {/* Price */}
                         <div className="mt-8 mb-4">
-                            <div className="text-3xl font-bold text-blue-600">{recommendations[0].price}</div>
+                            <div className="text-3xl font-bold text-blue-600">${Number(currentPrice).toFixed(2)}</div>
                             <div className="mt-1">{renderStars(5)}</div>
                         </div>
 
-                        {/* Hành động */}
+                        {/* Actions (Disabled if Out of stock) */}
                         <div className="mt-6">
                             <div className="flex items-center gap-4">
                                 <div className="flex flex-col gap-1 items-center">
-                                    <div className={`flex items-center border rounded-md h-12 w-28 overflow-hidden transition-colors ${quantityError ? "border-red-500 bg-red-50/10" : "border-gray-300 ring-offset-white focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-500"}`}>
+                                    <div className={`flex items-center border rounded-md h-12 w-28 overflow-hidden transition-colors ${!inStock ? "bg-gray-100 border-gray-200 opacity-60 pointer-events-none" : quantityError ? "border-red-500 bg-red-50/10" : "border-gray-300 ring-offset-white focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-500"}`}>
                                         <button 
                                             onClick={() => {
                                                 setQuantity(Math.max(1, Number(quantity) - 1));
-                                                setQuantityError(""); // Clear error when use buttons
+                                                setQuantityError(""); 
                                             }} 
-                                            className="w-10 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 text-lg"
+                                            disabled={!inStock}
+                                            className="w-10 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 text-lg disabled:cursor-not-allowed"
                                         >
                                             -
                                         </button>
                                         <input 
                                             type="text" 
                                             value={quantity} 
+                                            disabled={!inStock}
                                             onChange={(e) => {
-                                                const val = e.target.value.replace(/\D/g, ""); // Chỉ lấy số
+                                                const val = e.target.value.replace(/\D/g, ""); 
                                                 setQuantity(val);
-                                                setQuantityError(""); // Xóa lỗi khi người dùng sửa
+                                                setQuantityError(""); 
                                             }}
                                             onBlur={(e) => {
                                                 let num = parseInt(e.target.value);
@@ -204,14 +316,15 @@ export default function ProductDetailsPage() {
                                                     setQuantityError("");
                                                 }
                                             }}
-                                            className="flex-1 h-full w-full text-center text-sm font-medium outline-none bg-transparent" 
+                                            className="flex-1 h-full w-full text-center text-sm font-medium outline-none bg-transparent disabled:cursor-not-allowed" 
                                         />
                                         <button 
                                             onClick={() => {
                                                 setQuantity(Math.min(99, Number(quantity) + 1));
-                                                setQuantityError(""); // Clear error when use buttons
+                                                setQuantityError(""); 
                                             }} 
-                                            className="w-10 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 text-lg"
+                                            disabled={!inStock}
+                                            className="w-10 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 text-lg disabled:cursor-not-allowed"
                                         >
                                             +
                                         </button>
@@ -222,10 +335,19 @@ export default function ProductDetailsPage() {
                                         </span>
                                     )}
                                 </div>
-                                <Button className="bg-blue-600 hover:bg-blue-700 h-12 px-10 rounded-md font-semibold text-sm">Add to Cart</Button>
-                                <Link href="/user/checkout">
-                                    <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50 h-12 px-10 rounded-md font-semibold text-sm">Buy now</Button>
-                                </Link>
+                                <Button 
+                                    disabled={!inStock}
+                                    className={`h-12 px-10 rounded-md font-semibold text-sm transition-colors ${!inStock ? 'bg-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-300' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                                >
+                                    Add to Cart
+                                </Button>
+                                {inStock ? (
+                                    <Link href="/user/checkout">
+                                        <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50 h-12 px-10 rounded-md font-semibold text-sm">Buy now</Button>
+                                    </Link>
+                                ) : (
+                                    <Button disabled variant="outline" className="border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed h-12 px-10 rounded-md font-semibold text-sm">Buy now</Button>
+                                )}
                             </div>
                         </div>
 
@@ -295,42 +417,10 @@ export default function ProductDetailsPage() {
                     {activeTab === "description" ? (
                         <div className="max-w-4xl text-sm text-gray-700 leading-relaxed space-y-6">
                             <div>
-                                <h3 className="font-bold text-gray-900 text-base mb-2">Plaid Dog-Ear Baseball</h3>
+                                <h3 className="font-bold text-gray-900 text-base mb-2">{product.name}</h3>
                                 <p>
-                                    Add a touch of fun and personality to your outfit with this cute puppy baseball cap. Designed with an adorable 3D puppy face and soft floppy ears, this cap brings a playful and unique look that instantly stands out.
+                                    {product.description || "Updating description..."}
                                 </p>
-                            </div>
-                            <p>
-                                Made from high-quality plaid fabric, the cap is lightweight, breathable, and comfortable for everyday wear. The curved brim helps provide shade from the sun, making it perfect for outdoor activities such as travel, or casual outings.
-                            </p>
-                            
-                            <div className="flex flex-col md:flex-row gap-8 justify-center my-10 py-4">
-                                <Image src="/images/hat-dog-black.png" alt="Detail 1" width={250} height={250} className="object-contain" />
-                                <Image src="/images/hat-dog-dot.png" alt="Detail 2" width={250} height={250} className="object-contain" />
-                            </div>
-
-                            <p>Whether you're looking for a fun fashion accessory or a unique gift, this cap is a charming and stylish choice for anyone who loves cute design!</p>
-                            
-                            <div>
-                                <h4 className="font-semibold text-gray-900 mb-2">Key Features:</h4>
-                                <ul className="list-disc pl-5 space-y-1">
-                                    <li>Adorable 3D puppy design with floppy ears</li>
-                                    <li>Stylish plaid pattern for a trendy look</li>
-                                    <li>Soft and breathable fabric for comfortable wear</li>
-                                    <li>Curved brim for sun protection</li>
-                                    <li>Perfect for daily wear, travel, photos, and casual outfits</li>
-                                </ul>
-                            </div>
-
-                            <div>
-                                <h4 className="font-semibold text-gray-900 mb-2">Product Details:</h4>
-                                <ul className="list-disc pl-5 space-y-1">
-                                    <li>Product Type: Baseball Cap</li>
-                                    <li>Material: Premium fabric</li>
-                                    <li>Design: 3D puppy style</li>
-                                    <li>Pattern: Plaid</li>
-                                    <li>Suitable for: Kids and adults</li>
-                                </ul>
                             </div>
                         </div>
                     ) : (
@@ -427,35 +517,6 @@ export default function ProductDetailsPage() {
                         </div>
                     )}
                 </section>
-
-                {/* --- PRODUCT RECOMMENDATIONS --- */}
-                <section className="mb-12">
-                    <h3 className="font-bold text-sm text-blue-600 mb-6 uppercase tracking-wider">MAYBE YOU LIKE</h3>
-                    <div className="grid grid-cols-6 gap-4">
-                        {recommendations.map((item, i) => (
-                            <div key={i} className="border border-gray-100 rounded-lg p-3 hover:shadow-md transition relative group">
-                                <span className="absolute top-4 left-4 bg-yellow-400 text-[10px] font-bold px-1.5 py-0.5 rounded z-10">
-                                    {item.discount}
-                                </span>
-                                <Link href={`/user/productdetail`} className="block aspect-square bg-gray-50 rounded mb-2 relative overflow-hidden flex items-center justify-center border border-gray-100">
-                                    <Image src={item.image || "/images/placeholder-hat.png"} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
-                                </Link>
-                                <Link href={`/user/productdetail`}>
-                                    <h4 className="text-xs font-medium text-gray-800 line-clamp-2 mb-1 h-8 hover:text-blue-600 transition">{item.name}</h4>
-                                </Link>
-                                <div className="flex items-baseline gap-1 mb-2">
-                                    <span className="text-blue-600 font-bold text-sm">{item.price}</span>
-                                    <span className="text-gray-400 text-[10px] line-through">{item.oldPrice}</span>
-                                </div>
-                                <div className="flex justify-between items-center mt-2">
-                                    {renderStars(5)}
-                                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-[10px] h-6 px-3 rounded">Buy</Button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-
             </main>
 
             <Footer />

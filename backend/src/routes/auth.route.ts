@@ -193,6 +193,14 @@ authRouter.post(
 
             const currentUser = user[0];
 
+            // Check if user is active
+            if (!currentUser.isActive) {
+                return c.json({
+                    message: "Your account is currently inactive. Please contact support.",
+                    status: "inactive"
+                }, 403);
+            }
+
             // Check if user is currently locked out
             if (currentUser.locked_until && new Date() < currentUser.locked_until) {
                 return c.json({

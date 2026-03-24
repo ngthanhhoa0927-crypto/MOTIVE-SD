@@ -13,6 +13,51 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [adminProfile, setAdminProfile] = useState<{ full_name: string, role: string, avatar?: string } | null>(null);
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [showLogoutToast, setShowLogoutToast] = useState(false);
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+
+    const notifications = [
+        {
+            id: 1,
+            user: "John",
+            avatar: "/images/avatar-placeholder.jpg",
+            action: "created a new account",
+            time: "2 minutes ago",
+            icon: <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>,
+            iconBg: "bg-[#2563EB]",
+            highlightName: false
+        },
+        {
+            id: 2,
+            user: "John",
+            avatar: "/images/avatar-placeholder.jpg",
+            action: "placed a new order",
+            time: "15 minutes ago",
+            icon: <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>,
+            iconBg: "bg-[#1E293B]",
+            highlightName: false
+        },
+        {
+            id: 3,
+            user: "John",
+            avatar: "/images/avatar-placeholder.jpg",
+            action: "requested to delete his account",
+            time: "1 hour ago",
+            icon: <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>,
+            iconBg: "bg-[#EF4444]",
+            highlightName: true
+        },
+        {
+            id: 4,
+            user: "John",
+            avatar: "/images/avatar-placeholder.jpg",
+            action: "confirmed receipt of his order",
+            time: "3 hours ago",
+            icon: <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>,
+            iconBg: "bg-[#10B981]",
+            highlightName: false
+        }
+    ];
 
     useEffect(() => {
         // Fetch or get from token
@@ -47,12 +92,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     // Auto-close dropdown on route change
     useEffect(() => {
         setIsProfileOpen(false);
+        setIsNotificationOpen(false);
     }, [pathname]);
 
     const handleLogout = () => {
         localStorage.removeItem('token');
         setIsProfileOpen(false);
-        router.push('/user/login');
+        setShowLogoutToast(true);
+        setTimeout(() => {
+            router.push('/user/homepage');
+        }, 1200);
     };
 
     const navItems = [
@@ -71,6 +120,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     return (
         <div className={`min-h-screen bg-[#F3F4F6] flex ${inter.className}`}>
+            {/* Custom Logout Toast */}
+            {showLogoutToast && (
+                <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] animate-[bounce_0.3s_ease-out]">
+                    <div className="bg-white rounded-xl shadow-[0_10px_30px_-10px_rgba(0,0,0,0.1)] border border-gray-100 p-4 flex items-center gap-3 min-w-[300px]">
+                        <div className="w-10 h-10 rounded-full bg-[#10B981]/10 flex items-center justify-center shrink-0">
+                            <svg className="w-5 h-5 text-[#10B981]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="text-sm font-bold text-gray-900 tracking-tight">Success</p>
+                            <p className="text-[13px] font-medium text-gray-500 mt-0.5">Logout Successfully. Redirecting...</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Sidebar */}
             <aside className="w-[260px] bg-[#161B28] text-white flex flex-col justify-between fixed h-screen left-0 top-0 z-20">
                 <div>
@@ -117,14 +183,64 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         {pageTitle}
                     </h2>
                     <div className="flex items-center gap-6">
-                        <button className="text-gray-500 hover:text-gray-900 relative p-1 transition-colors">
-                            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-blue-600 border-2 border-white rounded-full"></span>
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                        </button>
+                        {/* Notifications */}
+                        <div className="relative">
+                            <button 
+                                className="text-gray-500 hover:text-gray-900 relative p-1 transition-colors"
+                                onClick={() => {
+                                    setIsNotificationOpen(!isNotificationOpen);
+                                    if(isProfileOpen) setIsProfileOpen(false);
+                                }}
+                            >
+                                <span className="absolute -top-0.5 -right-0.5 w-[18px] h-[18px] bg-[#2563EB] border-2 border-white rounded-full flex items-center justify-center text-[9px] font-bold text-white z-10">10</span>
+                                <svg className="w-[26px] h-[26px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                            </button>
+
+                            {/* Notification Dropdown */}
+                            {isNotificationOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setIsNotificationOpen(false)}></div>
+                                    <div className="absolute right-0 mt-3 w-[400px] bg-white rounded-xl shadow-xl py-2 z-50 animate-in fade-in zoom-in duration-200 origin-top-right border border-gray-100/50">
+                                        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                                            <h3 className="font-bold text-gray-900 text-base">Notifications</h3>
+                                        </div>
+                                        
+                                        <div className="max-h-[400px] overflow-y-auto">
+                                            {notifications.map((notif) => (
+                                                <div key={notif.id} className="flex gap-4 px-5 py-4 border-b border-gray-50 hover:bg-gray-50/80 transition-colors cursor-pointer group">
+                                                    <div className="relative flex-shrink-0 mt-1">
+                                                        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100">
+                                                            <Image src={notif.avatar} alt={notif.user} width={40} height={40} className="object-cover" />
+                                                        </div>
+                                                        <div className={`absolute -bottom-1 -right-1 w-[18px] h-[18px] rounded-full border-2 border-white flex items-center justify-center ${notif.iconBg}`}>
+                                                            {notif.icon}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-[13px] text-gray-600 leading-snug">
+                                                        <p className="mb-0.5"><span className={`font-semibold ${notif.highlightName ? 'text-[#EF4444]' : 'text-gray-900'}`}>{notif.user}</span> {notif.action}</p>
+                                                        <p className="text-[11px] text-gray-400 font-medium group-hover:text-blue-500 transition-colors">{notif.time}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        
+                                        <div className="pt-2 pb-1 bg-gray-50/50 rounded-b-xl border-t border-gray-50">
+                                            <button className="w-full text-center py-2 text-sm font-semibold text-[#2563EB] hover:text-blue-700 transition-colors">
+                                                See all activity
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
                         <div className="relative">
                             <div 
                                 className="flex items-center gap-3 border-l border-gray-200 pl-6 cursor-pointer group"
-                                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                onClick={() => {
+                                    setIsProfileOpen(!isProfileOpen);
+                                    if(isNotificationOpen) setIsNotificationOpen(false);
+                                }}
                             >
                                 <div className="text-right flex flex-col justify-center">
                                     <p className="text-sm font-bold text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">{adminProfile?.full_name || 'Hanh Nguyen'}</p>
