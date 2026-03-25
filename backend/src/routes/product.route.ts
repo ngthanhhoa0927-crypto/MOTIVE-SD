@@ -140,7 +140,7 @@ productRouter.get("/", async (c) => {
                 if (url && !url.startsWith('http')) {
                     url = await getPresignedDownloadUrl(url);
                 }
-                return { ...img, image_url: url };
+                return { ...img, signed_url: url, image_url: img.image_url };
             }));
 
             // Sign variant URLs
@@ -149,7 +149,7 @@ productRouter.get("/", async (c) => {
                 if (url && !url.startsWith('http')) {
                     url = await getPresignedDownloadUrl(url);
                 }
-                return { ...v, image_url: url };
+                return { ...v, signed_url: url, image_url: v.image_url };
             }));
 
             return {
@@ -165,5 +165,180 @@ productRouter.get("/", async (c) => {
         return c.json({ message: "Failed to fetch products" }, 500);
     }
 });
+// Get single product with relations
+productRouter.get("/:id", async (c) => {
+    try {
+        const id = parseInt(c.req.param("id"));
+        if (isNaN(id)) return c.json({ message: "Invalid ID format" }, 400);
+
+        const productRows = await db.select().from(products).where(eq(products.id, id));
+        if (productRows.length === 0) return c.json({ message: "Product not found" }, 404);
+        
+        const p = productRows[0];
+        
+        const images = await db.select().from(productImages).where(eq(productImages.product_id, p.id));
+        const variants = await db.select().from(productVariants).where(eq(productVariants.product_id, p.id));
+        const promos = await db.select().from(productPromotions).where(eq(productPromotions.product_id, p.id));
+        
+        // Sign URLs
+        const signedImages = await Promise.all(images.map(async (img) => {
+            let url = img.image_url;
+            if (url && !url.startsWith('http')) url = await getPresignedDownloadUrl(url);
+            return { ...img, signed_url: url, image_url: img.image_url };
+        }));
+
+        const signedVariants = await Promise.all(variants.map(async (v) => {
+            let url = v.image_url;
+            if (url && !url.startsWith('http')) url = await getPresignedDownloadUrl(url);
+            return { ...v, signed_url: url, image_url: v.image_url };
+        }));
+
+        return c.json({
+            product: {
+                ...p,
+                images: signedImages,
+                variants: signedVariants,
+                promotion_ids: promos.map(pr => pr.promotion_id)
+            }
+        }, 200);
+    } catch (error) {
+        console.error("Failed to fetch product:", error);
+        return c.json({ message: "Failed to fetch product" }, 500);
+    }
+});
+
+// Update an existing product (Admin)
+productRouter.put(
+    "/:id",
+    authMiddleware,
+    adminMiddleware,
+    zValidator('json', createProductSchema, (result, c) => {
+        if (!result.success) {
+            return c.json({
+                message: "Validation failed",
+                errors: result.error.issues.map(i => ({ field: i.path.join('.'), message: i.message }))
+            }, 400);
+        }
+    }),
+    async (c) => {
+        try {
+            const id = parseInt(c.req.param("id"));
+            if (isNaN(id)) return c.json({ message: "Invalid ID format" }, 400);
+
+            const data = c.req.valid('json');
+            
+            const updatedProduct = await db.transaction(async (tx) => {
+                // Check if product exists
+                const existing = await tx.select().from(products).where(eq(products.id, id));
+                if (existing.length === 0) throw new Error("Product not found");
+
+                // 1. Update Base Product
+                const [product] = await tx.update(products).set({
+                    category_id: data.category_id,
+                    collection_id: data.collection_id,
+                    name: data.name,
+                    base_price: data.base_price.toString(),
+                    weight: data.weight?.toString(),
+                    description: data.description,
+                    status: data.status,
+                    updatedAt: new Date()
+                }).where(eq(products.id, id)).returning();
+
+                // 2. Replace Images
+                await tx.delete(productImages).where(eq(productImages.product_id, id));
+                if (data.images && data.images.length > 0) {
+                    const imageValues = data.images.map(img => ({
+                        product_id: id,
+                        image_url: img.image_url,
+                        is_primary: img.is_primary,
+                        display_order: img.display_order
+                    }));
+                    await tx.insert(productImages).values(imageValues);
+                }
+
+                // 3. Replace Variants
+                await tx.delete(productVariants).where(eq(productVariants.product_id, id));
+                if (data.variants && data.variants.length > 0) {
+                    const variantValues = data.variants.map(v => ({
+                        product_id: id,
+                        sku: v.sku,
+                        color: v.color,
+                        color_hex: v.color_hex,
+                        size: v.size,
+                        price: v.price.toString(),
+                        stock_quantity: v.stock_quantity,
+                        image_url: v.image_url,
+                        is_active: v.is_active
+                    }));
+                    await tx.insert(productVariants).values(variantValues);
+                }
+
+                // 4. Replace Promotions
+                await tx.delete(productPromotions).where(eq(productPromotions.product_id, id));
+                if (data.promotion_ids && data.promotion_ids.length > 0) {
+                    const promoValues = data.promotion_ids.map(promoId => ({
+                        product_id: id,
+                        promotion_id: promoId
+                    }));
+                    await tx.insert(productPromotions).values(promoValues);
+                }
+                
+                return product;
+            });
+
+            return c.json({ message: "Product updated successfully", product: updatedProduct }, 200);
+
+        } catch (error) {
+            console.error("Error updating product:", error);
+            if (error instanceof Error && error.message === "Product not found") {
+                return c.json({ message: "Product not found" }, 404);
+            }
+            if (error instanceof Error && error.message.includes('unique constraint')) {
+                return c.json({ message: "A unique constraint was violated (e.g. duplicate SKU)" }, 409);
+            }
+            return c.json({ message: "Failed to update product" }, 500);
+        }
+    }
+);
+
+// Delete a product (Admin)
+productRouter.delete(
+    "/:id",
+    authMiddleware,
+    adminMiddleware,
+    async (c) => {
+        try {
+            const id = parseInt(c.req.param("id"));
+            if (isNaN(id)) return c.json({ message: "Invalid ID format" }, 400);
+
+            await db.transaction(async (tx) => {
+                // Check if product exists
+                const existing = await tx.select().from(products).where(eq(products.id, id));
+                if (existing.length === 0) throw new Error("Product not found");
+
+                // Delete relations first (no cascade in schema)
+                await tx.delete(productPromotions).where(eq(productPromotions.product_id, id));
+                await tx.delete(productVariants).where(eq(productVariants.product_id, id));
+                await tx.delete(productImages).where(eq(productImages.product_id, id));
+                
+                // Note: If order_items exist for this product, this deletion will fail due to foreign key constraint constraint.
+                // In a production system, a soft delete is preferred. This fulfills the MVP requirement.
+                await tx.delete(products).where(eq(products.id, id));
+            });
+
+            return c.json({ message: "Product deleted successfully" }, 200);
+
+        } catch (error) {
+            console.error("Error deleting product:", error);
+            if (error instanceof Error && error.message === "Product not found") {
+                return c.json({ message: "Product not found" }, 404);
+            }
+            if (error instanceof Error && error.message.includes('foreign key constraint')) {
+                return c.json({ message: "Cannot delete product as it is part of an existing order" }, 409);
+            }
+            return c.json({ message: "Failed to delete product" }, 500);
+        }
+    }
+);
 
 export default productRouter;

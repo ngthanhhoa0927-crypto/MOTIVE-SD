@@ -44,7 +44,7 @@ export default function AdminProfilePage() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("admin_token");
         if (!token) {
             router.push("/user/login");
             return;
@@ -105,7 +105,7 @@ export default function AdminProfilePage() {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("admin_token");
         if (!token) return;
 
         if (token.startsWith("fake.")) {

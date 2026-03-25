@@ -97,7 +97,7 @@ export default function LoginPage() {
             };
             const fakeToken = `fake.${btoa(JSON.stringify(fakePayload))}.fake`;
 
-            localStorage.setItem("token", fakeToken);
+            localStorage.setItem("admin_token", fakeToken);
             router.push('/admin/customers');
             setIsLoading(false);
             return;
@@ -164,19 +164,20 @@ export default function LoginPage() {
                 throw new Error(data.message || "Login failed");
             }
 
-            // Save token to localStorage
-            localStorage.setItem("token", data.token);
-
-            // Check role from token and redirect
+            // Save token to localStorage — use separate keys for admin vs user
             try {
                 const payload = JSON.parse(atob(data.token.split('.')[1]));
                 if (payload.role === 'admin') {
+                    localStorage.setItem("admin_token", data.token);
                     router.push('/admin/customers');
                     return;
                 }
             } catch (e) {
                 console.error("Failed to parse token", e);
             }
+
+            // Normal user token
+            localStorage.setItem("token", data.token);
 
             // Reset failed attempts on successful login
             localStorage.removeItem(`failed_login_attempts_${email}`);

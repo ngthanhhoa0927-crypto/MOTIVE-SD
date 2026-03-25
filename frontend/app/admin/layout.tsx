@@ -1,11 +1,67 @@
 "use client";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Inter } from 'next/font/google';
 
 const inter = Inter({ subsets: ['latin'] });
+
+interface Notification {
+    id: number;
+    type: string;
+    userId: number | null;
+    userName: string;
+    userAvatar: string | null;
+    message: string;
+    isRead: boolean;
+    createdAt: string;
+}
+
+function timeAgo(dateStr: string): string {
+    const now = new Date();
+    const date = new Date(dateStr);
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+}
+
+function getNotifIcon(type: string) {
+    switch (type) {
+        case 'account_created':
+            return <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>;
+        case 'order_placed':
+            return <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>;
+        case 'account_deleted':
+            return <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>;
+        case 'order_confirmed':
+            return <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>;
+        case 'password_changed':
+            return <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>;
+        default:
+            return <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+    }
+}
+
+function getNotifIconBg(type: string) {
+    switch (type) {
+        case 'account_created': return 'bg-[#2563EB]';
+        case 'order_placed': return 'bg-[#1E293B]';
+        case 'account_deleted': return 'bg-[#EF4444]';
+        case 'order_confirmed': return 'bg-[#10B981]';
+        case 'password_changed': return 'bg-[#F59E0B]';
+        default: return 'bg-[#6B7280]';
+    }
+}
+
+function getNotifHighlight(type: string) {
+    return type === 'account_deleted';
+}
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -15,53 +71,50 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [showLogoutToast, setShowLogoutToast] = useState(false);
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
 
-    const notifications = [
-        {
-            id: 1,
-            user: "John",
-            avatar: "/images/avatar-placeholder.jpg",
-            action: "created a new account",
-            time: "2 minutes ago",
-            icon: <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>,
-            iconBg: "bg-[#2563EB]",
-            highlightName: false
-        },
-        {
-            id: 2,
-            user: "John",
-            avatar: "/images/avatar-placeholder.jpg",
-            action: "placed a new order",
-            time: "15 minutes ago",
-            icon: <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>,
-            iconBg: "bg-[#1E293B]",
-            highlightName: false
-        },
-        {
-            id: 3,
-            user: "John",
-            avatar: "/images/avatar-placeholder.jpg",
-            action: "requested to delete his account",
-            time: "1 hour ago",
-            icon: <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>,
-            iconBg: "bg-[#EF4444]",
-            highlightName: true
-        },
-        {
-            id: 4,
-            user: "John",
-            avatar: "/images/avatar-placeholder.jpg",
-            action: "confirmed receipt of his order",
-            time: "3 hours ago",
-            icon: <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>,
-            iconBg: "bg-[#10B981]",
-            highlightName: false
+    const fetchNotifications = useCallback(async () => {
+        const token = localStorage.getItem('admin_token');
+        if (!token) return;
+        try {
+            const [notifRes, countRes] = await Promise.all([
+                fetch("http://localhost:8000/notifications", {
+                    headers: { "Authorization": `Bearer ${token}` }
+                }),
+                fetch("http://localhost:8000/notifications/unread-count", {
+                    headers: { "Authorization": `Bearer ${token}` }
+                })
+            ]);
+            if (notifRes.ok) {
+                const data = await notifRes.json();
+                setNotifications(data.notifications || []);
+            }
+            if (countRes.ok) {
+                const data = await countRes.json();
+                setUnreadCount(data.count || 0);
+            }
+        } catch (err) {
+            // Silently fail — notifications are non-critical
         }
-    ];
+    }, []);
+
+    const markAsRead = async (id: number) => {
+        const token = localStorage.getItem('admin_token');
+        if (!token) return;
+        try {
+            await fetch(`http://localhost:8000/notifications/${id}/read`, {
+                method: "PUT",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        } catch (err) {}
+    };
 
     useEffect(() => {
         // Fetch or get from token
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('admin_token');
         if (token) {
             try {
                 const payload = JSON.parse(atob(token.split('.')[1]));
@@ -89,6 +142,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return () => window.removeEventListener('avatarUpdated', handleAvatarUpdate);
     }, []);
 
+    // Fetch notifications on mount + poll every 30s
+    useEffect(() => {
+        fetchNotifications();
+        const interval = setInterval(fetchNotifications, 30000);
+        return () => clearInterval(interval);
+    }, [fetchNotifications]);
+
     // Auto-close dropdown on route change
     useEffect(() => {
         setIsProfileOpen(false);
@@ -96,7 +156,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }, [pathname]);
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
+        localStorage.removeItem('admin_token');
         setIsProfileOpen(false);
         setShowLogoutToast(true);
         setTimeout(() => {
@@ -192,7 +252,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     if(isProfileOpen) setIsProfileOpen(false);
                                 }}
                             >
-                                <span className="absolute -top-0.5 -right-0.5 w-[18px] h-[18px] bg-[#2563EB] border-2 border-white rounded-full flex items-center justify-center text-[9px] font-bold text-white z-10">10</span>
+                                {unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-[18px] h-[18px] bg-[#2563EB] border-2 border-white rounded-full flex items-center justify-center text-[9px] font-bold text-white z-10">{unreadCount > 99 ? '99+' : unreadCount}</span>}
                                 <svg className="w-[26px] h-[26px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
                             </button>
 
@@ -206,19 +266,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                         </div>
                                         
                                         <div className="max-h-[400px] overflow-y-auto">
+                                            {notifications.length === 0 && (
+                                                <div className="px-5 py-8 text-center text-sm text-gray-400">
+                                                    No notifications yet
+                                                </div>
+                                            )}
                                             {notifications.map((notif) => (
-                                                <div key={notif.id} className="flex gap-4 px-5 py-4 border-b border-gray-50 hover:bg-gray-50/80 transition-colors cursor-pointer group">
+                                                <div 
+                                                    key={notif.id} 
+                                                    className={`flex gap-4 px-5 py-4 border-b border-gray-50 hover:bg-gray-50/80 transition-colors cursor-pointer group ${!notif.isRead ? 'bg-blue-50/30' : ''}`}
+                                                    onClick={() => { if (!notif.isRead) markAsRead(notif.id); }}
+                                                >
                                                     <div className="relative flex-shrink-0 mt-1">
-                                                        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100">
-                                                            <Image src={notif.avatar} alt={notif.user} width={40} height={40} className="object-cover" />
+                                                        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                                                            {notif.userAvatar ? (
+                                                                <Image src={notif.userAvatar} alt={notif.userName} width={40} height={40} className="object-cover" />
+                                                            ) : (
+                                                                <span className="text-sm font-bold text-gray-500">{notif.userName.charAt(0).toUpperCase()}</span>
+                                                            )}
                                                         </div>
-                                                        <div className={`absolute -bottom-1 -right-1 w-[18px] h-[18px] rounded-full border-2 border-white flex items-center justify-center ${notif.iconBg}`}>
-                                                            {notif.icon}
+                                                        <div className={`absolute -bottom-1 -right-1 w-[18px] h-[18px] rounded-full border-2 border-white flex items-center justify-center ${getNotifIconBg(notif.type)}`}>
+                                                            {getNotifIcon(notif.type)}
                                                         </div>
                                                     </div>
                                                     <div className="text-[13px] text-gray-600 leading-snug">
-                                                        <p className="mb-0.5"><span className={`font-semibold ${notif.highlightName ? 'text-[#EF4444]' : 'text-gray-900'}`}>{notif.user}</span> {notif.action}</p>
-                                                        <p className="text-[11px] text-gray-400 font-medium group-hover:text-blue-500 transition-colors">{notif.time}</p>
+                                                        <p className="mb-0.5"><span className={`font-semibold ${getNotifHighlight(notif.type) ? 'text-[#EF4444]' : 'text-gray-900'}`}>{notif.userName}</span> {notif.message.replace(notif.userName + ' ', '')}</p>
+                                                        <p className="text-[11px] text-gray-400 font-medium group-hover:text-blue-500 transition-colors">{timeAgo(notif.createdAt)}</p>
                                                     </div>
                                                 </div>
                                             ))}

@@ -1,12 +1,15 @@
+"use client";
+
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import Image from "next/image";
 import Link from "next/link";
 import { Zap, Ticket, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
 
 export default function HomePage() {
-    // Mock data (giữ nguyên từ các phần trước)
+    // Mock data
     const coupons = [
         { title: "Save $5", desc: "Orders from $50", color: "bg-blue-600 hover:bg-blue-700" },
         { title: "Save $10", desc: "Orders from $100", color: "bg-blue-600 hover:bg-blue-700" },
@@ -15,90 +18,18 @@ export default function HomePage() {
     ];
 
     const recommendations = [
-        {
-            name: "Black Dog Ear Baseball Cap",
-            price: "$19.00",
-            oldPrice: "$29.00",
-            discount: "-34%",
-            image: "/images/hat-dog-black.png"
-        },
-        {
-            name: "Polka Dot Dog Ear Baseball Cap",
-            price: "$21.00",
-            oldPrice: "$29.00",
-            discount: "-27%",
-            image: "/images/hat-dog-dot.png"
-        },
-        {
-            name: "Bear Cub Ear Baseball Cap",
-            price: "$22.00",
-            oldPrice: "$32.00",
-            discount: "-31%",
-            image: "/images/hat-bear.png"
-        },
-        {
-            name: "White Bear Ear Baseball Cap",
-            price: "$20.00",
-            oldPrice: "$30.00",
-            discount: "-33%",
-            image: "/images/hat-bear-white.png"
-        },
-        {
-            name: "White Rabbit Ear Baseball Cap",
-            price: "$24.00",
-            oldPrice: "$35.00",
-            discount: "-31%",
-            image: "/images/placeholder-hat.png"
-        },
-        {
-            name: "Classic Beige Bucket Hat",
-            price: "$15.00",
-            oldPrice: "$25.00",
-            discount: "-40%",
-            image: "/images/hat-rabbit-white.png"
-        },
-        {
-            name: "Vintage Denim Cap",
-            price: "$18.00",
-            oldPrice: "$28.00",
-            discount: "-35%",
-            image: "/images/placeholder-hat.png"
-        },
-        {
-            name: "Minimalist Beanie",
-            price: "$12.00",
-            oldPrice: "$20.00",
-            discount: "-40%",
-            image: "/images/hat-dog-dot.png"
-        },
-        {
-            name: "Sport Visor Cap",
-            price: "$16.00",
-            oldPrice: "$26.00",
-            discount: "-38%",
-            image: "/images/placeholder-hat.png"
-        },
-        {
-            name: "Knit Winter Hat",
-            price: "$25.00",
-            oldPrice: "$40.00",
-            discount: "-37%",
-            image: "/images/hat-dog-black.png"
-        },
-        {
-            name: "Wide Brim Sun Hat",
-            price: "$28.00",
-            oldPrice: "$45.00",
-            discount: "-37%",
-            image: "/images/hat-rabbit-white.png"
-        },
-        {
-            name: "Kids Animal Ear Cap",
-            price: "$18.00",
-            oldPrice: "$28.00",
-            discount: "-35%",
-            image: "/images/placeholder-hat.png"
-        }
+        { name: "Black Dog Ear Baseball Cap", price: "$19.00", oldPrice: "$29.00", discount: "-34%", image: "/images/hat-dog-black.png" },
+        { name: "Polka Dot Dog Ear Baseball Cap", price: "$21.00", oldPrice: "$29.00", discount: "-27%", image: "/images/hat-dog-dot.png" },
+        { name: "Bear Cub Ear Baseball Cap", price: "$22.00", oldPrice: "$32.00", discount: "-31%", image: "/images/hat-bear.png" },
+        { name: "White Bear Ear Baseball Cap", price: "$20.00", oldPrice: "$30.00", discount: "-33%", image: "/images/hat-bear-white.png" },
+        { name: "White Rabbit Ear Baseball Cap", price: "$24.00", oldPrice: "$35.00", discount: "-31%", image: "/images/placeholder-hat.png" },
+        { name: "Classic Beige Bucket Hat", price: "$15.00", oldPrice: "$25.00", discount: "-40%", image: "/images/hat-rabbit-white.png" },
+        { name: "Vintage Denim Cap", price: "$18.00", oldPrice: "$28.00", discount: "-35%", image: "/images/placeholder-hat.png" },
+        { name: "Minimalist Beanie", price: "$12.00", oldPrice: "$20.00", discount: "-40%", image: "/images/hat-dog-dot.png" },
+        { name: "Sport Visor Cap", price: "$16.00", oldPrice: "$26.00", discount: "-38%", image: "/images/placeholder-hat.png" },
+        { name: "Knit Winter Hat", price: "$25.00", oldPrice: "$40.00", discount: "-37%", image: "/images/hat-dog-black.png" },
+        { name: "Wide Brim Sun Hat", price: "$28.00", oldPrice: "$45.00", discount: "-37%", image: "/images/hat-rabbit-white.png" },
+        { name: "Kids Animal Ear Cap", price: "$18.00", oldPrice: "$28.00", discount: "-35%", image: "/images/placeholder-hat.png" }
     ];
 
     const renderStars = (rating: number) => (
@@ -109,22 +40,39 @@ export default function HomePage() {
         </div>
     );
 
+    // Animation Variants
+    const fadeUp = {
+        hidden: { opacity: 0, y: 40 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+    };
+
+    const staggerContainer = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: { staggerChildren: 0.1 }
+        }
+    };
+
     return (
-        <div className="flex flex-col min-h-screen bg-[#F8F9FA]">
-            {/* 1. Header xuất hiện trên cùng */}
+        <div className="flex flex-col min-h-screen bg-[#F8F9FA] overflow-x-hidden">
             <Header />
 
-            {/* 2. Phần nội dung chính (Main) */}
-            <main className="flex-grow max-w-[1400px] mx-auto px-8 py-8 space-y-12">
+            <main className="flex-grow max-w-[1400px] mx-auto px-4 md:px-8 py-8 space-y-16">
 
                 {/* --- Hero Banner --- */}
-                <section className="grid grid-cols-3 gap-4 h-[350px]">
+                <motion.section 
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true, margin: "-100px" }}
+                    variants={fadeUp}
+                    className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[350px]"
+                >
                     {/* KHUNG LỚN (LEFT) */}
-                    <div className="col-span-2 bg-[#E2DFD8] rounded-xl relative overflow-hidden p-10 flex flex-col justify-center">
-                        {/* Thêm ảnh ở đây */}
-                        <div className="absolute inset-0 w-full h-full z-0">
+                    <div className="col-span-1 lg:col-span-2 bg-[#E2DFD8] rounded-2xl relative overflow-hidden p-10 flex flex-col justify-center shadow-sm h-[350px] lg:h-auto group">
+                        <div className="absolute inset-0 w-full h-full z-0 transition-transform duration-700 ease-out group-hover:scale-105">
                             <Image
-                                src="/images/hero-model.png" // Đường dẫn ảnh của bạn
+                                src="/images/hero-model.png" 
                                 alt="Fashion Model"
                                 fill
                                 className="object-cover object-right mix-blend-multiply"
@@ -132,183 +80,280 @@ export default function HomePage() {
                             />
                         </div>
 
-                        <div className="relative z-10">
-                            <span className="text-orange-500 font-bold text-xs tracking-widest mb-2 flex items-center gap-1">
-                                <Zap className="w-4 h-4 fill-orange-500 text-orange-500" /> FLASH SALE TODAY
-                            </span>
-                            <h2 className="text-4xl font-extrabold text-gray-900 mb-2">UP TO 50% OFF</h2>
-                            <p className="text-gray-600 text-sm mb-6">All fashion hat collections</p>
-                            <Button className="bg-white text-gray-900 hover:bg-gray-100 rounded-full px-8 font-semibold shadow-sm">
-                                Shop Now
-                            </Button>
+                        <div className="relative z-10 w-full max-w-lg">
+                            <motion.span 
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.3, duration: 0.5 }}
+                                className="inline-flex items-center gap-1.5 bg-orange-500/10 text-orange-600 px-3 py-1 rounded-full font-bold text-xs tracking-widest mb-4"
+                            >
+                                <Zap className="w-3.5 h-3.5 fill-orange-500" /> FLASH SALE TODAY
+                            </motion.span>
+                            <motion.h2 
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.4, duration: 0.5 }}
+                                className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-3 tracking-tight"
+                            >
+                                UP TO 50% OFF
+                            </motion.h2>
+                            <motion.p 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.5, duration: 0.5 }}
+                                className="text-gray-700 text-sm md:text-base mb-8 font-medium"
+                            >
+                                Discover the new fashion hat collections of the season.
+                            </motion.p>
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.6, duration: 0.5 }}
+                            >
+                                <Button className="bg-white text-gray-900 hover:bg-gray-50 rounded-full px-8 h-12 font-bold shadow-lg shadow-black/5 hover:-translate-y-1 transition-all duration-300">
+                                    Shop Collection
+                                </Button>
+                            </motion.div>
                         </div>
                     </div>
 
                     {/* 2 KHUNG NHỎ (RIGHT) */}
-                    <div className="col-span-1 grid grid-rows-2 gap-4">
-                        {/* Khung Bucket Hats */}
-                        <div className="rounded-xl p-6 relative flex flex-col justify-center overflow-hidden">
-                            {/* Ảnh nền phủ kín */}
-                            <div className="absolute inset-0 w-full h-full z-0">
-                                <Image
-                                    src="/images/bucket-hat.png"
-                                    alt="Bucket Hat"
-                                    fill
-                                    className="object-cover"
-                                />
+                    <div className="col-span-1 grid grid-rows-2 gap-6 hidden lg:grid">
+                        <motion.div 
+                            whileHover={{ y: -4, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05)" }}
+                            className="rounded-2xl p-6 relative flex flex-col justify-center overflow-hidden shadow-sm group border border-gray-100/50"
+                        >
+                            <div className="absolute inset-0 w-full h-full z-0 transition-transform duration-700 ease-in-out group-hover:scale-110">
+                                <Image src="/images/bucket-hat.png" alt="Bucket Hat" fill className="object-cover" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/40 to-transparent"></div>
                             </div>
-                            <div className="relative z-10">
-                                <h3 className="font-bold text-gray-900">Bucket Hats</h3>
-                                <p className="text-sm text-gray-500">From $5</p>
+                            <div className="relative z-10 mt-auto">
+                                <h3 className="font-extrabold text-white text-xl tracking-tight">Bucket Hats</h3>
+                                <p className="text-sm font-medium text-white/80">Starting at $5</p>
                             </div>
-                        </div>
+                        </motion.div>
 
-                        {/* Khung Baseball Caps */}
-                        <div className="rounded-xl p-6 relative flex flex-col justify-center overflow-hidden">
-                            {/* Ảnh nền phủ kín */}
-                            <div className="absolute inset-0 w-full h-full z-0">
-                                <Image
-                                    src="/images/baseball-cap.png"
-                                    alt="Baseball Cap"
-                                    fill
-                                    className="object-cover"
-                                />
+                        <motion.div 
+                            whileHover={{ y: -4, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05)" }}
+                            className="rounded-2xl p-6 relative flex flex-col justify-center overflow-hidden shadow-sm group border border-gray-100/50"
+                        >
+                            <div className="absolute inset-0 w-full h-full z-0 transition-transform duration-700 ease-in-out group-hover:scale-110">
+                                <Image src="/images/baseball-cap.png" alt="Baseball Cap" fill className="object-cover" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/40 to-transparent"></div>
                             </div>
-                            <div className="relative z-10">
-                                <h3 className="font-bold text-gray-900">Baseball Caps</h3>
-                                <p className="text-sm text-gray-500">From $4</p>
+                            <div className="relative z-10 mt-auto">
+                                <h3 className="font-extrabold text-white text-xl tracking-tight">Baseball Caps</h3>
+                                <p className="text-sm font-medium text-white/80">Starting at $4</p>
                             </div>
-                        </div>
+                        </motion.div>
                     </div>
-                </section>
+                </motion.section>
 
                 {/* --- Coupons --- */}
-                <section>
-                    <div className="flex items-center gap-2 mb-6">
-                        <Ticket className="w-6 h-6 text-yellow-500" />
-                        <h3 className="font-bold text-xl">Discount Codes</h3>
+                <motion.section 
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true, margin: "-50px" }}
+                    variants={staggerContainer}
+                >
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                            <Ticket className="w-5 h-5 text-yellow-600" />
+                        </div>
+                        <h3 className="font-black text-2xl tracking-tight text-gray-900">Discount Codes</h3>
                     </div>
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                         {coupons.map((coupon, i) => (
-                            <div key={i} className="bg-white border border-gray-100 rounded-xl p-5 text-center shadow-sm">
-                                <p className="font-bold text-blue-700 text-lg mb-1">{coupon.title}</p>
-                                <p className="text-xs text-gray-500 mb-4">{coupon.desc}</p>
-                                <Button className={`w-full h-9 text-xs font-bold ${coupon.color}`}>Save</Button>
-                            </div>
+                            <motion.div 
+                                key={i} 
+                                variants={fadeUp}
+                                whileHover={{ y: -4, scale: 1.02 }}
+                                className="bg-white border border-gray-100 rounded-2xl p-6 text-center shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] transition-all duration-300"
+                            >
+                                <p className="font-black text-blue-600 text-xl mb-1.5 tracking-tight">{coupon.title}</p>
+                                <p className="text-sm font-medium text-gray-500 mb-6">{coupon.desc}</p>
+                                <Button className={`w-full h-10 text-[13px] font-bold shadow-md shadow-blue-500/20 transition-all duration-300 ${coupon.color}`}>
+                                    Apply Now
+                                </Button>
+                            </motion.div>
                         ))}
                     </div>
-                </section>
+                </motion.section>
 
                 {/* --- Recommendations --- */}
-                <section className="bg-white rounded-2xl p-8 border shadow-sm">
+                <motion.section 
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true, margin: "-50px" }}
+                    variants={fadeUp}
+                    className="bg-white/80 backdrop-blur-sm rounded-[24px] p-6 md:p-10 border border-gray-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+                >
                     <div className="flex justify-between items-center mb-8">
-                        <h3 className="font-bold text-xl text-blue-700 uppercase tracking-tight">Product Recommendations</h3>
+                        <div>
+                            <h3 className="font-black text-2xl text-gray-900 tracking-tight">Recommended For You</h3>
+                            <p className="text-sm font-medium text-gray-500 mt-1">Handpicked styles based on your trend</p>
+                        </div>
                     </div>
-                    <div className="grid grid-cols-6 gap-6 mb-10">
+                    
+                    <motion.div 
+                        variants={staggerContainer}
+                        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-5 gap-y-8 mb-4"
+                    >
                         {recommendations.map((item, i) => (
-                            <div key={i} className="border border-gray-100 rounded-lg p-3 hover:shadow-md transition relative group">
-                                <span className="bg-yellow-100 text-yellow-700 text-[10px] font-bold px-1.5 py-0.5 rounded mb-2 inline-block relative z-10">
-                                    {item.discount}
-                                </span>
-                                <Link href="/user/productdetail" className="block aspect-square bg-gray-50 rounded mb-2 relative overflow-hidden flex items-center justify-center border border-gray-100">
-                                    <Image src={item.image || "/images/placeholder-hat.png"} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
-                                </Link>
-                                <Link href="/user/productdetail">
-                                    <h4 className="text-xs font-medium text-gray-800 line-clamp-2 mb-1 h-8 hover:text-blue-600 transition">{item.name}</h4>
+                            <motion.div 
+                                key={i} 
+                                variants={fadeUp}
+                                className="group relative"
+                            >
+                                <Link href="/user/productdetail" className="block relative mb-3">
+                                    <span className="absolute top-2 left-2 z-10 bg-[#FFECE5] text-[#F97316] text-[10px] font-black tracking-wider px-2 py-1 rounded-md shadow-sm">
+                                        {item.discount}
+                                    </span>
+                                    <div className="aspect-square bg-[#F8F9FA] rounded-xl overflow-hidden flex items-center justify-center border border-gray-100/50 transition-all duration-300 group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.05)] group-hover:border-transparent">
+                                        <Image src={item.image || "/images/placeholder-hat.png"} alt={item.name} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
+                                    </div>
+                                    
+                                    {/* Quick action button that appears on hover */}
+                                    <div className="absolute inset-x-0 bottom-3 flex justify-center opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-20">
+                                        <div className="bg-white/95 backdrop-blur shadow-lg border border-gray-100/50 rounded-full px-4 py-1.5 text-[11px] font-bold text-gray-900 hover:bg-gray-50 cursor-pointer">
+                                            Quick View
+                                        </div>
+                                    </div>
                                 </Link>
 
-                                <div className="flex items-baseline gap-1 mb-2">
-                                    <span className="text-blue-600 font-bold text-sm">{item.price}</span>
-                                    <span className="text-gray-400 text-[10px] line-through">{item.oldPrice}</span>
-                                </div>
+                                <div>
+                                    <div className="mb-2">
+                                        {renderStars(5)}
+                                    </div>
+                                    <Link href="/user/productdetail">
+                                        <h4 className="text-[13px] font-bold text-gray-800 line-clamp-2 leading-tight mb-2 hover:text-[#2563EB] transition-colors">{item.name}</h4>
+                                    </Link>
 
-                                <div className="flex justify-between items-center mt-2">
-                                    {renderStars(5)}
-                                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-[10px] h-6 px-3 rounded">
-                                        Buy
-                                    </Button>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-gray-900 font-black text-[15px]">{item.price}</span>
+                                            <span className="text-gray-400 font-medium text-[11px] line-through">{item.oldPrice}</span>
+                                        </div>
+                                        <button className="w-8 h-8 rounded-full bg-gray-50 hover:bg-[#2563EB] text-gray-500 hover:text-white flex items-center justify-center transition-all duration-300 border border-gray-200 hover:border-transparent shadow-sm">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            </motion.div>
                         ))}
-                    </div>
-                </section>
+                    </motion.div>
+                </motion.section>
 
                 {/* --- ABOUT US --- */}
-                <section className="bg-white rounded-xl p-8 border shadow-sm flex items-center gap-12">
-                    <div className="w-1/3 flex justify-center border-r border-gray-100 pr-8">
-                        <div className="text-center w-full flex justify-center">
-                            <Image
-                                src="/images/logo.png"
-                                alt="Motive SD"
-                                width={180}
-                                height={60}
-                                className="object-contain"
-                            />
-                        </div>
+                <motion.section 
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ duration: 0.7 }}
+                    className="bg-gradient-to-br from-white to-[#F8FAFC] rounded-[24px] p-10 md:p-14 border border-blue-50 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] flex flex-col md:flex-row items-center gap-12"
+                >
+                    <div className="w-full md:w-1/3 flex justify-center md:border-r border-gray-100/80 md:pr-10">
+                        <motion.div 
+                            whileHover={{ scale: 1.05 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                            className="bg-white p-6 rounded-2xl shadow-sm border border-gray-50 flex items-center justify-center w-[220px] h-[100px]"
+                        >
+                            <Image src="/images/logo.png" alt="Motive SD" width={180} height={60} className="object-contain" />
+                        </motion.div>
                     </div>
-                    <div className="w-2/3">
-                        <h3 className="font-bold text-blue-700 mb-4 text-lg">MOTIVE SD - Home of Headwear</h3>
-                        <div className="text-sm text-gray-600 space-y-3 leading-relaxed">
+                    <div className="w-full md:w-2/3">
+                        <h3 className="font-black text-[#1E3A8A] mb-5 text-2xl tracking-tight">MOTIVE SD <span className="text-gray-400 font-medium px-2">|</span> Home of Headwear</h3>
+                        <div className="text-[14px] text-gray-600 space-y-4 font-medium leading-relaxed max-w-3xl">
                             <p>Welcome to Motive SD - your ideal destination for finding high-quality caps, hats, and beanies. Since the beginning of our journey, we have continuously grown to become a trusted online store serving customers in many countries around the world.</p>
-                            <p>Motive SD is headquartered in South Korea, and all of our products are shipped directly from there. With experience in the industry and the trust of thousands of customers, we aim to be more than just an online store - we strive to be a reliable partner for all your headwear needs.</p>
-                            <p>We are committed to delivering high-quality products. Every item we offer is carefully selected and authentic, so you can shop with confidence. At Motive SD, we constantly work to expand our product range, bringing fresh and exciting options to suit every style and preference.</p>
+                            <p>Headquartered in South Korea, all of our products are shipped directly from there. With extensive industry experience, we aim to be more than just a store - we strive to be a reliable partner for all your headwear needs.</p>
+                            <p>We are committed to delivering excellence. Every item we offer is carefully selected and authentic, ensuring you can shop with complete confidence and discover fresh options to suit your personal style.</p>
                         </div>
                     </div>
-                </section>
+                </motion.section>
 
                 {/* --- CUSTOMER REVIEWS --- */}
-                <section className="bg-white rounded-xl p-8 border shadow-sm flex gap-12">
+                <motion.section 
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true, margin: "-50px" }}
+                    variants={staggerContainer}
+                    className="bg-white rounded-[24px] p-8 md:p-12 border border-gray-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col xl:flex-row gap-12"
+                >
                     {/* Review Stats */}
-                    <div className="w-1/4">
-                        <div className="flex items-center gap-2 mb-6">
-                            <span className="text-yellow-400 text-xl">⭐</span>
-                            <h3 className="font-bold text-lg">Customer Reviews</h3>
+                    <motion.div variants={fadeUp} className="w-full xl:w-1/4">
+                        <div className="flex items-center gap-3 mb-8">
+                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+                                <span className="text-blue-600 text-lg">⭐</span>
+                            </div>
+                            <h3 className="font-black text-2xl tracking-tight text-gray-900">Real Reviews</h3>
                         </div>
-                        <div className="flex gap-6 items-center">
+                        <div className="flex gap-8 items-center bg-[#F8FAFC] p-6 rounded-2xl border border-gray-100">
                             <div className="text-center">
-                                <p className="text-5xl font-extrabold text-blue-600">4.8</p>
-                                <div className="text-yellow-400 text-sm my-2">★★★★★</div>
-                                <p className="text-[10px] text-gray-500">Based on<br />12,345 reviews</p>
+                                <p className="text-6xl font-black text-gray-900 tracking-tighter">4.8</p>
+                                <div className="text-yellow-400 text-sm my-3">{renderStars(5)}</div>
+                                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-tight">12,345<br/>Ratings</p>
                             </div>
-                            <div className="flex-1 space-y-2 text-[10px] font-medium text-gray-500">
-                                <div className="flex items-center gap-2"><span>5 Stars</span><div className="h-1.5 w-full bg-gray-100 rounded"><div className="h-full bg-yellow-400 rounded w-[85%]"></div></div><span>9,256</span></div>
-                                <div className="flex items-center gap-2"><span>4 Stars</span><div className="h-1.5 w-full bg-gray-100 rounded"><div className="h-full bg-yellow-400 rounded w-[10%]"></div></div><span>1,552</span></div>
-                                <div className="flex items-center gap-2"><span>3 Stars</span><div className="h-1.5 w-full bg-gray-100 rounded"><div className="h-full bg-yellow-400 rounded w-[3%]"></div></div><span>864</span></div>
-                                <div className="flex items-center gap-2"><span>2 Stars</span><div className="h-1.5 w-full bg-gray-100 rounded"><div className="h-full bg-yellow-400 rounded w-[1%]"></div></div><span>247</span></div>
-                                <div className="flex items-center gap-2"><span>1 Star</span><div className="h-1.5 w-full bg-gray-100 rounded"><div className="h-full bg-yellow-400 rounded w-[0.5%]"></div></div><span>123</span></div>
+                            <div className="flex-1 space-y-2.5 text-[11px] font-bold text-gray-500">
+                                {[
+                                    { s: '5', pct: '85', cnt: '9.2k' },
+                                    { s: '4', pct: '10', cnt: '1.5k' },
+                                    { s: '3', pct: '3', cnt: '864' },
+                                    { s: '2', pct: '1', cnt: '247' },
+                                    { s: '1', pct: '0.5', cnt: '123' },
+                                ].map((row) => (
+                                    <div key={row.s} className="flex items-center gap-3">
+                                        <span className="w-8 text-right">{row.s} ★</span>
+                                        <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                                            <motion.div 
+                                                initial={{ width: 0 }}
+                                                whileInView={{ width: `${row.pct}%` }}
+                                                transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
+                                                viewport={{ once: true }}
+                                                className="h-full bg-[#F59E0B] rounded-full"
+                                            ></motion.div>
+                                        </div>
+                                        <span className="w-8">{row.cnt}</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* Card Review */}
-                    <div className="w-3/4 grid grid-cols-3 gap-4">
-                        {[1, 2, 3].map((_, idx) => (
-                            <div key={idx} className="border border-gray-100 rounded-lg p-5 hover:shadow-md transition">
-                                <div className="flex justify-between items-start mb-3">
-                                    <div className="text-yellow-400 text-sm">★★★★★</div>
-                                    <span className="text-gray-400 text-[10px] font-bold">5/5</span>
+                    <div className="w-full xl:w-3/4 grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {[
+                            { name: "Rose Park", date: "2 days ago", text: "Highly recommend this store! The quality is amazing, shipping was fast, and the hat looks exactly like the pictures. Will buy again!" },
+                            { name: "James Smith", date: "1 week ago", text: "Fit is perfect and the material feels very premium. It took a while to arrive but the customer service was extremely helpful tracking it." },
+                            { name: "Linda Chen", date: "Memory style", text: "I bought the vintage denim cap and I wear it everywhere now. The stitch work is incredible for the price point." }
+                        ].map((review, idx) => (
+                            <motion.div 
+                                key={idx} 
+                                variants={fadeUp}
+                                whileHover={{ y: -5, boxShadow: "0 10px 30px -10px rgba(0,0,0,0.1)" }}
+                                className="border border-gray-100/80 rounded-2xl p-6 bg-white transition-all duration-300 flex flex-col"
+                            >
+                                <div className="flex inset-x items-center gap-1 mb-4">
+                                    {renderStars(5)}
                                 </div>
-                                <h4 className="font-bold text-sm mb-2 text-gray-800">Great Quality Hat!</h4>
-                                <p className="text-xs text-gray-600 mb-5 line-clamp-3 leading-relaxed">
-                                    Highly recommend this store! The quality is amazing, shipping was fast, and the hat looks exactly like the pictures. Will buy again!
+                                <h4 className="font-bold text-[15px] mb-3 text-gray-900 leading-tight">Great Quality Hat!</h4>
+                                <p className="text-[13px] text-gray-500 mb-6 leading-relaxed font-medium flex-grow">
+                                    "{review.text}"
                                 </p>
-                                <div className="flex items-center gap-3 mt-auto pt-2 border-t border-gray-50">
-                                    <div className="relative w-8 h-8 bg-gray-200 rounded-full overflow-hidden">
-                                        {/* Avatar Reviewer */}
-                                        <Image src="/images/avatar-placeholder.jpg" alt="User Avatar" fill className="object-cover" />
+                                <div className="flex items-center gap-3 mt-auto pt-4 border-t border-gray-100/50">
+                                    <div className="w-9 h-9 bg-gradient-to-br from-blue-100 to-blue-50 rounded-full overflow-hidden flex items-center justify-center font-bold text-blue-700 text-[13px]">
+                                        {review.name.charAt(0)}
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-bold text-gray-800">By: Rose Park</p>
-                                        <p className="text-[9px] text-gray-400">10 days ago</p>
+                                        <p className="text-[12px] font-bold text-gray-900 leading-tight">{review.name}</p>
+                                        <p className="text-[11px] font-medium text-gray-400 mt-0.5">{review.date}</p>
                                     </div>
                                 </div>
-                            </div>
+                            </motion.div>
                         ))}
                     </div>
-                </section>
+                </motion.section>
             </main>
 
-            {/* 3. Footer nằm dưới cùng */}
             <Footer />
         </div>
     );

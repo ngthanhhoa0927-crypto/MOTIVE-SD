@@ -58,6 +58,7 @@ export const products = pgTable("products", {
     id: serial("id").primaryKey(),
     category_id: integer("category_id").references(() => categories.id).notNull(),
     collection_id: integer("collection_id").references(() => collections.id),
+    brand: varchar("brand", { length: 255 }),
     name: varchar("name", { length: 255 }).notNull(),
     slug: varchar("slug", { length: 255 }).notNull().unique(),
     base_price: decimal("base_price", { precision: 18, scale: 2 }).notNull(),
@@ -129,5 +130,25 @@ export const auditLogs = pgTable("audit_logs", {
     dataAfter: text("data_after"), // JSON snapshot after action
     status: varchar("status", { length: 20 }).default("success"), // "success", "failed"
     errorMessage: varchar("error_message", { length: 500 }), // If failed
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Notification system for admin panel
+export const notificationTypeEnum = pgEnum("notification_type", [
+    "account_created",
+    "order_placed",
+    "account_deleted",
+    "order_confirmed",
+    "password_changed",
+]);
+
+export const notifications = pgTable("notifications", {
+    id: serial("id").primaryKey(),
+    type: notificationTypeEnum("type").notNull(),
+    userId: integer("user_id"),
+    userName: varchar("user_name", { length: 255 }).notNull(),
+    userAvatar: varchar("user_avatar", { length: 500 }),
+    message: varchar("message", { length: 500 }).notNull(),
+    isRead: boolean("is_read").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
 });

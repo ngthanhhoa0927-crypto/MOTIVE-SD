@@ -9,6 +9,7 @@ import { sign, verify } from "hono/jwt";
 import { sendOtpEmail, sendResetPasswordEmail } from "../utils/email.js";
 import { getPresignedDownloadUrl } from "../utils/s3.js";
 import { logAudit, getUserDataSnapshot, createChangeDiff } from "../utils/audit.js";
+import { createNotification } from "../utils/notification.js";
 import * as crypto from "crypto";
 const authRouter = new Hono();
 
@@ -23,17 +24,17 @@ export const authMiddleware = async (c: any, next: any) => {
     try {
         const decoded = await verify(token, process.env.JWT_SECRET!, "HS256") as any;
         c.set("jwtPayload", decoded);
-        
+
         // Check if user account is still active
         const userId = decoded.sub as number;
         const userRecord = await db.select().from(users).where(eq(users.id, userId));
-        
+
         if (userRecord.length === 0) {
             return c.json({ message: "User not found" }, 404);
         }
-        
+
         const user = userRecord[0];
-        
+
         // If user is disabled, reject the request
         if (!user.isActive) {
             return c.json({
@@ -43,7 +44,7 @@ export const authMiddleware = async (c: any, next: any) => {
                 disabledAt: user.disabledAt
             }, 403);
         }
-        
+
         await next();
     } catch (error) {
         return c.json({ message: "Invalid token" }, 401);
@@ -98,7 +99,7 @@ authRouter.post(
 
             // Tìm OTP chưa dùng, kiểu registration
             const latestOtp = otpRecord.find(o => o.type === "registration" && !o.is_used);
-            
+
             if (!latestOtp) {
                 return c.json({ message: "Invalid OTP" }, 400);
             }
@@ -132,6 +133,13 @@ authRouter.post(
                 .update(otps)
                 .set({ is_used: true })
                 .where(eq(otps.id, latestOtp.id));
+
+            // Create admin notification
+            await createNotification({
+                type: "account_created",
+                userName: full_name,
+                message: `${full_name} created a new account`,
+            });
 
             return c.json({ message: "User registered successfully", user }, 201);
 
@@ -325,6 +333,15 @@ authRouter.put(
                     updatedAt: new Date(),
                 })
                 .where(eq(users.id, userId));
+
+            // Create admin notification for password change
+            await createNotification({
+                type: "password_changed",
+                userId: userId,
+                userName: user.full_name,
+                userAvatar: user.avatar_url || undefined,
+                message: `${user.full_name} changed their password`,
+            });
 
             return c.json({
                 message: "Password changed successfully",
@@ -611,6 +628,15 @@ authRouter.delete("/users/:id", authMiddleware, adminMiddleware, async (c) => {
             description: `Deleted user: ${targetUser.email} (${targetUser.full_name})`,
             dataBefore: userDataSnapshot,
             status: "success",
+        });
+
+        // Create admin notification
+        await createNotification({
+            type: "account_deleted",
+            userId: id,
+            userName: targetUser.full_name,
+            userAvatar: targetUser.avatar_url || undefined,
+            message: `${targetUser.full_name} account is deleted`,
         });
 
         return c.json({ message: "User deleted successfully" }, 200);
@@ -919,6 +945,15 @@ authRouter.post(
             await db
                 .delete(otps)
                 .where(eq(otps.email, email));
+
+            // Create admin notification for password reset
+            await createNotification({
+                type: "password_changed",
+                userId: user.id,
+                userName: user.full_name,
+                userAvatar: user.avatar_url || undefined,
+                message: `${user.full_name} reset their password`,
+            });
 
             return c.json({
                 message: "Password reset successfully",

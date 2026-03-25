@@ -23,7 +23,7 @@ export default function CustomersPage() {
 
     const fetchUsers = async () => {
         setIsLoading(true);
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('admin_token');
         try {
             const res = await fetch("http://localhost:8000/auth/users", {
                 headers: { "Authorization": `Bearer ${token}` }
@@ -73,7 +73,7 @@ export default function CustomersPage() {
 
     const handleUpdateUser = async () => {
         if (!selectedUser) return;
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('admin_token');
         try {
             const res = await fetch(`http://localhost:8000/auth/users/${selectedUser.id}`, {
                 method: 'PUT',
@@ -98,7 +98,7 @@ export default function CustomersPage() {
 
     const handleDeleteUser = async () => {
         if (!selectedUser) return;
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('admin_token');
         try {
             const res = await fetch(`http://localhost:8000/auth/users/${selectedUser.id}`, {
                 method: 'DELETE',
