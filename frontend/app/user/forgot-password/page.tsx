@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Playfair_Display, Inter } from "next/font/google";
 import Link from "next/link";
+import { isValidEmail } from "@/lib/validation";
 
 const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "500", "600", "700"], style: ["normal", "italic"] });
 const inter = Inter({ subsets: ["latin"] });
@@ -13,14 +14,53 @@ export default function ForgotPasswordPage() {
     const [emailError, setEmailError] = useState("");
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+
+    // Debounced email check
+    useEffect(() => {
+        const checkEmail = async () => {
+            if (!email.trim() || !isValidEmail(email)) {
+                setEmailError("");
+                return;
+            }
+
+            setIsCheckingEmail(true);
+            try {
+                // We use the /login endpoint as a way to check if an email exists without side effects
+                const res = await fetch("http://localhost:8000/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password: "dummy_check_existence" }),
+                });
+
+                const data = await res.json();
+
+                if (res.status === 401 && data.code === "EMAIL_NOT_FOUND") {
+                    setEmailError("không có tài khoản nào sử dụng email này");
+                } else {
+                    setEmailError("");
+                }
+            } catch (error) {
+                console.error("Error checking email existence:", error);
+            } finally {
+                setIsCheckingEmail(false);
+            }
+        };
+
+        const timer = setTimeout(() => {
+            checkEmail();
+        }, 800);
+
+        return () => clearTimeout(timer);
+    }, [email]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setEmailError("");
+        
+        if (emailError) return;
 
         // Simple validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!email.trim() || !emailRegex.test(email)) {
+        if (!email.trim() || !isValidEmail(email)) {
             setEmailError("Enter a valid email address");
             return;
         }
@@ -82,17 +122,23 @@ export default function ForgotPasswordPage() {
                                             setEmail(e.target.value);
                                             if (emailError) setEmailError("");
                                         }}
-                                        className={`w-full py-3.5 pl-4 pr-12 bg-white border ${emailError ? 'border-red-500 text-red-500 placeholder-red-300' : 'border-gray-200'} rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all`}
+                                        className={`w-full py-3.5 pl-4 pr-12 bg-white border ${emailError ? 'border-red-500 text-red-500 placeholder-red-300' : 'border-gray-200'} rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all font-medium`}
                                     />
-                                    <svg className={`absolute right-4 top-4 w-5 h-5 ${emailError ? 'text-red-400' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                    </svg>
+                                    <div className="absolute right-4 top-4 flex items-center">
+                                        {isCheckingEmail ? (
+                                            <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                                        ) : (
+                                            <svg className={`w-5 h-5 ${emailError ? 'text-red-400' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg>
+                                        )}
+                                    </div>
                                     {emailError && <p className="text-[11px] font-medium text-red-500 mt-1.5 ml-1">{emailError}</p>}
                                 </div>
 
                                 <button
                                     type="submit"
-                                    disabled={isLoading}
+                                    disabled={isLoading || isCheckingEmail || !!emailError}
                                     className="w-full py-3.5 mt-6 rounded-md text-xs font-semibold tracking-widest uppercase transition-colors bg-[#2C2B29] hover:bg-black text-white disabled:bg-gray-400"
                                 >
                                     {isLoading ? "Processing..." : "Request Reset Link"}

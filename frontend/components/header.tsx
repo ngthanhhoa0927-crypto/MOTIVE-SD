@@ -129,7 +129,10 @@ export default function Header() {
                     setAvatar(data.profile.avatar_view_url);
                 }
             })
-            .catch(err => console.error("Failed to fetch header avatar:", err));
+            .catch(() => {
+                // Ignore fetch failure (e.g., backend down) to avoid Next.js error overlay
+                console.log("Backend not reachable for avatar fetch.");
+            });
         }
 
         return () => {
@@ -144,6 +147,14 @@ export default function Header() {
         setIsDropdownOpen(false);
         setIsCartOpen(false);
     }, [pathname]);
+
+    const handleSearchSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (searchQuery.trim()) {
+            setIsDropdownOpen(false);
+            router.push(`/user/search?q=${encodeURIComponent(searchQuery.trim())}`);
+        }
+    };
 
     const handleLogout = () => {
         localStorage.removeItem("token");
@@ -163,7 +174,7 @@ export default function Header() {
 
                 {/* Search Bar */}
                 <div className="flex-1 max-w-2xl mx-8 relative" ref={dropdownRef}>
-                    <div className="flex border-2 border-blue-600 rounded-md overflow-hidden h-10 bg-white">
+                    <form onSubmit={handleSearchSubmit} className="flex border-2 border-blue-600 rounded-md overflow-hidden h-10 bg-white">
                         <input
                             type="text"
                             placeholder="Search fashion hats..."
@@ -177,10 +188,10 @@ export default function Header() {
                                 if (searchQuery.length > 0) setIsDropdownOpen(true);
                             }}
                         />
-                        <button className="bg-blue-600 px-6 flex items-center justify-center hover:bg-blue-700 transition">
-                            <Link href="/user/search"><Search className="w-4 h-4 text-white" /></Link>
+                        <button type="submit" className="bg-blue-600 px-6 flex items-center justify-center hover:bg-blue-700 transition">
+                            <Search className="w-4 h-4 text-white" />
                         </button>
-                    </div>
+                    </form>
 
                     {/* Search Dropdown */}
                     {isDropdownOpen && (
@@ -189,7 +200,7 @@ export default function Header() {
                                 <ul className="py-2">
                                     {filteredProducts.map((product, idx) => (
                                         <li key={idx} className="hover:bg-gray-50 border-b border-gray-50 last:border-0 transition">
-                                            <Link href="/user/productdetail" className="flex items-center gap-3 px-4 py-2" onClick={() => setIsDropdownOpen(false)}>
+                                            <Link href={`/user/productdetail/${idx + 1}`} className="flex items-center gap-3 px-4 py-2" onClick={() => setIsDropdownOpen(false)}>
                                                 <div className="relative w-12 h-12 rounded overflow-hidden bg-gray-100 flex-shrink-0">
                                                     <Image src={product.image} alt={product.name} fill className="object-cover" />
                                                 </div>

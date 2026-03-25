@@ -21,6 +21,8 @@ export default function LoginPage() {
     const [emailError, setEmailError] = useState("");
     const [passwordError, setPasswordError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
+    const [hasAttemptedAutoLogin, setHasAttemptedAutoLogin] = useState(false);
 
     useEffect(() => {
         const checkLockStatus = () => {
@@ -56,6 +58,21 @@ export default function LoginPage() {
         return () => clearInterval(interval);
     }, [email, errorType]);
 
+    useEffect(() => {
+        if (!hasAttemptedAutoLogin) {
+            setHasAttemptedAutoLogin(true);
+            const savedEmail = localStorage.getItem("remembered_email");
+            const savedPass = localStorage.getItem("remembered_password");
+            
+            if (savedEmail && savedPass) {
+                setEmail(savedEmail);
+                setPassword(savedPass);
+                setRememberMe(true);
+                performLogin(savedEmail, savedPass, true);
+            }
+        }
+    }, [hasAttemptedAutoLogin]);
+
     const handleEmailBlur = () => {
         if (!email.trim()) {
             setEmailError("Email is required");
@@ -64,29 +81,37 @@ export default function LoginPage() {
         setEmailError("");
     };
 
-
-    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+    const performLogin = async (loginEmail: string, loginPass: string, isRemember: boolean = rememberMe) => {
         setError("");
         setErrorType("");
         setEmailError("");
         setPasswordError("");
 
-        const lockedUntil = localStorage.getItem(`locked_until_${email}`);
+        const lockedUntil = localStorage.getItem(`locked_until_${loginEmail}`);
         if (lockedUntil && Date.now() < parseInt(lockedUntil)) {
             const minutesLeft = Math.ceil((parseInt(lockedUntil) - Date.now()) / 60000);
             setErrorType("locked");
             setError(`Too many login attempts. Please try again in ${minutesLeft} minute${minutesLeft > 1 ? 's' : ''}.`);
             return;
         } else if (lockedUntil && Date.now() >= parseInt(lockedUntil)) {
-            localStorage.removeItem(`locked_until_${email}`);
-            localStorage.removeItem(`failed_login_attempts_${email}`);
+            localStorage.removeItem(`locked_until_${loginEmail}`);
+            localStorage.removeItem(`failed_login_attempts_${loginEmail}`);
         }
 
         setIsLoading(true);
 
+        const handleSuccess = () => {
+            if (isRemember) {
+                localStorage.setItem("remembered_email", loginEmail);
+                localStorage.setItem("remembered_password", loginPass);
+            } else {
+                localStorage.removeItem("remembered_email");
+                localStorage.removeItem("remembered_password");
+            }
+        };
+
         // DEV BYPASS: Allow logging in as admin without backend, xóa đi khi backend đã có acc admin
-        if (email === "admin@motive.sd" && password === "admin") {
+        if (loginEmail === "admin@motive.sd" && loginPass === "admin") {
             // Create a fake token with admin role
             const fakePayload = {
                 sub: 1,
@@ -98,6 +123,7 @@ export default function LoginPage() {
             const fakeToken = `fake.${btoa(JSON.stringify(fakePayload))}.fake`;
 
             localStorage.setItem("admin_token", fakeToken);
+            handleSuccess();
             router.push('/admin/customers');
             setIsLoading(false);
             return;
@@ -116,6 +142,7 @@ export default function LoginPage() {
             const fakeToken = `fake.${btoa(JSON.stringify(fakePayload))}.fake`;
 
             localStorage.setItem("token", fakeToken);
+            handleSuccess();
             router.push('/user/homepage');
             setIsLoading(false);
             return;
@@ -125,7 +152,7 @@ export default function LoginPage() {
             const res = await fetch("http://localhost:8000/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ email: loginEmail, password: loginPass }),
             });
 
             const data = await res.json();
@@ -169,6 +196,7 @@ export default function LoginPage() {
                 const payload = JSON.parse(atob(data.token.split('.')[1]));
                 if (payload.role === 'admin') {
                     localStorage.setItem("admin_token", data.token);
+                    handleSuccess();
                     router.push('/admin/customers');
                     return;
                 }
@@ -180,8 +208,10 @@ export default function LoginPage() {
             localStorage.setItem("token", data.token);
 
             // Reset failed attempts on successful login
-            localStorage.removeItem(`failed_login_attempts_${email}`);
-            localStorage.removeItem(`locked_until_${email}`);
+            localStorage.removeItem(`failed_login_attempts_${loginEmail}`);
+            localStorage.removeItem(`locked_until_${loginEmail}`);
+
+            handleSuccess();
 
             // Redirect to homepage for normal users
             router.push("/user/homepage");
@@ -191,13 +221,13 @@ export default function LoginPage() {
                     setErrorType("error");
                     setError("Invalid email or password");
                 } else if (err.message === "INCORRECT_PASSWORD") {
-                    let attempts = parseInt(localStorage.getItem(`failed_login_attempts_${email}`) || "0");
+                    let attempts = parseInt(localStorage.getItem(`failed_login_attempts_${loginEmail}`) || "0");
                     attempts += 1;
-                    localStorage.setItem(`failed_login_attempts_${email}`, attempts.toString());
+                    localStorage.setItem(`failed_login_attempts_${loginEmail}`, attempts.toString());
                     
                     if (attempts >= 5) {
                         const lockTime = Date.now() + 30 * 60 * 1000;
-                        localStorage.setItem(`locked_until_${email}`, lockTime.toString());
+                        localStorage.setItem(`locked_until_${loginEmail}`, lockTime.toString());
                         setErrorType("locked");
                         setError("Too many login attempts. Please try again in 30 minutes.");
                     } else {
@@ -227,6 +257,11 @@ export default function LoginPage() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        performLogin(email, password, rememberMe);
     };
 
     return (
@@ -350,6 +385,8 @@ export default function LoginPage() {
                                 <input
                                     type="checkbox"
                                     id="remember"
+                                    checked={rememberMe}
+                                    onChange={(e) => setRememberMe(e.target.checked)}
                                     className="w-4 h-4 border-gray-300 rounded text-black focus:ring-black accent-black"
                                 />
                                 <label htmlFor="remember" className="text-sm text-gray-500 cursor-pointer">

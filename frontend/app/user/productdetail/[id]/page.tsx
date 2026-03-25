@@ -54,8 +54,19 @@ export default function ProductDetailsPage() {
     const [selectedSize, setSelectedSize] = useState<string>("M");
     const [selectedImageIdx, setSelectedImageIdx] = useState(0);
     const [quantity, setQuantity] = useState<number | string>(1);
-    const [activeTab, setActiveTab] = useState("review"); // Default to review for demo
+    const [activeTab, setActiveTab] = useState("description"); // Default to description
     const [isOutOfStock, setIsOutOfStock] = useState(false);
+    const [reviewRating, setReviewRating] = useState(0);
+    const [hoverRating, setHoverRating] = useState(0);
+    const [reviewText, setReviewText] = useState("");
+    const [reviews, setReviews] = useState([
+        { name: "SOPHIA MARTINEZ", role: "PRO SHOPPER", date: "2 HOURS AGO", text: "The quality of the wool is outstanding. I've worn it in -10°C weather and the ear flaps kept me incredibly warm. The leather strap is a nice premium touch that usually you only see on much more expensive designer brands.", rating: 5 },
+        { name: "LIAM ANDERSON", role: "ADVENTURE LOVER", date: "YESTERDAY", text: "Classic look with modern performance. The red plaid pattern is vibrant but elegant. Fast shipping to the UK too. Definitely picking up the gray version next week.", rating: 5 }
+    ]);
+    const [reviewError, setReviewError] = useState("");
+    const [reviewSuccess, setReviewSuccess] = useState("");
+    const [isZooming, setIsZooming] = useState(false);
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0, bgX: 0, bgY: 0, bgWidth: 0, bgHeight: 0 });
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -72,7 +83,8 @@ export default function ProductDetailsPage() {
                     }
                 }
             } catch (error) {
-                console.error("Failed to fetch product from BE:", error);
+                // Ignore fetch errors during UI development to prevent Next.js screen-covering error overlay
+                console.log("Backend not reachable for product fetch.");
             } finally {
                 setLoading(false);
             }
@@ -80,6 +92,39 @@ export default function ProductDetailsPage() {
 
         fetchProduct();
     }, []);
+
+    // ====== GENERATE MOCK VARIANTS WITH STOCK ======
+    const mockVariants = [
+        { color: "Red", size: "S", stock: 12 },
+        { color: "Red", size: "M", stock: 5 },
+        { color: "Red", size: "L", stock: 0 }, // Out of stock sample
+        { color: "Red", size: "XL", stock: 3 },
+        { color: "Gray", size: "S", stock: 0 }, // Out of stock sample
+        { color: "Gray", size: "M", stock: 8 },
+        { color: "Gray", size: "L", stock: 15 },
+        { color: "Gray", size: "XL", stock: 2 },
+        { color: "White", size: "S", stock: 10 },
+        { color: "White", size: "M", stock: 20 },
+        { color: "White", size: "L", stock: 5 },
+        { color: "White", size: "XL", stock: 0 }, // Out of stock sample
+        { color: "Black", size: "S", stock: 7 },
+        { color: "Black", size: "M", stock: 0 }, // Out of stock sample
+        { color: "Black", size: "L", stock: 12 },
+        { color: "Black", size: "XL", stock: 18 },
+    ];
+
+    const currentVariant = mockVariants.find(v => v.color === selectedColor && v.size === selectedSize);
+    const availableStock = currentVariant ? currentVariant.stock : 0;
+
+    useEffect(() => {
+        setIsOutOfStock(availableStock <= 0);
+        // If current quantity exceeds new stock limit, clamp it
+        if (Number(quantity) > availableStock && availableStock > 0) {
+            setQuantity(availableStock);
+        } else if (availableStock === 0) {
+            setQuantity(1);
+        }
+    }, [selectedColor, selectedSize, availableStock]);
 
     if (loading) {
         return (
@@ -99,12 +144,32 @@ export default function ProductDetailsPage() {
         description: "Premium quality outdoor headwear with insulated fold-down ear flaps designed for ultimate warmth and style during the colder months.",
         base_price: "45.00",
         original_price: "65.00",
-        images: [
-            "/images/hat-dog-red.png", 
-            "/images/hat-rabbit-white.png", 
-            "/images/hat-dog-gray.png", 
-            "/images/hat-dog-black.png"
-        ],
+        colorImages: {
+            "Red": [
+                "/images/hat-dog-dot.png", 
+                "/images/placeholder-hat.png",
+                "/images/baseball-cap.png",
+                "/images/hat-rabbit-white.png"
+            ],
+            "Gray": [
+                "/images/hat-bear.png", 
+                "/images/placeholder-hat.png",
+                "/images/bucket-hat.png",
+                "/images/hat-dog-black.png"
+            ],
+            "White": [
+                "/images/hat-rabbit-white.png", 
+                "/images/hat-bear-white.png",
+                "/images/placeholder-hat.png",
+                "/images/hat-dog-dot.png"
+            ],
+            "Black": [
+                "/images/hat-dog-black.png", 
+                "/images/baseball-cap.png",
+                "/images/placeholder-hat.png",
+                "/images/hat-bear.png"
+            ]
+        },
         colors: [
             { name: "Red", hex: "#B91C1C" },
             { name: "Gray", hex: "#4B5563" },
@@ -114,9 +179,70 @@ export default function ProductDetailsPage() {
         sizes: ["S", "M", "L", "XL"]
     };
 
+    const handleAddToCart = () => {
+        if (!inStock) return;
+        
+        const qty = Number(quantity);
+        if (qty > availableStock) {
+            alert(`Sorry, we only have ${availableStock} items in stock for ${selectedColor} - ${selectedSize}.`);
+            setQuantity(availableStock);
+            return;
+        }
+
+        alert(`Successfully added ${qty} items of ${selectedColor} - ${selectedSize} to cart!`);
+    };
+
+    const handlePostReview = () => {
+        setReviewError("");
+        setReviewSuccess("");
+
+        if (!reviewText.trim()) {
+            setReviewError("Please write something before posting.");
+            return;
+        }
+        if (reviewRating === 0) {
+            setReviewError("Please select a rating.");
+            return;
+        }
+
+        const newReview = {
+            name: "YOU",
+            role: "VERIFIED BUYER",
+            date: "JUST NOW",
+            text: reviewText,
+            rating: reviewRating
+        };
+
+        setReviews([newReview, ...reviews]);
+        setReviewText("");
+        setReviewRating(0);
+        setHoverRating(0);
+        setReviewSuccess("Thanks for your review!");
+        setTimeout(() => setReviewSuccess(""), 3000); // Clear success msg shortly
+    };
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+        const px = e.clientX - left;
+        const py = e.clientY - top;
+        const x = (px / width) * 100;
+        const y = (py / height) * 100;
+
+        const zoomLevel = 2.5; // 2.5x zoom for high-detail view
+        const boxSize = 256; // w-64 h-64 in Tailwind is 256px
+        const boxCenter = boxSize / 2;
+
+        const bgWidth = width * zoomLevel;
+        const bgHeight = height * zoomLevel;
+        const bgX = boxCenter - px * zoomLevel;
+        const bgY = boxCenter - py * zoomLevel;
+
+        setMousePos({ x, y, bgX, bgY, bgWidth, bgHeight });
+    };
+
     const inStock = !isOutOfStock;
     const currentPrice = mockProduct.base_price;
-    const displayImages = mockProduct.images;
+    const displayImages = mockProduct.colorImages[selectedColor as keyof typeof mockProduct.colorImages] || mockProduct.colorImages["Red"];
 
     const renderStars = (rating: number, size = "w-3 h-3") => (
         <div className="flex gap-[2px]">
@@ -145,15 +271,41 @@ export default function ProductDetailsPage() {
 
                     {/* Left Col: Gallery */}
                     <div className="space-y-4">
-                        <div className="aspect-square bg-[#F8F9FA] rounded-3xl relative overflow-hidden flex items-center justify-center p-12 group cursor-zoom-in border border-gray-50">
+                        <div 
+                            className={`aspect-square bg-[#F8F9FA] rounded-3xl relative overflow-hidden flex items-center justify-center group border border-gray-50 ${isZooming ? "cursor-none" : "cursor-zoom-in"}`}
+                            onMouseMove={isZooming ? handleMouseMove : undefined}
+                            onClick={(e) => {
+                                if (!isZooming) {
+                                    handleMouseMove(e); // Initialize position immediately
+                                }
+                                setIsZooming(!isZooming);
+                            }}
+                            onMouseLeave={() => setIsZooming(false)}
+                        >
                             <Image
                                 src={displayImages[selectedImageIdx]}
                                 alt="Product"
                                 fill
-                                className="object-contain p-12 group-hover:scale-110 transition-transform duration-700 ease-out"
+                                className="object-contain p-12 transition-transform duration-700 ease-out"
                                 unoptimized
                                 priority
                             />
+
+                            {/* Magnifying Glass Overlay */}
+                            {isZooming && (
+                                <div 
+                                    className="absolute w-64 h-64 border-[3px] border-white/90 rounded-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.25)] pointer-events-none z-50 overflow-hidden bg-white/95"
+                                    style={{
+                                        left: `${mousePos.x}%`,
+                                        top: `${mousePos.y}%`,
+                                        transform: 'translate(-50%, -50%)',
+                                        backgroundImage: `url(${displayImages[selectedImageIdx]})`,
+                                        backgroundPosition: `${mousePos.bgX}px ${mousePos.bgY}px`,
+                                        backgroundSize: `${mousePos.bgWidth}px ${mousePos.bgHeight}px`,
+                                        backgroundRepeat: 'no-repeat'
+                                    }}
+                                />
+                            )}
                             
                             <button 
                                 onClick={(e) => { e.stopPropagation(); setSelectedImageIdx((prev) => (prev - 1 + displayImages.length) % displayImages.length); }}
@@ -192,13 +344,12 @@ export default function ProductDetailsPage() {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                     <span className="px-3 py-1 bg-[#0F172A] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg">New Arrival</span>
-                                    <button 
-                                        onClick={() => setIsOutOfStock(!isOutOfStock)}
+                                    <div 
                                         className={`flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider transition-all ${isOutOfStock ? "bg-red-50 text-red-600 border-red-100 shadow-sm shadow-red-100" : "bg-emerald-50 text-emerald-600 border-emerald-100 shadow-sm shadow-emerald-100"}`}
                                     >
                                         <div className={`w-1.5 h-1.5 rounded-full ${isOutOfStock ? "bg-red-500" : "bg-emerald-500 animate-pulse"}`} />
                                         {isOutOfStock ? "Sold Out" : "In Stock"}
-                                    </button>
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {renderStars(5)}
@@ -230,7 +381,10 @@ export default function ProductDetailsPage() {
                                     {mockProduct.colors.map((c) => (
                                         <button
                                             key={c.name}
-                                            onClick={() => setSelectedColor(c.name)}
+                                            onClick={() => {
+                                                setSelectedColor(c.name);
+                                                setSelectedImageIdx(0);
+                                            }}
                                             className={`relative w-8 h-8 rounded-full transition-all flex items-center justify-center p-0.5 border ${selectedColor === c.name ? 'ring-2 ring-blue-600 ring-offset-2 scale-110 border-transparent shadow-xl shadow-blue-200' : 'hover:scale-110 border-gray-100'}`}
                                             title={c.name}
                                         >
@@ -242,7 +396,14 @@ export default function ProductDetailsPage() {
 
                             <div>
                                 <div className="flex items-center justify-between mb-5">
-                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Select Size</h4>
+                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                        Select Size 
+                                        {currentVariant && (
+                                            <span className={`ml-4 text-[10px] p-1 px-2 rounded-md ${availableStock > 0 ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600"}`}>
+                                                Stock: {availableStock}
+                                            </span>
+                                        )}
+                                    </h4>
                                     <button className="text-[10px] font-black text-blue-600 flex items-center gap-1.5 group">
                                         <Info className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" /> Size Guide
                                     </button>
@@ -265,12 +426,42 @@ export default function ProductDetailsPage() {
                         <div className="space-y-8">
                             <div className="flex items-center gap-4">
                                 <div className={`flex items-center bg-[#F8F9FA] rounded-2xl h-14 px-5 border-2 transition-all ${!inStock ? 'opacity-40 grayscale pointer-events-none' : 'focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50'}`}>
-                                    <button onClick={() => setQuantity(Math.max(1, Number(quantity) - 1))} className="text-gray-400 hover:text-gray-900 transition font-black text-2xl px-2"> – </button>
-                                    <input className="w-10 text-center bg-transparent text-[14px] font-black text-gray-900 outline-none" value={quantity} onChange={(e) => setQuantity(e.target.value.replace(/\D/g, ""))} />
-                                    <button onClick={() => setQuantity(Number(quantity) + 1)} className="text-gray-400 hover:text-gray-900 transition font-black text-2xl px-2"> + </button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setQuantity(prev => Math.max(1, Number(prev) - 1))} 
+                                        className="text-gray-400 hover:text-gray-900 transition font-black text-2xl px-2 select-none"
+                                    > – </button>
+                                    
+                                    <input 
+                                        type="text"
+                                        className="w-12 text-center bg-transparent text-[14px] font-black text-gray-900 outline-none" 
+                                        value={quantity} 
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/\D/g, "");
+                                            let numVal = val === "" ? "" : Number(val);
+                                            // Prevent entering more than available stock
+                                            if (typeof numVal === "number" && numVal > availableStock) {
+                                                numVal = availableStock;
+                                            }
+                                            setQuantity(numVal);
+                                        }}
+                                        onBlur={() => {
+                                            if (quantity === "" || Number(quantity) < 1) setQuantity(1);
+                                        }}
+                                    />
+                                    
+                                    <button 
+                                        type="button"
+                                        onClick={() => setQuantity(prev => {
+                                            const next = Number(prev) + 1;
+                                            return next > availableStock ? prev : next;
+                                        })} 
+                                        className={`text-gray-400 transition font-black text-2xl px-2 select-none ${Number(quantity) >= availableStock ? "opacity-20 cursor-not-allowed" : "hover:text-gray-900"}`}
+                                    > + </button>
                                 </div>
 
                                 <Button 
+                                    onClick={handleAddToCart}
                                     className={`flex-1 h-14 rounded-2xl text-[12px] font-black uppercase tracking-[0.1em] shadow-2xl shadow-blue-600/30 transition-all ${inStock ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed uppercase'}`}
                                     disabled={!inStock}
                                 >
@@ -396,14 +587,28 @@ export default function ProductDetailsPage() {
                                     </div>
                                     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 p-2 shadow-2xl">
                                         <textarea 
+                                            value={reviewText}
+                                            onChange={(e) => setReviewText(e.target.value)}
                                             placeholder="The hat fits perfectly and the material feels extremely premium..."
-                                            className="w-full h-40 px-6 py-6 outline-none text-[15px] font-medium text-white placeholder:text-gray-600 bg-transparent resize-none border-none"
+                                            className="w-full h-24 px-5 py-4 outline-none text-[14px] font-medium text-white placeholder:text-gray-500 bg-transparent resize-none border-none"
                                         />
-                                        <div className="flex items-center justify-between px-6 py-5 border-t border-white/5 mt-1">
-                                            <div className="flex gap-6 items-center">
-                                                {[1,2,3,4,5].map(s => <Star key={s} className="w-5 h-5 text-gray-700 hover:text-yellow-400 cursor-pointer transition-colors" />)}
+                                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-4 border-t border-white/5 mt-1 gap-4">
+                                            <div className="flex flex-col gap-2">
+                                                <div className="flex gap-4 items-center pl-1">
+                                                    {[1,2,3,4,5].map(s => (
+                                                        <Star 
+                                                            key={s} 
+                                                            className={`w-6 h-6 cursor-pointer transition-all hover:scale-110 ${s <= (hoverRating || reviewRating) ? "fill-yellow-400 text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]" : "text-gray-600 hover:text-yellow-400"}`} 
+                                                            onClick={() => { setReviewRating(s); setReviewError(""); }}
+                                                            onMouseEnter={() => setHoverRating(s)}
+                                                            onMouseLeave={() => setHoverRating(0)}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                {reviewError && <span className="text-red-400 text-[11px] font-bold pl-1 animate-in fade-in">{reviewError}</span>}
+                                                {reviewSuccess && <span className="text-emerald-400 text-[11px] font-bold pl-1 animate-in fade-in">{reviewSuccess}</span>}
                                             </div>
-                                            <Button className="h-12 px-10 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-[12px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-95 transition-all">
+                                            <Button onClick={handlePostReview} className="h-12 px-10 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-[12px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-95 transition-all w-full sm:w-auto">
                                                 Post Review
                                             </Button>
                                         </div>
@@ -413,15 +618,12 @@ export default function ProductDetailsPage() {
 
                             {/* REVIEWS LIST */}
                             <div className="space-y-10">
-                                {[
-                                    { name: "SOPHIA MARTINEZ", role: "PRO SHOPPER", date: "2 HOURS AGO", text: "The quality of the wool is outstanding. I\u0027ve worn it in -10\u00b0C weather and the ear flaps kept me incredibly warm. The leather strap is a nice premium touch that usually you only see on much more expensive designer brands." },
-                                    { name: "LIAM ANDERSON", role: "ADVENTURE LOVER", date: "YESTERDAY", text: "Classic look with modern performance. The red plaid pattern is vibrant but elegant. Fast shipping to the UK too. Definitely picking up the gray version next week." }
-                                ].map((rev, i) => (
+                                {reviews.map((rev, i) => (
                                     <div key={i} className="group bg-white rounded-[32px] p-8 border border-gray-50 hover:border-blue-100 hover:shadow-2xl hover:shadow-blue-900/5 transition-all duration-500">
                                         <div className="flex items-start justify-between mb-6">
                                             <div className="flex gap-5">
                                                 <div className="w-14 h-14 rounded-2xl overflow-hidden relative shadow-md ring-4 ring-white">
-                                                    <Image src={`/images/avatar-${i+1}.jpg`} alt={rev.name} fill className="object-cover" unoptimized />
+                                                    <Image src="/images/avatar-placeholder.jpg" alt={rev.name} fill className="object-cover" unoptimized />
                                                 </div>
                                                 <div>
                                                     <h5 className="text-[14px] font-black text-gray-900 leading-none mb-1.5 uppercase tracking-tight">{rev.name}</h5>
@@ -430,7 +632,7 @@ export default function ProductDetailsPage() {
                                             </div>
                                             <div className="px-3 py-1 bg-yellow-400/10 rounded-lg flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
                                                 <Star className="w-3 h-3 fill-yellow-400 text-yellow-500 border-none" />
-                                                <span className="text-[11px] font-black text-yellow-600">5.0</span>
+                                                <span className="text-[11px] font-black text-yellow-600">{rev.rating.toFixed(1)}</span>
                                             </div>
                                         </div>
                                         <p className="text-[14px] font-medium text-gray-500 leading-relaxed mb-6 ml-0 md:ml-19 italic">
@@ -454,16 +656,18 @@ export default function ProductDetailsPage() {
                             <div className="w-2 h-8 bg-blue-600 rounded-full" />
                             <h2 className="text-[28px] font-black text-gray-900 tracking-tighter uppercase">Maybe You Like</h2>
                         </div>
-                        <button className="text-[11px] font-black text-gray-400 uppercase tracking-widest hover:text-blue-600 transition">View All Products +</button>
+                        <Link href="/user/search" className="text-[11px] font-black text-gray-400 uppercase tracking-widest hover:text-blue-600 transition">
+                            View All Products +
+                        </Link>
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
                         {[
-                            { name: "Plaid Dog-Ear Baseball Cap", price: "45.00", img: "/images/hat-dog-red.png", tag: "HOT" },
+                            { name: "Plaid Dog-Ear Baseball Cap", price: "45.00", img: "/images/hat-dog-dot.png", tag: "HOT" },
                             { name: "Rabbit Ear Baseball Cap", price: "39.00", img: "/images/hat-rabbit-white.png", tag: "-20%" },
-                            { name: "Blue Dog-Ear Baseball Cap", price: "45.00", img: "/images/hat-dog-gray.png", tag: "NEW" },
+                            { name: "Blue Dog-Ear Baseball Cap", price: "45.00", img: "/images/hat-bear.png", tag: "NEW" },
                             { name: "White Dog-Ear Baseball Cap", price: "45.00", img: "/images/hat-dog-black.png", tag: "HOT" },
-                            { name: "Classic Plaid Beanie", price: "25.00", img: "/images/hat-dog-red.png", tag: "-10%" },
+                            { name: "Classic Plaid Beanie", price: "25.00", img: "/images/hat-dog-dot.png", tag: "-10%" },
                             { name: "Premium Fur Hat", price: "60.00", img: "/images/placeholder-hat.png", tag: "NEW" },
                         ].map((p, i) => (
                             <div key={i} className="group cursor-pointer">
