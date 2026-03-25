@@ -24,14 +24,26 @@ export default function LoginPage() {
 
     useEffect(() => {
         const checkLockStatus = () => {
-            const lockedUntil = localStorage.getItem("locked_until");
+            if (!email.trim()) {
+                if (errorType === "locked") {
+                    setError("");
+                    setErrorType("");
+                }
+                return;
+            }
+            const lockedUntil = localStorage.getItem(`locked_until_${email}`);
             if (lockedUntil && Date.now() < parseInt(lockedUntil)) {
                 const minutesLeft = Math.ceil((parseInt(lockedUntil) - Date.now()) / 60000);
                 setErrorType("locked");
                 setError(`Too many login attempts. Please try again in ${minutesLeft} minute${minutesLeft > 1 ? 's' : ''}.`);
             } else if (lockedUntil && Date.now() >= parseInt(lockedUntil)) {
-                localStorage.removeItem("locked_until");
-                localStorage.setItem("failed_login_attempts", "0");
+                localStorage.removeItem(`locked_until_${email}`);
+                localStorage.removeItem(`failed_login_attempts_${email}`);
+                if (errorType === "locked") {
+                    setError("");
+                    setErrorType("");
+                }
+            } else {
                 if (errorType === "locked") {
                     setError("");
                     setErrorType("");
@@ -42,28 +54,12 @@ export default function LoginPage() {
         checkLockStatus();
         const interval = setInterval(checkLockStatus, 60000);
         return () => clearInterval(interval);
-    }, [errorType]);
+    }, [email, errorType]);
 
-    const handleEmailBlur = async () => {
+    const handleEmailBlur = () => {
         if (!email.trim()) {
             setEmailError("Email is required");
             return;
-        }
-
-        try {
-            const res = await fetch("http://localhost:8000/auth/check-email?email=" + encodeURIComponent(email));
-            if (res.ok) {
-                const data = await res.json();
-                if (data.exists === false || data.message === "Email does not exist") {
-                    setEmailError("Email does not exist in the system.");
-                    return;
-                }
-            } else if (res.status === 404) {
-                setEmailError("Email does not exist in the system.");
-                return;
-            }
-        } catch (err) {
-            // Ignore API connection errors for front-end fallback
         }
         setEmailError("");
     };
@@ -76,15 +72,15 @@ export default function LoginPage() {
         setEmailError("");
         setPasswordError("");
 
-        const lockedUntil = localStorage.getItem("locked_until");
+        const lockedUntil = localStorage.getItem(`locked_until_${email}`);
         if (lockedUntil && Date.now() < parseInt(lockedUntil)) {
             const minutesLeft = Math.ceil((parseInt(lockedUntil) - Date.now()) / 60000);
             setErrorType("locked");
             setError(`Too many login attempts. Please try again in ${minutesLeft} minute${minutesLeft > 1 ? 's' : ''}.`);
             return;
         } else if (lockedUntil && Date.now() >= parseInt(lockedUntil)) {
-            localStorage.removeItem("locked_until");
-            localStorage.setItem("failed_login_attempts", "0");
+            localStorage.removeItem(`locked_until_${email}`);
+            localStorage.removeItem(`failed_login_attempts_${email}`);
         }
 
         setIsLoading(true);
@@ -137,6 +133,13 @@ export default function LoginPage() {
             if (!res.ok) {
                 const errorMsg = data.message?.toLowerCase() || "";
 
+                if (data.code === 'EMAIL_NOT_FOUND') {
+                    throw new Error("EMAIL_NOT_FOUND");
+                }
+                if (data.code === 'INCORRECT_PASSWORD') {
+                    throw new Error("INCORRECT_PASSWORD");
+                }
+
                 // Specific checks for email not found or incorrect password
                 if (errorMsg.includes("not found") || errorMsg.includes("exist") || errorMsg.includes("no user")) {
                     throw new Error("EMAIL_NOT_FOUND");
@@ -176,27 +179,29 @@ export default function LoginPage() {
             }
 
             // Reset failed attempts on successful login
-            localStorage.removeItem("failed_login_attempts");
-            localStorage.removeItem("locked_until");
+            localStorage.removeItem(`failed_login_attempts_${email}`);
+            localStorage.removeItem(`locked_until_${email}`);
 
             // Redirect to homepage for normal users
             router.push("/user/homepage");
         } catch (err: unknown) {
             if (err instanceof Error) {
                 if (err.message === "EMAIL_NOT_FOUND") {
-                    setEmailError("Email does not exist in the system.");
+                    setErrorType("error");
+                    setError("Invalid email or password");
                 } else if (err.message === "INCORRECT_PASSWORD") {
-                    let attempts = parseInt(localStorage.getItem("failed_login_attempts") || "0");
+                    let attempts = parseInt(localStorage.getItem(`failed_login_attempts_${email}`) || "0");
                     attempts += 1;
-                    localStorage.setItem("failed_login_attempts", attempts.toString());
+                    localStorage.setItem(`failed_login_attempts_${email}`, attempts.toString());
                     
                     if (attempts >= 5) {
                         const lockTime = Date.now() + 30 * 60 * 1000;
-                        localStorage.setItem("locked_until", lockTime.toString());
+                        localStorage.setItem(`locked_until_${email}`, lockTime.toString());
                         setErrorType("locked");
                         setError("Too many login attempts. Please try again in 30 minutes.");
                     } else {
-                        setPasswordError(`Incorrect password. Please try again. (${5 - attempts} attempts remaining)`);
+                        setErrorType("error");
+                        setError("Invalid email or password");
                     }
                 } else if (err.message.startsWith("LOCKED|")) {
                     setErrorType("locked");

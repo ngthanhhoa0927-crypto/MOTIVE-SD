@@ -13,6 +13,9 @@ export const users = pgTable("users", {
     avatar_url: varchar("avatar_url", { length: 500 }),
     password_hash: varchar("password_hash").notNull(),
     isActive: boolean("is_active").notNull().default(true),
+    disabledAt: timestamp("disabled_at"),
+    disabledReason: varchar("disabled_reason", { length: 500 }),
+    disabledBy: integer("disabled_by"), // admin user id who disabled this user
     failed_login_attempts: integer("failed_login_attempts").notNull().default(0),
     locked_until: timestamp("locked_until"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -20,10 +23,15 @@ export const users = pgTable("users", {
     deletedAt: timestamp("deleted_at"),
 });
 
+export const otpTypeEnum = pgEnum("otp_type", ["registration", "reset_password"]);
+
 export const otps = pgTable("otps", {
     id: serial("id").primaryKey(),
     email: varchar("email").notNull(),
     otp: varchar("otp").notNull(),
+    type: otpTypeEnum("type").notNull().default("registration"),
+    is_used: boolean("is_used").notNull().default(false),
+    userId: integer("user_id"),
     expiresAt: timestamp("expires_at").notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -93,3 +101,33 @@ export const productPromotions = pgTable("product_promotions", {
 }, (t) => ({
     pk: primaryKey({ columns: [t.product_id, t.promotion_id] }),
 }));
+
+// Audit Log for tracking admin actions
+export const auditActionEnum = pgEnum("audit_action", [
+    "user_created",
+    "user_updated",
+    "user_deleted",
+    "user_disabled",
+    "user_enabled",
+    "password_reset",
+    "login_failed",
+    "login_success",
+    "admin_action",
+]);
+
+export const auditLogs = pgTable("audit_logs", {
+    id: serial("id").primaryKey(),
+    action: auditActionEnum("action").notNull(),
+    performedBy: integer("performed_by").notNull(), // Admin user ID
+    targetUser: integer("target_user"), // User affected by action
+    entityType: varchar("entity_type", { length: 50 }).notNull(), // "user", "product", etc.
+    entityId: integer("entity_id"), // ID of the entity
+    ipAddress: varchar("ip_address", { length: 45 }), // IPv4 or IPv6
+    userAgent: varchar("user_agent", { length: 500 }), // Browser/client info
+    description: varchar("description", { length: 500 }), // Human-readable description
+    dataBefore: text("data_before"), // JSON snapshot before action
+    dataAfter: text("data_after"), // JSON snapshot after action
+    status: varchar("status", { length: 20 }).default("success"), // "success", "failed"
+    errorMessage: varchar("error_message", { length: 500 }), // If failed
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+});

@@ -49,11 +49,23 @@ function ResetPasswordContent() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ token, new_password: password }),
             });
-            if (!res.ok) throw new Error("Failed to reset password");
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.message || "Failed to reset password");
+            }
             
+            // Allow user to login immediately instead of waiting for 30 minutes
+            // Clear specific locks for all stored accounts as safety measure
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith("locked_until_") || key.startsWith("failed_login_attempts_")) {
+                    localStorage.removeItem(key);
+                }
+            });
+
             setIsSuccess(true);
-        } catch (error) {
-            setError("Invalid or expired token. Please try again.");
+        } catch (error: any) {
+            setError(error.message || "Invalid or expired token. Please try again.");
         } finally {
             setIsLoading(false);
         }
