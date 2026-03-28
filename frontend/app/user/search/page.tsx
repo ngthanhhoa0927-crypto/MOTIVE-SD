@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, Filter, Zap, Star } from "lucide-react";
+import { ChevronRight, ChevronLeft, Filter, Zap, Star, X } from "lucide-react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { Button } from "@/components/ui/button";
 
-export default function SearchPage() {
+function SearchContent() {
+    const searchParams = useSearchParams();
+    const query = searchParams.get("q") || "";
+
     // Mock data cho bộ lọc
     const filterSizes = ["Free size", "S (20-21\")", "M (21-22\")", "L (22-23\")", "XL (23-24\")"];
     const filterColors = [
@@ -30,9 +34,43 @@ export default function SearchPage() {
 
     const [products, setProducts] = useState<any[]>([]);
     const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
+    const [searchResults, setSearchResults] = useState<any[]>([]);
     const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
     const [selectedColors, setSelectedColors] = useState<string[]>([]);
     const [selectedPrices, setSelectedPrices] = useState<string[]>([]);
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll logic for Flash Sale
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (scrollRef.current) {
+                const maxScrollLeft = scrollRef.current.scrollWidth - scrollRef.current.clientWidth;
+                if (scrollRef.current.scrollLeft >= maxScrollLeft - 10) {
+                    scrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                } else {
+                    scrollRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+                }
+            }
+        }, 3000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const slide = (direction: 'left' | 'right') => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' });
+        }
+    };
+
+    useEffect(() => {
+        if (query && products.length > 0) {
+            const results = products.filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
+            setSearchResults(results);
+        } else {
+            setSearchResults([]);
+        }
+    }, [query, products]);
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -50,23 +88,18 @@ export default function SearchPage() {
             // BE not available or empty -> Use Mocks designed as BE schema
             if (fetchedProducts.length === 0) {
                 fetchedProducts = [
-                    {
-                        id: 1, name: "Plaid dog ear baseball cap", base_price: "19.00",
-                        discount: "-32%", oldPrice: "$29.00",
-                        variants: [{ size: "M (21-22\")", color: "Black", price: "19.00" }]
-                    },
-                    {
-                        id: 2, name: "Summer White Hat", base_price: "12.00",
-                        variants: [{ size: "S (20-21\")", color: "White", price: "12.00" }]
-                    },
-                    {
-                        id: 3, name: "Kids Red Cap", base_price: "4.50",
-                        variants: [{ size: "Free size", color: "Red", price: "4.50" }]
-                    },
-                    ...Array(15).fill(0).map((_, i) => ({
-                        id: 4 + i, name: "Athletic Cap " + i, base_price: "25.00",
-                        variants: [{ size: "L (22-23\")", color: "Blue", price: "25.00" }]
-                    }))
+                    { id: 1, name: "Black Dog Ear Baseball Cap", base_price: "19.00", oldPrice: "$29.00", images: [{image_url: "/images/hat-dog-black.png"}] },
+                    { id: 2, name: "Polka Dot Dog Ear Baseball Cap", base_price: "21.00", oldPrice: "$29.00", images: [{image_url: "/images/hat-dog-dot.png"}] },
+                    { id: 3, name: "Bear Cub Ear Baseball Cap", base_price: "22.00", oldPrice: "$32.00", images: [{image_url: "/images/hat-bear.png"}] },
+                    { id: 4, name: "White Bear Ear Baseball Cap", base_price: "20.00", oldPrice: "$30.00", images: [{image_url: "/images/hat-bear-white.png"}] },
+                    { id: 5, name: "White Rabbit Ear Baseball Cap", base_price: "24.00", oldPrice: "$35.00", images: [{image_url: "/images/hat-rabbit-white.png"}] },
+                    { id: 6, name: "Classic Beige Bucket Hat", base_price: "15.00", oldPrice: "$25.00", images: [{image_url: "/images/placeholder-hat.png"}] },
+                    { id: 7, name: "Vintage Denim Cap", base_price: "18.00", oldPrice: "$28.00", images: [{image_url: "/images/placeholder-hat.png"}] },
+                    { id: 8, name: "Minimalist Beanie", base_price: "12.00", oldPrice: "$20.00", images: [{image_url: "/images/placeholder-hat.png"}] },
+                    { id: 9, name: "Sport Visor Cap", base_price: "16.00", oldPrice: "$26.00", images: [{image_url: "/images/placeholder-hat.png"}] },
+                    { id: 10, name: "Knit Winter Hat", base_price: "25.00", oldPrice: "$40.00", images: [{image_url: "/images/placeholder-hat.png"}] },
+                    { id: 11, name: "Wide Brim Sun Hat", base_price: "28.00", oldPrice: "$45.00", images: [{image_url: "/images/placeholder-hat.png"}] },
+                    { id: 12, name: "Kids Animal Ear Cap", base_price: "18.00", oldPrice: "$28.00", images: [{image_url: "/images/placeholder-hat.png"}] }
                 ];
             }
 
@@ -126,6 +159,7 @@ export default function SearchPage() {
         }
 
         setFilteredProducts(filtered);
+        setIsFilterOpen(false); // Close mobile menu after applying
     };
 
     const handleClearFilters = () => {
@@ -156,15 +190,31 @@ export default function SearchPage() {
                     <span className="text-gray-900 font-medium">Baseball Hat</span>
                 </div>
 
-                <div className="flex gap-8">
+                <div className="flex gap-8 relative">
                     {/* --- SIDEBAR: FILTERS --- */}
-                    <aside className="w-[240px] flex-shrink-0">
-                        <div className="flex items-center gap-2 mb-6 text-gray-900">
-                            <Filter className="w-5 h-5" />
-                            <h2 className="font-bold text-lg">FILTERS</h2>
+                    {/* Mobile overlay */}
+                    {isFilterOpen && (
+                        <div 
+                            className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity"
+                            onClick={() => setIsFilterOpen(false)}
+                        />
+                    )}
+
+                    <aside className={`fixed inset-y-0 left-0 z-50 w-[280px] bg-white p-6 shadow-2xl overflow-y-auto transition-transform duration-300 md:relative md:w-[240px] md:bg-transparent md:p-0 md:shadow-none md:overflow-visible md:translate-x-0 md:flex-shrink-0 ${isFilterOpen ? "translate-x-0" : "-translate-x-full"}`}>
+                        <div className="flex items-center justify-between mb-6 text-gray-900 border-b md:border-none pb-4 md:pb-0">
+                            <div className="flex items-center gap-2">
+                                <Filter className="w-5 h-5" />
+                                <h2 className="font-bold text-lg">FILTERS</h2>
+                            </div>
+                            <button 
+                                className="md:hidden text-gray-400 hover:text-gray-900 transition-colors"
+                                onClick={() => setIsFilterOpen(false)}
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
                         </div>
 
-                        <div className="space-y-6 text-sm text-gray-700">
+                        <div className="space-y-6 text-sm text-gray-700 pb-12 md:pb-0">
                             {/* Size Filter */}
                             <div>
                                 <h3 className="font-semibold mb-3">Size</h3>
@@ -233,16 +283,39 @@ export default function SearchPage() {
 
                     {/* --- MAIN CONTENT --- */}
                     <div className="flex-1 min-w-0">
+                        
+                        {/* Mobile Filter Toggle */}
+                        <div className="md:hidden flex items-center justify-between mb-6">
+                            <h2 className="text-[16px] font-black text-gray-900 uppercase">Products</h2>
+                            <Button 
+                                variant="outline" 
+                                onClick={() => setIsFilterOpen(true)}
+                                className="flex items-center gap-2 border-gray-200 text-xs font-bold rounded-lg h-9"
+                            >
+                                <Filter className="w-3.5 h-3.5" /> Filters
+                            </Button>
+                        </div>
 
                         {/* Flash Sale Banner in Search */}
-                        <section className="bg-[#1C3FAA] rounded-xl p-6 mb-8">
-                            <div className="flex items-center gap-2 mb-6">
-                                <Zap className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                                <h3 className="font-bold text-white text-lg">FLASH SALE</h3>
+                        <section className="bg-[#1C3FAA] rounded-xl p-6 mb-8 relative group">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-2">
+                                    <Zap className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                                    <h3 className="font-bold text-white text-lg">FLASH SALE</h3>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => slide('left')} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition backdrop-blur-sm">
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={() => slide('right')} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition backdrop-blur-sm">
+                                        <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                </div>
                             </div>
-                            <div className="grid grid-cols-6 gap-3">
+                            {/* Updated to horizontal scroll/slider instead of a rigid 6-col grid */}
+                            <div ref={scrollRef} className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                                 {flashSaleProducts.map((item, idx) => (
-                                    <Link href={`/product/fs-${idx}`} key={idx} className="block bg-white rounded-lg p-2.5 relative hover:shadow-lg transition cursor-pointer">
+                                    <Link href={`/user/productdetail/fs-${idx}`} key={idx} className="block w-[140px] sm:w-[160px] md:w-[180px] flex-shrink-0 snap-start bg-white rounded-lg p-2.5 relative hover:shadow-lg transition cursor-pointer">
                                         <span className="absolute top-2 left-2 bg-yellow-400 text-[10px] font-bold px-1.5 py-0.5 rounded z-10">
                                             {item.discount}
                                         </span>
@@ -264,12 +337,56 @@ export default function SearchPage() {
                             </div>
                         </section>
 
-                        {/* Product Recommendations Grid */}
+                        {/* Search Results */}
+                        {query && (
+                            <section className="mb-12">
+                                <h3 className="font-bold text-lg text-blue-700 mb-6 uppercase">
+                                    Search Results for "{query}" <span className="text-sm font-medium text-gray-500 normal-case">({searchResults.length} items)</span>
+                                </h3>
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                                    {searchResults.map((item: any, i: number) => (
+                                        <div key={item.id || i} className="border border-gray-100 rounded-lg p-3 hover:shadow-md transition relative group flex flex-col">
+                                            {item.discount && (
+                                                <span className="absolute top-4 left-4 bg-yellow-400 text-[10px] font-bold px-1.5 py-0.5 rounded z-10">
+                                                    {item.discount}
+                                                </span>
+                                            )}
+                                            <Link href={`/user/productdetail/${item.id || i}`} className="block aspect-square bg-gray-50 rounded mb-2 relative overflow-hidden flex items-center justify-center border border-gray-100">
+                                                <Image 
+                                                    src={(item.images && item.images[0] && item.images[0].image_url) || "/images/placeholder-hat.png"} 
+                                                    alt={item.name} 
+                                                    fill 
+                                                    className="object-cover group-hover:scale-105 transition-transform duration-300" 
+                                                />
+                                            </Link>
+                                            <Link href={`/user/productdetail/${item.id || i}`}>
+                                                <h4 className="text-[11px] font-semibold text-gray-800 line-clamp-2 mb-1 h-8 hover:text-blue-600 transition">{item.name}</h4>
+                                            </Link>
+                                            <div className="flex items-baseline gap-1 mb-2">
+                                                <span className="text-blue-600 font-bold text-sm">${parseFloat(item.base_price).toFixed(2)}</span>
+                                                {item.oldPrice && <span className="text-gray-400 text-[10px] line-through">{item.oldPrice}</span>}
+                                            </div>
+                                            <div className="mt-auto flex justify-between items-center pt-2 border-t border-gray-50">
+                                                {renderStars(5)}
+                                                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-[10px] h-6 px-3 rounded">Buy</Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {searchResults.length === 0 && (
+                                        <div className="col-span-6 py-12 text-center text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                                            No products found matching "{query}".
+                                        </div>
+                                    )}
+                                </div>
+                            </section>
+                        )}
+
+                        {/* Product Recommendations Grid (All Products) */}
                         <section>
                             <h3 className="font-bold text-lg text-blue-700 mb-6 uppercase">
-                                Product Recommendations <span className="text-sm font-medium text-gray-500 normal-case">({filteredProducts.length} items)</span>
+                                All Products <span className="text-sm font-medium text-gray-500 normal-case">({filteredProducts.length} items)</span>
                             </h3>
-                            <div className="grid grid-cols-6 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                                 {filteredProducts.map((item: any, i: number) => (
                                     <div key={item.id || i} className="border border-gray-100 rounded-lg p-3 hover:shadow-md transition relative group flex flex-col">
                                         {item.discount && (
@@ -277,7 +394,7 @@ export default function SearchPage() {
                                                 {item.discount}
                                             </span>
                                         )}
-                                        <Link href={`/product/${item.id || i}`} className="block aspect-square bg-gray-50 rounded mb-2 relative overflow-hidden flex items-center justify-center border border-gray-100">
+                                        <Link href={`/user/productdetail/${item.id || i}`} className="block aspect-square bg-gray-50 rounded mb-2 relative overflow-hidden flex items-center justify-center border border-gray-100">
                                             <Image 
                                                 src={(item.images && item.images[0] && item.images[0].image_url) || "/images/placeholder-hat.png"} 
                                                 alt={item.name} 
@@ -285,7 +402,7 @@ export default function SearchPage() {
                                                 className="object-cover group-hover:scale-105 transition-transform duration-300" 
                                             />
                                         </Link>
-                                        <Link href={`/product/${item.id || i}`}>
+                                        <Link href={`/user/productdetail/${item.id || i}`}>
                                             <h4 className="text-[11px] font-semibold text-gray-800 line-clamp-2 mb-1 h-8 hover:text-blue-600 transition">{item.name}</h4>
                                         </Link>
                                         <div className="flex items-baseline gap-1 mb-2">
@@ -312,5 +429,13 @@ export default function SearchPage() {
 
             <Footer />
         </div>
+    );
+}
+
+export default function SearchPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-white"><div className="w-8 h-8 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div></div>}>
+            <SearchContent />
+        </Suspense>
     );
 }

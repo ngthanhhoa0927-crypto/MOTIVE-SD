@@ -205,19 +205,12 @@ export default function HomePage() {
                                 variants={fadeUp}
                                 className="group relative"
                             >
-                                <Link href="/user/productdetail" className="block relative mb-3">
+                                <Link href={`/user/productdetail/${i + 1}`} className="block relative mb-3">
                                     <span className="absolute top-2 left-2 z-10 bg-[#FFECE5] text-[#F97316] text-[10px] font-black tracking-wider px-2 py-1 rounded-md shadow-sm">
                                         {item.discount}
                                     </span>
                                     <div className="aspect-square bg-[#F8F9FA] rounded-xl overflow-hidden flex items-center justify-center border border-gray-100/50 transition-all duration-300 group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.05)] group-hover:border-transparent">
                                         <Image src={item.image || "/images/placeholder-hat.png"} alt={item.name} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
-                                    </div>
-                                    
-                                    {/* Quick action button that appears on hover */}
-                                    <div className="absolute inset-x-0 bottom-3 flex justify-center opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-20">
-                                        <div className="bg-white/95 backdrop-blur shadow-lg border border-gray-100/50 rounded-full px-4 py-1.5 text-[11px] font-bold text-gray-900 hover:bg-gray-50 cursor-pointer">
-                                            Quick View
-                                        </div>
                                     </div>
                                 </Link>
 
@@ -225,7 +218,7 @@ export default function HomePage() {
                                     <div className="mb-2">
                                         {renderStars(5)}
                                     </div>
-                                    <Link href="/user/productdetail">
+                                    <Link href={`/user/productdetail/${i + 1}`}>
                                         <h4 className="text-[13px] font-bold text-gray-800 line-clamp-2 leading-tight mb-2 hover:text-[#2563EB] transition-colors">{item.name}</h4>
                                     </Link>
 
@@ -234,9 +227,6 @@ export default function HomePage() {
                                             <span className="text-gray-900 font-black text-[15px]">{item.price}</span>
                                             <span className="text-gray-400 font-medium text-[11px] line-through">{item.oldPrice}</span>
                                         </div>
-                                        <button className="w-8 h-8 rounded-full bg-gray-50 hover:bg-[#2563EB] text-gray-500 hover:text-white flex items-center justify-center transition-all duration-300 border border-gray-200 hover:border-transparent shadow-sm">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
-                                        </button>
                                     </div>
                                 </div>
                             </motion.div>

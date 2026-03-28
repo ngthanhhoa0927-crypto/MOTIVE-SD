@@ -20,6 +20,40 @@ function ResetPasswordContent() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [error, setError] = useState("");
+    const [passwordError, setPasswordError] = useState("");
+    const [confirmPasswordError, setConfirmPasswordError] = useState("");
+
+    const isValidPassword = (pwd: string) => {
+        // Ít nhất 8 ký tự, có chứa cả chữ cái và số
+        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&._-]{8,}$/;
+        return passwordRegex.test(pwd);
+    };
+
+    const handlePasswordBlur = () => {
+        if (!password) {
+            setPasswordError("Password is required");
+        } else if (!isValidPassword(password)) {
+            setPasswordError("Password must be at least 8 characters and contain both letters and numbers.");
+        } else {
+            setPasswordError("");
+        }
+        
+        if (confirmPassword && password !== confirmPassword) {
+            setConfirmPasswordError("Passwords do not match.");
+        } else if (confirmPassword && password === confirmPassword) {
+            setConfirmPasswordError("");
+        }
+    };
+
+    const handleConfirmPasswordBlur = () => {
+        if (!confirmPassword) setConfirmPasswordError("Confirm password is required");
+        else if (password !== confirmPassword) setConfirmPasswordError("Passwords do not match.");
+        else setConfirmPasswordError("");
+    };
+
+    const isFormValid = password !== "" && isValidPassword(password) &&
+                        confirmPassword !== "" && password === confirmPassword;
+
     const [isSuccess, setIsSuccess] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -27,8 +61,8 @@ function ResetPasswordContent() {
         e.preventDefault();
         setError("");
 
-        if (password.length < 6) {
-            setError("Password must be at least 6 characters.");
+        if (!isFormValid) {
+            setError("Please fill in valid passwords.");
             return;
         }
 
@@ -105,46 +139,60 @@ function ResetPasswordContent() {
                                     </div>
                                 )}
                                 
-                                <div className="relative">
-                                    <input
-                                        type={showPassword ? "text" : "password"}
-                                        placeholder="New Password"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all font-medium"
-                                        required
-                                    />
-                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-gray-400 hover:text-gray-600">
-                                        {showPassword ? (
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.048 10.048 0 012.746-4.53m4.234-1.921A9.982 9.982 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21m-4.223-4.223L3 3m10.8-1.2l-4.2 4.2M12 15a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                        ) : (
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                        )}
-                                    </button>
+                                <div>
+                                    <div className="relative">
+                                        <input
+                                            type={showPassword ? "text" : "password"}
+                                            placeholder="New Password"
+                                            value={password}
+                                            onChange={(e) => {
+                                                setPassword(e.target.value);
+                                                if (passwordError) setPasswordError("");
+                                            }}
+                                            onBlur={handlePasswordBlur}
+                                            className={`w-full py-3.5 pl-4 pr-12 bg-white border ${passwordError ? 'border-red-500 text-red-500 placeholder-red-300' : 'border-gray-200'} rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all font-medium`}
+                                            required
+                                        />
+                                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-4 text-gray-400 hover:text-gray-600">
+                                            {showPassword ? (
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.048 10.048 0 012.746-4.53m4.234-1.921A9.982 9.982 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21m-4.223-4.223L3 3m10.8-1.2l-4.2 4.2M12 15a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                            ) : (
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                            )}
+                                        </button>
+                                    </div>
+                                    {passwordError && <p className="text-[10px] text-red-500 mt-1 ml-1">{passwordError}</p>}
                                 </div>
 
-                                <div className="relative">
-                                    <input
-                                        type={showConfirmPassword ? "text" : "password"}
-                                        placeholder="Confirm Password"
-                                        value={confirmPassword}
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="w-full py-3.5 pl-4 pr-12 bg-white border border-gray-200 rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all font-medium"
-                                        required
-                                    />
-                                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-4 text-gray-400 hover:text-gray-600">
-                                        {showConfirmPassword ? (
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.048 10.048 0 012.746-4.53m4.234-1.921A9.982 9.982 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21m-4.223-4.223L3 3m10.8-1.2l-4.2 4.2M12 15a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                        ) : (
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                        )}
-                                    </button>
+                                <div>
+                                    <div className="relative">
+                                        <input
+                                            type={showConfirmPassword ? "text" : "password"}
+                                            placeholder="Confirm Password"
+                                            value={confirmPassword}
+                                            onChange={(e) => {
+                                                setConfirmPassword(e.target.value);
+                                                if (confirmPasswordError) setConfirmPasswordError("");
+                                            }}
+                                            onBlur={handleConfirmPasswordBlur}
+                                            className={`w-full py-3.5 pl-4 pr-12 bg-white border ${confirmPasswordError ? 'border-red-500 text-red-500 placeholder-red-300' : 'border-gray-200'} rounded-md text-sm outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all font-medium`}
+                                            required
+                                        />
+                                        <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-4 text-gray-400 hover:text-gray-600">
+                                            {showConfirmPassword ? (
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.048 10.048 0 012.746-4.53m4.234-1.921A9.982 9.982 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21m-4.223-4.223L3 3m10.8-1.2l-4.2 4.2M12 15a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                            ) : (
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                            )}
+                                        </button>
+                                    </div>
+                                    {confirmPasswordError && <p className="text-[10px] text-red-500 mt-1 ml-1">{confirmPasswordError}</p>}
                                 </div>
 
                                 <button
                                     type="submit"
-                                    disabled={isLoading}
-                                    className="w-full py-3.5 mt-8 rounded-md text-xs font-semibold tracking-widest uppercase transition-colors bg-[#2C2B29] hover:bg-black text-white disabled:bg-gray-400"
+                                    disabled={isLoading || !isFormValid}
+                                    className={`w-full py-3.5 mt-8 rounded-md text-xs font-semibold tracking-widest uppercase transition-colors ${isLoading || !isFormValid ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-[#2C2B29] hover:bg-black text-white"}`}
                                 >
                                     {isLoading ? "Changing..." : "Change Password"}
                                 </button>
