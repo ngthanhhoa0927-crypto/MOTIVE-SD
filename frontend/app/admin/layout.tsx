@@ -71,6 +71,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [showLogoutToast, setShowLogoutToast] = useState(false);
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
 
@@ -153,6 +154,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     useEffect(() => {
         setIsProfileOpen(false);
         setIsNotificationOpen(false);
+        setIsSidebarOpen(false);
     }, [pathname]);
 
     const handleLogout = () => {
@@ -197,36 +199,46 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
             )}
 
+            {/* Mobile Sidebar Overlay */}
+            {isSidebarOpen && (
+                <div 
+                    className="fixed inset-0 z-20 bg-black/50 lg:hidden backdrop-blur-sm transition-opacity"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
             {/* Sidebar */}
-            <aside className="w-[260px] bg-[#161B28] text-white flex flex-col justify-between fixed h-screen left-0 top-0 z-20">
-                <div>
-                    <div className="h-20 flex items-center px-6">
+            <aside className={`fixed h-screen left-0 top-0 z-30 w-[260px] bg-[#161B28] text-white flex flex-col justify-between transition-transform duration-300 ease-in-out lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
+                <div className="flex-1 overflow-y-auto hide-scrollbar">
+                    <div className="h-20 flex items-center justify-between px-6">
                         <Link href="/admin/dashboard" className="flex flex-col justify-center gap-1.5 hover:opacity-90 transition">
-                            {/* Logo matching the user header */}
                             <Image 
                                 src="/images/logo.png" 
                                 alt="Motive SD" 
                                 width={200} 
                                 height={50} 
-                                className="object-contain h-12 w-auto bg-white px-3 py-1.5 rounded-md"
+                                className="object-contain h-10 w-auto bg-white px-3 py-1 rounded-md"
                             />
                         </Link>
+                        <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-gray-400 hover:text-white transition-colors">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
                     </div>
                     <nav className="px-4 py-6 flex flex-col gap-1.5">
                         {navItems.map((item) => {
                             const isActive = pathname.startsWith(item.href);
                             return (
                                 <Link key={item.name} href={item.href} className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-[#2563EB] text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
                                     </svg>
-                                    {item.name}
+                                    <span className="truncate">{item.name}</span>
                                 </Link>
                             )
                         })}
                     </nav>
                 </div>
-                <div className="p-4 mb-4">
+                <div className="p-4 mb-4 shrink-0">
                     <div className="text-xs font-semibold text-gray-500 mb-2 px-2 uppercase tracking-wider">Support</div>
                     <button className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-[#1E2536] hover:bg-gray-700 text-sm font-medium text-gray-300 rounded-lg transition-colors border border-gray-700">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -236,12 +248,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </aside>
 
             {/* Main content */}
-            <div className="flex-1 ml-[260px] flex flex-col h-screen overflow-hidden">
+            <div className="flex-1 lg:ml-[260px] flex flex-col h-[100dvh] overflow-hidden min-w-0">
                 {/* Header */}
-                <header className="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 shrink-0 z-10 w-full shadow-sm">
-                    <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
-                        {pageTitle}
-                    </h2>
+                <header className="h-16 lg:h-20 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 shrink-0 z-10 w-full shadow-sm">
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden text-gray-500 hover:text-gray-900 transition-colors">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                        </button>
+                        <h2 className="text-xl lg:text-2xl font-bold text-gray-900 tracking-tight truncate max-w-[200px] sm:max-w-none">
+                            {pageTitle}
+                        </h2>
+                    </div>
                     <div className="flex items-center gap-6">
                         {/* Notifications */}
                         <div className="relative">
@@ -363,7 +380,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-auto bg-[#F3F4F6] p-8">
+                <main className="flex-1 overflow-auto bg-[#F3F4F6] p-4 lg:p-8">
                     <div className="max-w-[1400px] mx-auto">
                         {children}
                     </div>

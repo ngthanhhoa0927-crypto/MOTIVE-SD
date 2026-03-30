@@ -175,6 +175,19 @@ export default function Header() {
                 {/* Search Bar */}
                 <div className="flex-1 max-w-2xl mx-8 relative" ref={dropdownRef}>
                     <form onSubmit={handleSearchSubmit} className="flex border-2 border-blue-600 rounded-md overflow-hidden h-10 bg-white">
+                        <div className="bg-gray-50 border-r border-gray-200 flex items-center px-1">
+                            <select className="bg-transparent text-sm text-gray-700 outline-none w-[140px] px-2 py-1 appearance-none cursor-pointer">
+                                <option value="all">All categories</option>
+                                <option value="1">Baseball Hat</option>
+                                <option value="2">Bucket Hat</option>
+                                <option value="3">Sun Protection Hat</option>
+                                <option value="4">Flat Cap</option>
+                                <option value="5">Others</option>
+                            </select>
+                            <span className="pointer-events-none -ml-5 opacity-70">
+                                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </span>
+                        </div>
                         <input
                             type="text"
                             placeholder="Search fashion hats..."
@@ -296,7 +309,7 @@ export default function Header() {
                         <Link href="/category/flat-cap">Flat Cap</Link>
                     </li>
                     <li className="cursor-pointer hover:text-blue-600 transition pb-3 -mb-3 border-b-2 border-transparent hover:border-blue-600">
-                        <Link href="/user/search">Others</Link>
+                        <Link href="/category/others">Others</Link>
                     </li>
                 </ul>
             </nav>
