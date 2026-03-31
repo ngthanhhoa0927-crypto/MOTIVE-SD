@@ -22,7 +22,6 @@ export default function LoginPage() {
     const [passwordError, setPasswordError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
-    const [hasAttemptedAutoLogin, setHasAttemptedAutoLogin] = useState(false);
 
     useEffect(() => {
         const checkLockStatus = () => {
@@ -59,19 +58,14 @@ export default function LoginPage() {
     }, [email, errorType]);
 
     useEffect(() => {
-        if (!hasAttemptedAutoLogin) {
-            setHasAttemptedAutoLogin(true);
-            const savedEmail = localStorage.getItem("remembered_email");
-            const savedPass = localStorage.getItem("remembered_password");
-            
-            if (savedEmail && savedPass) {
-                setEmail(savedEmail);
-                setPassword(savedPass);
-                setRememberMe(true);
-                performLogin(savedEmail, savedPass, true);
-            }
+        const savedEmail = localStorage.getItem("remembered_email");
+        if (savedEmail) {
+            setEmail(savedEmail);
+            setRememberMe(true);
         }
-    }, [hasAttemptedAutoLogin]);
+        // Also ensure any old saved passwords are deleted
+        localStorage.removeItem("remembered_password");
+    }, []);
 
     const handleEmailBlur = () => {
         if (!email.trim()) {
@@ -103,11 +97,11 @@ export default function LoginPage() {
         const handleSuccess = () => {
             if (isRemember) {
                 localStorage.setItem("remembered_email", loginEmail);
-                localStorage.setItem("remembered_password", loginPass);
             } else {
                 localStorage.removeItem("remembered_email");
-                localStorage.removeItem("remembered_password");
             }
+            // Always remove password just in case it was stored previously
+            localStorage.removeItem("remembered_password");
         };
 
         // DEV BYPASS: Allow logging in as admin without backend, xóa đi khi backend đã có acc admin

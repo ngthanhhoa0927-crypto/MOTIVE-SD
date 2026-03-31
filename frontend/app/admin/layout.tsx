@@ -159,6 +159,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     const handleLogout = () => {
         localStorage.removeItem('admin_token');
+        localStorage.removeItem('remembered_password');
         setIsProfileOpen(false);
         setShowLogoutToast(true);
         setTimeout(() => {
