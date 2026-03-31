@@ -24,7 +24,7 @@ function ResetPasswordContent() {
     const [confirmPasswordError, setConfirmPasswordError] = useState("");
 
     const isValidPassword = (pwd: string) => {
-        // Ít nhất 8 ký tự, có chứa cả chữ cái và số
+        // At least 8 characters, must contain both letters and numbers
         const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&._-]{8,}$/;
         return passwordRegex.test(pwd);
     };

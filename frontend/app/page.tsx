@@ -112,28 +112,24 @@ const bestSellers = [
     name: "Black Dog Ear Baseball Cap",
     price: "$19.00",
     oldPrice: "$29.00",
-    discount: "-34%",
     image: "/images/hat-dog-black.png",
   },
   {
     name: "Polka Dot Dog Ear Cap",
     price: "$21.00",
     oldPrice: "$29.00",
-    discount: "-27%",
     image: "/images/hat-dog-dot.png",
   },
   {
     name: "Bear Cub Ear Baseball Cap",
     price: "$22.00",
     oldPrice: "$32.00",
-    discount: "-31%",
     image: "/images/hat-bear.png",
   },
   {
     name: "White Rabbit Ear Cap",
     price: "$24.00",
     oldPrice: "$35.00",
-    discount: "-31%",
     image: "/images/hat-rabbit-white.png",
   },
 ];
@@ -404,9 +400,6 @@ export default function LandingPage() {
                   className="group bg-white rounded-3xl border border-gray-100/80 overflow-hidden cursor-pointer hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
                 >
                   <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100/50 flex items-center justify-center p-8">
-                    <span className="absolute top-3 left-3 bg-gray-900 text-white text-[10px] font-bold px-3 py-1 rounded-full z-10">
-                      {item.discount}
-                    </span>
                     <div className="relative w-full h-full">
                       <Image
                         src={item.image}

@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
                 const data = await res.json();
 
                 if (res.status === 401 && data.code === "EMAIL_NOT_FOUND") {
-                    setEmailError("không có tài khoản nào sử dụng email này");
+                    setEmailError("No account found with this email");
                 } else {
                     setEmailError("");
                 }

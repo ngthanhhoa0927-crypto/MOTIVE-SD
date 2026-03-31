@@ -13,7 +13,7 @@ function SearchContent() {
     const searchParams = useSearchParams();
     const query = searchParams.get("q") || "";
 
-    // Mock data cho bộ lọc
+    // Mock data for filters
     const filterSizes = ["Free size", "S (20-21\")", "M (21-22\")", "L (22-23\")", "XL (23-24\")"];
     const filterColors = [
         { name: "Black", color: "bg-black" },
@@ -24,12 +24,10 @@ function SearchContent() {
     ];
     const filterPrices = ["Under $5", "$5 - $10", "$10 - $15", "Over $15"];
 
-    // Mock data cho sản phẩm
     const flashSaleProducts = Array(6).fill({
         name: "Plaid dog ear baseball cap",
         price: "$19.00",
         oldPrice: "$29.00",
-        discount: "-32%",
     });
 
     const [products, setProducts] = useState<any[]>([]);
@@ -316,9 +314,6 @@ function SearchContent() {
                             <div ref={scrollRef} className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                                 {flashSaleProducts.map((item, idx) => (
                                     <Link href={`/user/productdetail/fs-${idx}`} key={idx} className="block w-[140px] sm:w-[160px] md:w-[180px] flex-shrink-0 snap-start bg-white rounded-lg p-2.5 relative hover:shadow-lg transition cursor-pointer">
-                                        <span className="absolute top-2 left-2 bg-yellow-400 text-[10px] font-bold px-1.5 py-0.5 rounded z-10">
-                                            {item.discount}
-                                        </span>
                                         <div className="aspect-square bg-gray-50 rounded mb-2 relative overflow-hidden flex items-center justify-center border border-gray-100">
                                             <Image src="/images/placeholder-hat.png" alt={item.name} fill className="object-cover" />
                                         </div>
@@ -346,11 +341,6 @@ function SearchContent() {
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                                     {searchResults.map((item: any, i: number) => (
                                         <div key={item.id || i} className="border border-gray-100 rounded-lg p-3 hover:shadow-md transition relative group flex flex-col">
-                                            {item.discount && (
-                                                <span className="absolute top-4 left-4 bg-yellow-400 text-[10px] font-bold px-1.5 py-0.5 rounded z-10">
-                                                    {item.discount}
-                                                </span>
-                                            )}
                                             <Link href={`/user/productdetail/${item.id || i}`} className="block aspect-square bg-gray-50 rounded mb-2 relative overflow-hidden flex items-center justify-center border border-gray-100">
                                                 <Image 
                                                     src={(item.images && item.images[0] && item.images[0].image_url) || "/images/placeholder-hat.png"} 
@@ -389,11 +379,6 @@ function SearchContent() {
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                                 {filteredProducts.map((item: any, i: number) => (
                                     <div key={item.id || i} className="border border-gray-100 rounded-lg p-3 hover:shadow-md transition relative group flex flex-col">
-                                        {item.discount && (
-                                            <span className="absolute top-4 left-4 bg-yellow-400 text-[10px] font-bold px-1.5 py-0.5 rounded z-10">
-                                                {item.discount}
-                                            </span>
-                                        )}
                                         <Link href={`/user/productdetail/${item.id || i}`} className="block aspect-square bg-gray-50 rounded mb-2 relative overflow-hidden flex items-center justify-center border border-gray-100">
                                             <Image 
                                                 src={(item.images && item.images[0] && item.images[0].image_url) || "/images/placeholder-hat.png"} 

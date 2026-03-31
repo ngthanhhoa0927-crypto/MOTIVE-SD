@@ -7,7 +7,7 @@ import { Playfair_Display, Inter } from "next/font/google";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-// Khởi tạo font chữ để giống với thiết kế
+// Initialize fonts for consistent design
 const playfair = Playfair_Display({ subsets: ["latin"], style: ["normal", "italic"] });
 const inter = Inter({ subsets: ["latin"] });
 
@@ -104,7 +104,7 @@ export default function LoginPage() {
             localStorage.removeItem("remembered_password");
         };
 
-        // DEV BYPASS: Allow logging in as admin without backend, xóa đi khi backend đã có acc admin
+        // DEV BYPASS: Allow logging in as admin without backend, remove when admin account exists in DB
         if (loginEmail === "admin@motive.sd" && loginPass === "admin") {
             // Create a fake token with admin role
             const fakePayload = {
@@ -260,9 +260,9 @@ export default function LoginPage() {
 
     return (
         <div className={`min-h-screen flex ${inter.className}`}>
-            {/* Cột trái: Hình ảnh */}
+            {/* Left Column: Image */}
             <div className="hidden lg:flex lg:w-1/2 relative bg-gray-200">
-                {/* Bạn cần thay đường dẫn ảnh vào src */}
+                {/* Background Image */}
                 <Image
                     src="/images/login-background.png"
                     alt="Fashion model in yellow tracksuit"
@@ -272,17 +272,17 @@ export default function LoginPage() {
                 />
                 {/* Logo */}
                 <div className="absolute top-8 left-8 flex items-center gap-2">
-                    {/* Thay bằng icon/logo thật của Motive SD */}
+                    {/* Brand Logo */}
                     <div className="text-white text-3xl font-bold tracking-tighter">
                         <Image src="/images/logo.png" alt="Motive SD" width={160} height={40} className="object-contain h-10 w-auto" />
                     </div>
                 </div>
             </div>
 
-            {/* Cột phải: Form đăng nhập */}
+            {/* Right Column: Login Form */}
             <div className="w-full lg:w-1/2 flex items-center justify-center bg-[#F9F8F4] p-8 sm:p-12">
                 <div className="w-full max-w-[420px]">
-                    {/* Tiêu đề */}
+                    {/* Header */}
                     <p className="text-xs font-semibold tracking-[0.2em] text-gray-500 uppercase mb-4">
                         Welcome to Motive SD
                     </p>

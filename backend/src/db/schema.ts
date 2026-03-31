@@ -76,6 +76,7 @@ export const productImages = pgTable("product_images", {
     image_url: varchar("image_url", { length: 500 }).notNull(),
     is_primary: boolean("is_primary").default(false),
     display_order: integer("display_order").default(0),
+    color: varchar("color", { length: 50 }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

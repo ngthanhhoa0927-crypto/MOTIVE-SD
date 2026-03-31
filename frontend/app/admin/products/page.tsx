@@ -45,36 +45,6 @@ export default function ProductsPage() {
 
     const ITEMS_PER_PAGE = 10;
 
-    // TODO: REMOVE MOCK DATA LATER
-    // THIS MOCK DATA IS ADDED FOR UI TESTING PURPOSES. REMOVE WHEN BE/DB IS FULLY POPULATED.
-    const MOCK_PRODUCTS = [
-        {
-            id: 9991, name: "Black Dog Ear Baseball Cap", base_price: "19.00", category_id: 1, status: "Active",
-            images: [{ signed_url: "/images/hat-dog-black.png", is_primary: true }],
-            variants: [{ stock_quantity: 45 }, { stock_quantity: 20 }]
-        },
-        {
-            id: 9992, name: "Polka Dot Dog Ear Baseball Cap", base_price: "21.00", category_id: 1, status: "Draft",
-            images: [{ signed_url: "/images/hat-dog-dot.png", is_primary: true }],
-            variants: [{ stock_quantity: 12 }]
-        },
-        {
-            id: 9993, name: "Bear Cub Ear Baseball Cap", base_price: "22.00", category_id: 1, status: "Active",
-            images: [{ signed_url: "/images/hat-bear.png", is_primary: true }],
-            variants: [{ stock_quantity: 0 }] // Out of stock mock
-        },
-        {
-            id: 9994, name: "Classic Beige Bucket Hat", base_price: "15.00", category_id: 2, status: "Archived",
-            images: [{ signed_url: "/images/hat-rabbit-white.png", is_primary: true }],
-            variants: [{ stock_quantity: 110 }]
-        },
-        {
-            id: 9995, name: "Minimalist Beanie", base_price: "12.00", category_id: 3, status: "Active",
-            images: [{ signed_url: "/images/placeholder-hat.png", is_primary: true }],
-            variants: [{ stock_quantity: 65 }]
-        }
-    ];
-
     const fetchProducts = async () => {
         setIsLoading(true);
         const token = localStorage.getItem('admin_token');
@@ -84,15 +54,13 @@ export default function ProductsPage() {
             });
             if (res.ok) {
                 const data = await res.json();
-                // TODO: REMOVE `|| MOCK_PRODUCTS` and `data.products.length === 0 ? MOCK_PRODUCTS : data.products`
-                const fetchedProducts = data.products || [];
-                setProducts(fetchedProducts.length === 0 ? MOCK_PRODUCTS : fetchedProducts);
+                setProducts(data.products || []);
             } else {
-                setProducts(MOCK_PRODUCTS); // Fallback to mock on error
+                setProducts([]); // Fallback to empty array on error
             }
         } catch (error) {
             console.error("Failed to fetch products:", error);
-            setProducts(MOCK_PRODUCTS); // Fallback to mock on network error
+            setProducts([]); // Fallback to empty array on network error
         } finally {
             setIsLoading(false);
         }

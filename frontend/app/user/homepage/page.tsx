@@ -10,26 +10,19 @@ import { motion } from "framer-motion";
 
 export default function HomePage() {
     // Mock data
-    const coupons = [
-        { title: "Save $5", desc: "Orders from $50", color: "bg-blue-600 hover:bg-blue-700" },
-        { title: "Save $10", desc: "Orders from $100", color: "bg-blue-600 hover:bg-blue-700" },
-        { title: "Save 15%", desc: "Plus $20 gift", color: "bg-blue-600 hover:bg-blue-700" },
-        { title: "Free Shipping", desc: "Any Order", color: "bg-blue-600 hover:bg-blue-700" },
-    ];
-
     const recommendations = [
-        { name: "Black Dog Ear Baseball Cap", price: "$19.00", oldPrice: "$29.00", discount: "-34%", image: "/images/hat-dog-black.png" },
-        { name: "Polka Dot Dog Ear Baseball Cap", price: "$21.00", oldPrice: "$29.00", discount: "-27%", image: "/images/hat-dog-dot.png" },
-        { name: "Bear Cub Ear Baseball Cap", price: "$22.00", oldPrice: "$32.00", discount: "-31%", image: "/images/hat-bear.png" },
-        { name: "White Bear Ear Baseball Cap", price: "$20.00", oldPrice: "$30.00", discount: "-33%", image: "/images/hat-bear-white.png" },
-        { name: "White Rabbit Ear Baseball Cap", price: "$24.00", oldPrice: "$35.00", discount: "-31%", image: "/images/placeholder-hat.png" },
-        { name: "Classic Beige Bucket Hat", price: "$15.00", oldPrice: "$25.00", discount: "-40%", image: "/images/hat-rabbit-white.png" },
-        { name: "Vintage Denim Cap", price: "$18.00", oldPrice: "$28.00", discount: "-35%", image: "/images/placeholder-hat.png" },
-        { name: "Minimalist Beanie", price: "$12.00", oldPrice: "$20.00", discount: "-40%", image: "/images/hat-dog-dot.png" },
-        { name: "Sport Visor Cap", price: "$16.00", oldPrice: "$26.00", discount: "-38%", image: "/images/placeholder-hat.png" },
-        { name: "Knit Winter Hat", price: "$25.00", oldPrice: "$40.00", discount: "-37%", image: "/images/hat-dog-black.png" },
-        { name: "Wide Brim Sun Hat", price: "$28.00", oldPrice: "$45.00", discount: "-37%", image: "/images/hat-rabbit-white.png" },
-        { name: "Kids Animal Ear Cap", price: "$18.00", oldPrice: "$28.00", discount: "-35%", image: "/images/placeholder-hat.png" }
+        { name: "Black Dog Ear Baseball Cap", price: "$19.00", oldPrice: "$29.00", image: "/images/hat-dog-black.png" },
+        { name: "Polka Dot Dog Ear Baseball Cap", price: "$21.00", oldPrice: "$29.00", image: "/images/hat-dog-dot.png" },
+        { name: "Bear Cub Ear Baseball Cap", price: "$22.00", oldPrice: "$32.00", image: "/images/hat-bear.png" },
+        { name: "White Bear Ear Baseball Cap", price: "$20.00", oldPrice: "$30.00", image: "/images/hat-bear-white.png" },
+        { name: "White Rabbit Ear Baseball Cap", price: "$24.00", oldPrice: "$35.00", image: "/images/placeholder-hat.png" },
+        { name: "Classic Beige Bucket Hat", price: "$15.00", oldPrice: "$25.00", image: "/images/hat-rabbit-white.png" },
+        { name: "Vintage Denim Cap", price: "$18.00", oldPrice: "$28.00", image: "/images/placeholder-hat.png" },
+        { name: "Minimalist Beanie", price: "$12.00", oldPrice: "$20.00", image: "/images/hat-dog-dot.png" },
+        { name: "Sport Visor Cap", price: "$16.00", oldPrice: "$26.00", image: "/images/placeholder-hat.png" },
+        { name: "Knit Winter Hat", price: "$25.00", oldPrice: "$40.00", image: "/images/hat-dog-black.png" },
+        { name: "Wide Brim Sun Hat", price: "$28.00", oldPrice: "$45.00", image: "/images/hat-rabbit-white.png" },
+        { name: "Kids Animal Ear Cap", price: "$18.00", oldPrice: "$28.00", image: "/images/placeholder-hat.png" }
     ];
 
     const renderStars = (rating: number) => (
@@ -68,7 +61,7 @@ export default function HomePage() {
                     variants={fadeUp}
                     className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[350px]"
                 >
-                    {/* KHUNG LỚN (LEFT) */}
+                    {/* LEFT SECTION (LARGE) */}
                     <div className="col-span-1 lg:col-span-2 bg-[#E2DFD8] rounded-2xl relative overflow-hidden p-10 flex flex-col justify-center shadow-sm h-[350px] lg:h-auto group">
                         <div className="absolute inset-0 w-full h-full z-0 transition-transform duration-700 ease-out group-hover:scale-105">
                             <Image
@@ -117,7 +110,7 @@ export default function HomePage() {
                         </div>
                     </div>
 
-                    {/* 2 KHUNG NHỎ (RIGHT) */}
+                    {/* RIGHT SECTION (SMALL) */}
                     <div className="col-span-1 grid grid-rows-2 gap-6 hidden lg:grid">
                         <motion.div 
                             whileHover={{ y: -4, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05)" }}
@@ -149,37 +142,6 @@ export default function HomePage() {
                     </div>
                 </motion.section>
 
-                {/* --- Coupons --- */}
-                <motion.section 
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true, margin: "-50px" }}
-                    variants={staggerContainer}
-                >
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
-                            <Ticket className="w-5 h-5 text-yellow-600" />
-                        </div>
-                        <h3 className="font-black text-2xl tracking-tight text-gray-900">Discount Codes</h3>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                        {coupons.map((coupon, i) => (
-                            <motion.div 
-                                key={i} 
-                                variants={fadeUp}
-                                whileHover={{ y: -4, scale: 1.02 }}
-                                className="bg-white border border-gray-100 rounded-2xl p-6 text-center shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] transition-all duration-300"
-                            >
-                                <p className="font-black text-blue-600 text-xl mb-1.5 tracking-tight">{coupon.title}</p>
-                                <p className="text-sm font-medium text-gray-500 mb-6">{coupon.desc}</p>
-                                <Button className={`w-full h-10 text-[13px] font-bold shadow-md shadow-blue-500/20 transition-all duration-300 ${coupon.color}`}>
-                                    Apply Now
-                                </Button>
-                            </motion.div>
-                        ))}
-                    </div>
-                </motion.section>
-
                 {/* --- Recommendations --- */}
                 <motion.section 
                     initial="hidden"
@@ -206,9 +168,6 @@ export default function HomePage() {
                                 className="group relative"
                             >
                                 <Link href={`/user/productdetail/${i + 1}`} className="block relative mb-3">
-                                    <span className="absolute top-2 left-2 z-10 bg-[#FFECE5] text-[#F97316] text-[10px] font-black tracking-wider px-2 py-1 rounded-md shadow-sm">
-                                        {item.discount}
-                                    </span>
                                     <div className="aspect-square bg-[#F8F9FA] rounded-xl overflow-hidden flex items-center justify-center border border-gray-100/50 transition-all duration-300 group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.05)] group-hover:border-transparent">
                                         <Image src={item.image || "/images/placeholder-hat.png"} alt={item.name} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
                                     </div>

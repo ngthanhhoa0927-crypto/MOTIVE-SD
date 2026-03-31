@@ -36,7 +36,7 @@ export default function SignUpPage() {
     const [step, setStep] = useState(1); // 1: Input Info, 2: Input OTP
 
     const isValidName = (name: string) => {
-        const nameRegex = /^[a-zA-ZÀ-ỹ\s]+$/;
+        const nameRegex = /^[a-zA-Z\s]+$/;
         return nameRegex.test(name);
     };
 
@@ -50,18 +50,18 @@ export default function SignUpPage() {
     };
 
     const isStrictEmail = (emailStr: string) => {
-        if (emailStr.split('@').length !== 2) return false; // Có đúng 1 dấu @
-        if (/\s/.test(emailStr)) return false; // Không có khoảng trắng
-        if (emailStr.startsWith('.') || emailStr.endsWith('.')) return false; // Không bắt đầu/kết thúc bằng dấu .
+        if (emailStr.split('@').length !== 2) return false; // Must have exactly one @
+        if (/\s/.test(emailStr)) return false; // No whitespace allowed
+        if (emailStr.startsWith('.') || emailStr.endsWith('.')) return false; // Cannot start/end with dot
         const parts = emailStr.split('@');
         const domainPart = parts[1];
-        if (!domainPart || !domainPart.includes('.')) return false; // Có ít nhất 1 dấu (.) sau @
-        if (domainPart.startsWith('.') || domainPart.endsWith('.')) return false; // Domain không bắt đầu/kết thúc bằng .
+        if (!domainPart || !domainPart.includes('.')) return false; // Domain part must have a dot
+        if (domainPart.startsWith('.') || domainPart.endsWith('.')) return false; // Domain part cannot start/end with dot
         return true;
     };
 
     const isValidPassword = (pwd: string) => {
-        // Ít nhất 8 ký tự, có chứa cả chữ cái và số
+        // At least 8 characters, must contain both letters and numbers
         const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&._-]{8,}$/;
         return passwordRegex.test(pwd);
     };
@@ -116,18 +116,16 @@ export default function SignUpPage() {
             return;
         }
 
-        // Kiểm tra xem email đã tồn tại hay chưa
+        // Check if email already exists
         try {
             const res = await fetch("http://localhost:8000/auth/check-email?email=" + encodeURIComponent(email));
             if (res.ok) {
                 const data = await res.json();
-                // Tùy theo response từ backend nhưng nếu có "exists": true hoặc data.message là "exists"
                 if (data.exists || data.message === "Email already exists" || data.message === "Email already exits") {
                     setEmailError("Email already exits");
                     return;
                 }
             } else if (res.status === 409 || res.status === 400) {
-                // Đôi khi check email lỗi sẽ ra 409 Conflict
                 const data = await res.json().catch(() => ({}));
                 if (data.message && data.message.toLowerCase().includes("exist")) {
                     setEmailError("Email already exits");
@@ -135,7 +133,7 @@ export default function SignUpPage() {
                 }
             }
         } catch (error) {
-            // Không làm gì nếu API chết hoặc chưa có sẵn (front-end only tests)
+            // Ignore if API fails
         }
 
         setEmailError("");
@@ -171,7 +169,7 @@ export default function SignUpPage() {
         else setConfirmPasswordError("");
     };
 
-    // Xử lý Gửi OTP (Bước 1)
+    // Send OTP (Step 1)
     const handleSendOtp = async (e?: FormEvent<HTMLFormElement> | MouseEvent) => {
         e?.preventDefault();
         setError("");
@@ -215,7 +213,7 @@ export default function SignUpPage() {
                 throw new Error(data.message || "Failed to send OTP");
             }
 
-            // Gửi OTP thành công -> chuyển sang form nhập OTP
+            // OTP sent successfully -> move to OTP input step
             setStep(2);
         } catch (err: unknown) {
             if (err instanceof Error) {
@@ -228,7 +226,7 @@ export default function SignUpPage() {
         }
     };
 
-    // Xử lý tạo tài khoản (Bước 2)
+    // Register account (Step 2)
     const handleRegister = async (e?: FormEvent<HTMLFormElement>) => {
         e?.preventDefault();
         setError("");
@@ -272,7 +270,7 @@ export default function SignUpPage() {
 
     return (
         <div className={`min-h-screen flex ${inter.className}`}>
-            {/* Cột trái: Hình ảnh */}
+            {/* Left Column: Image */}
             <div className="hidden lg:flex lg:w-1/2 relative bg-gray-200">
                 <Image
                     src="/images/login-background.png"
@@ -288,10 +286,10 @@ export default function SignUpPage() {
                 </div>
             </div>
 
-            {/* Cột phải: Form Đăng ký */}
+            {/* Right Column: Sign Up Form */}
             <div className="w-full lg:w-1/2 flex items-center justify-center bg-[#F9F8F4] p-8 sm:p-12 overflow-y-auto">
                 <div className="w-full max-w-[420px] py-8">
-                    {/* Tiêu đề */}
+                    {/* Header */}
                     <p className="text-xs font-semibold tracking-[0.2em] text-gray-500 uppercase mb-4">
                         Welcome to Motive SD
                     </p>
@@ -300,7 +298,7 @@ export default function SignUpPage() {
                     </h1>
 
                     {step === 1 ? (
-                        /* Form Bước 1: Thông tin người dùng */
+                        /* Step 1 Form: User Information */
                         <form className="space-y-4" onSubmit={handleSendOtp}>
                             {error && (
                                 <div className="p-3 text-xs text-red-600 bg-red-50 rounded-md border border-red-100 mb-4">
@@ -469,7 +467,7 @@ export default function SignUpPage() {
                             </button>
                         </form>
                     ) : (
-                        /* Form Bước 2: Nhập OTP */
+                        /* Step 2 Form: OTP Verification */
                         <form className="space-y-4" onSubmit={handleRegister}>
                             {error && (
                                 <div className="p-3 text-xs text-red-600 bg-red-50 rounded-md border border-red-100 mb-4">
@@ -488,7 +486,7 @@ export default function SignUpPage() {
                                         placeholder="000000"
                                         maxLength={6}
                                         value={otp}
-                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setOtp(e.target.value.replace(/\D/g, ""))} // Chỉ cho phép nhập số
+                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setOtp(e.target.value.replace(/\D/g, ""))} // Numbers only
                                         className="w-full py-3.5 text-center text-xl tracking-[0.5em] font-semibold bg-white border border-gray-200 rounded-md outline-none focus:border-gray-400 focus:ring-1 focus:ring-gray-400 transition-all"
                                         required
                                     />

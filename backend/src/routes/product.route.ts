@@ -21,7 +21,8 @@ const createProductSchema = z.object({
     images: z.array(z.object({
         image_url: z.string(), // S3 Key
         is_primary: z.boolean().default(false),
-        display_order: z.number().int().default(0)
+        display_order: z.number().int().default(0),
+        color: z.string().optional()
     })).optional(),
     variants: z.array(z.object({
         sku: z.string().min(2).max(50),
@@ -78,7 +79,8 @@ productRouter.post(
                         product_id: product.id,
                         image_url: img.image_url,
                         is_primary: img.is_primary,
-                        display_order: img.display_order
+                        display_order: img.display_order,
+                        color: img.color
                     }));
                     await tx.insert(productImages).values(imageValues);
                 }
@@ -251,7 +253,8 @@ productRouter.put(
                         product_id: id,
                         image_url: img.image_url,
                         is_primary: img.is_primary,
-                        display_order: img.display_order
+                        display_order: img.display_order,
+                        color: img.color
                     }));
                     await tx.insert(productImages).values(imageValues);
                 }
