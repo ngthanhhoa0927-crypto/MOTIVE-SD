@@ -64,6 +64,18 @@ export const products = pgTable("products", {
     base_price: decimal("base_price", { precision: 18, scale: 2 }).notNull(),
     weight: decimal("weight", { precision: 10, scale: 2 }),
     description: text("description"),
+    
+    // Specifications
+    material: varchar("material", { length: 255 }),
+    size_info: varchar("size_info", { length: 500 }),
+    care: text("care"),
+    
+    // Shipping
+    package_weight: decimal("package_weight", { precision: 10, scale: 2 }),
+    shipping_class: varchar("shipping_class", { length: 255 }),
+    package_dimensions: varchar("package_dimensions", { length: 255 }),
+    lead_time: integer("lead_time"),
+    
     status: productStatusEnum("status").default("Draft"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
