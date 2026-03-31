@@ -13,10 +13,18 @@ const productRouter = new Hono();
 const createProductSchema = z.object({
     category_id: z.number().int().positive(),
     collection_id: z.number().int().positive().optional(),
+    brand: z.string().max(255).optional(),
     name: z.string().min(2).max(255),
     base_price: z.number().positive(),
     weight: z.number().positive().optional(),
     description: z.string().optional(),
+    material: z.string().max(255).optional(),
+    size_info: z.string().max(500).optional(),
+    care: z.string().optional(),
+    package_weight: z.number().positive().optional(),
+    shipping_class: z.string().max(255).optional(),
+    package_dimensions: z.string().max(255).optional(),
+    lead_time: z.number().int().min(0).optional(),
     status: z.enum(["Draft", "Active", "Archived"]).default("Draft"),
     images: z.array(z.object({
         image_url: z.string(), // S3 Key
@@ -65,11 +73,19 @@ productRouter.post(
                 const [product] = await tx.insert(products).values({
                     category_id: data.category_id,
                     collection_id: data.collection_id,
+                    brand: data.brand,
                     name: data.name,
                     slug: slug,
                     base_price: data.base_price.toString(),
                     weight: data.weight?.toString(),
                     description: data.description,
+                    material: data.material,
+                    size_info: data.size_info,
+                    care: data.care,
+                    package_weight: data.package_weight?.toString(),
+                    shipping_class: data.shipping_class,
+                    package_dimensions: data.package_dimensions,
+                    lead_time: data.lead_time,
                     status: data.status,
                 }).returning();
 
@@ -238,10 +254,18 @@ productRouter.put(
                 const [product] = await tx.update(products).set({
                     category_id: data.category_id,
                     collection_id: data.collection_id,
+                    brand: data.brand,
                     name: data.name,
                     base_price: data.base_price.toString(),
                     weight: data.weight?.toString(),
                     description: data.description,
+                    material: data.material,
+                    size_info: data.size_info,
+                    care: data.care,
+                    package_weight: data.package_weight?.toString(),
+                    shipping_class: data.shipping_class,
+                    package_dimensions: data.package_dimensions,
+                    lead_time: data.lead_time,
                     status: data.status,
                     updatedAt: new Date()
                 }).where(eq(products.id, id)).returning();
