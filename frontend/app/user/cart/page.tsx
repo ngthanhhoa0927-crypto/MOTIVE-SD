@@ -45,7 +45,7 @@ const initialCartItems = [
 
 export default function CartPage() {
     const [cartItems, setCartItems] = useState(initialCartItems);
-    const [promoCode, setPromoCode] = useState("");
+
 
     const updateQuantity = (id: number, delta: number) => {
         setCartItems(prev => prev.map(item =>
@@ -191,25 +191,7 @@ export default function CartPage() {
                                 </div>
                             </div>
 
-                            {/* Promo Code */}
-                            <div className="mb-8">
-                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Promo Code</label>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        placeholder="Enter code"
-                                        className="flex-1 bg-[#F3F4F6] border-none rounded-xl px-4 py-3 text-sm focus:ring-1 focus:ring-blue-600 transition-all outline-none"
-                                        value={promoCode}
-                                        onChange={(e) => setPromoCode(e.target.value)}
-                                    />
-                                    <Button variant="outline" className="rounded-xl border-gray-200 font-bold hover:bg-[#F3F4F6]">
-                                        Apply
-                                    </Button>
-                                </div>
-                            </div>
 
-                            {/* Divider */}
-                            <div className="h-px bg-gray-100 mb-6"></div>
 
                             <div className="flex justify-between items-baseline mb-10">
                                 <span className="text-lg font-bold text-gray-900">Total</span>

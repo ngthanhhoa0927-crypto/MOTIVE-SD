@@ -135,9 +135,11 @@ export default function HomePage() {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.6, duration: 0.5 }}
                             >
-                                <Button className="bg-white text-gray-900 hover:bg-gray-50 rounded-full px-8 h-12 font-bold shadow-lg shadow-black/5 hover:-translate-y-1 transition-all duration-300">
-                                    Shop Collection
-                                </Button>
+                                <Link href="/user/search">
+                                    <Button className="bg-white text-gray-900 hover:bg-gray-50 rounded-full px-8 h-12 font-bold shadow-lg shadow-black/5 hover:-translate-y-1 transition-all duration-300">
+                                        Shop Collection
+                                    </Button>
+                                </Link>
                             </motion.div>
                         </div>
                     </div>
@@ -195,6 +197,8 @@ export default function HomePage() {
                         </div>
                     ) : (
                     <motion.div 
+                        initial="hidden"
+                        animate="visible"
                         variants={staggerContainer}
                         className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-5 gap-y-8 mb-4"
                     >
@@ -206,7 +210,7 @@ export default function HomePage() {
                             >
                                 <Link href={`/user/productdetail/${item.id || i + 1}`} className="block relative mb-3">
                                     <div className="aspect-square bg-[#F8F9FA] rounded-xl overflow-hidden flex items-center justify-center border border-gray-100/50 transition-all duration-300 group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.05)] group-hover:border-transparent">
-                                        <Image src={item.image || "/images/placeholder-hat.png"} alt={item.name} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
+                                        <Image src={item.image || "/images/placeholder-hat.png"} alt={item.name} fill className="object-cover transition-transform duration-500 group-hover:scale-110" unoptimized />
                                     </div>
                                 </Link>
 
