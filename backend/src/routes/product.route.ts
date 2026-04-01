@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { db } from "../db/index.js";
-import { eq } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import { products, productImages, productVariants, productPromotions, categories, collections } from "../db/schema.js";
 import { getPresignedDownloadUrl } from "../utils/s3.js";
 import { authMiddleware, adminMiddleware } from "./auth.route.js";
@@ -25,7 +25,7 @@ const createProductSchema = z.object({
     category_id: z.number().int().positive(),
     collection_id: z.number().int().positive().optional(),
     brand: z.string().max(255).optional(),
-    name: z.string().min(10, "Product name must be at least 10 characters").max(255),
+    name: z.string().min(10, "Product name must be at least 10 characters").max(200),
     base_price: z.number().positive("Price must be greater than 0"),
     weight: z.number().positive("Weight (g) is required and must be greater than 0"),
     description: z.string().optional(),
@@ -35,14 +35,14 @@ const createProductSchema = z.object({
     package_weight: z.number().positive().optional(),
     shipping_class: z.string().max(255).optional(),
     package_dimensions: z.string().max(255).optional(),
-    lead_time: z.number().int().min(0).optional(),
+    lead_time: z.number().int().min(1).default(2),
     status: z.enum(["Draft", "Active", "Archived"]).default("Draft"),
     images: z.array(z.object({
         image_url: z.string(),
         is_primary: z.boolean().default(false),
         display_order: z.number().int().default(0),
         color: z.string().optional()
-    })).min(1, "At least 1 product image is required"),
+    })).min(1, "At least 1 product image is required").max(10, "Maximum 10 images allowed"),
     variants: z.array(z.object({
         sku: z.string().min(2).max(50),
         color: z.string().min(1, "Color is required for each variant").max(50),
@@ -54,16 +54,47 @@ const createProductSchema = z.object({
         is_active: z.boolean().default(true),
         weight_override_g: z.number().positive().optional()
     })).min(1, "At least 1 variant (size + color) is required"),
-}).refine(data => {
-    // No duplicate (size, color) combinations
-    const combos = data.variants.map(v => `${v.size}||${v.color}`);
-    return new Set(combos).size === combos.length;
-}, { message: "Duplicate (size, color) combination found in variants", path: ["variants"] })
-.refine(data => {
-    // All SKUs must be unique
-    const skus = data.variants.map(v => v.sku);
-    return new Set(skus).size === skus.length;
-}, { message: "Duplicate SKU found in variants", path: ["variants"] });
+}).superRefine((data, ctx) => {
+    const activeVariants = data.variants.filter(v => v.is_active);
+    
+    // Global variant checks
+    const combos = activeVariants.map(v => `${v.size}||${v.color}`);
+    if (new Set(combos).size !== combos.length) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Duplicate (size, color) combination found", path: ["variantsGlobal"] });
+    }
+    const skus = activeVariants.map(v => v.sku);
+    if (new Set(skus).size !== skus.length) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Duplicate SKU found in variants", path: ["variantsGlobal"] });
+    }
+
+    // Active status triggers strict domain rule checks
+    if (data.status === "Active") {
+        if (!data.description || data.description.trim().length < 50 || data.description === "No description provided") {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Description must be at least 50 characters to publish", path: ["description"] });
+        }
+        if (!data.package_weight || data.package_weight < data.weight) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Package weight must be >= product weight", path: ["package_weight"] });
+        }
+        if (!data.package_dimensions || !/^\d+\s*x\s*\d+\s*x\s*\d+(\s*[a-zA-Z]+)?$/i.test(data.package_dimensions)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Package dimensions required format 'L x W x H' (e.g. 25 x 15 x 10)", path: ["package_dimensions"] });
+        }
+        if (!data.shipping_class || data.shipping_class.trim() === "") {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Shipping class is required to publish", path: ["shipping_class"] });
+        }
+        if (data.lead_time === undefined || data.lead_time < 1) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Lead time must be >= 1 day", path: ["lead_time"] });
+        }
+        
+        // Ensure every variant color has an associated image
+        const variantColors = new Set(activeVariants.map(v => v.color));
+        const imageColors = new Set(data.images.map(img => img.color).filter(Boolean));
+        for (const c of variantColors) {
+            if (!imageColors.has(c)) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Color variant "${c}" requires at least one associated image to publish`, path: ["images"] });
+            }
+        }
+    }
+});
 
 // Create a new product (Admin)
 productRouter.post(
@@ -88,6 +119,8 @@ productRouter.post(
 
             // Database Transaction ensures all related data is created together
             const newProduct = await db.transaction(async (tx) => {
+                const existing = await tx.select().from(products).where(and(eq(products.name, data.name), eq(products.category_id, data.category_id)));
+                if (existing.length > 0) throw new Error("DuplicateProductName");
 
                 // 1. Insert Base Product
                 const [product] = await tx.insert(products).values({
@@ -141,6 +174,9 @@ productRouter.post(
         } catch (error) {
             console.error("Error creating product:", error);
             // Handle unique constraint violation (like duplicate SKU)
+            if (error instanceof Error && error.message === "DuplicateProductName") {
+                return c.json({ message: "Validation failed", errors: [{ field: "name", message: "Product name already exists in this category" }] }, 409);
+            }
             if (error instanceof Error && error.message.includes('unique constraint')) {
                 return c.json({ message: "A unique constraint was violated (e.g. duplicate SKU or Slug)" }, 409);
             }
@@ -257,6 +293,9 @@ productRouter.put(
                 const existing = await tx.select().from(products).where(eq(products.id, id));
                 if (existing.length === 0) throw new Error("Product not found");
 
+                const duplicateName = await tx.select().from(products).where(and(eq(products.name, data.name), eq(products.category_id, data.category_id), ne(products.id, id)));
+                if (duplicateName.length > 0) throw new Error("DuplicateProductName");
+
                 // 1. Update Base Product
                 const [product] = await tx.update(products).set({
                     category_id: data.category_id,
@@ -312,6 +351,9 @@ productRouter.put(
             console.error("Error updating product:", error);
             if (error instanceof Error && error.message === "Product not found") {
                 return c.json({ message: "Product not found" }, 404);
+            }
+            if (error instanceof Error && error.message === "DuplicateProductName") {
+                return c.json({ message: "Validation failed", errors: [{ field: "name", message: "Product name already exists in this category" }] }, 409);
             }
             if (error instanceof Error && error.message.includes('unique constraint')) {
                 return c.json({ message: "A unique constraint was violated (e.g. duplicate SKU)" }, 409);

@@ -4,8 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { 
-    ChevronRight, Star, Package, RefreshCcw, Truck, Ticket, 
+import {
+    ChevronRight, Star, Package, RefreshCcw, Truck, Ticket,
     ShoppingCart, Flag, Info, ArrowLeft
 } from "lucide-react";
 import Header from "@/components/header";
@@ -39,6 +39,15 @@ interface Product {
     base_price: string;
     images: ProductImage[];
     variants: ProductVariant[];
+    brand?: string;
+    material?: string;
+    size_info?: string;
+    care?: string;
+    weight?: string;
+    package_weight?: string;
+    package_dimensions?: string;
+    shipping_class?: string;
+    lead_time?: number;
 }
 
 export default function ProductDetailsPage() {
@@ -66,6 +75,7 @@ export default function ProductDetailsPage() {
     const [reviewError, setReviewError] = useState("");
     const [reviewSuccess, setReviewSuccess] = useState("");
     const [isZooming, setIsZooming] = useState(false);
+    const [isHovering, setIsHovering] = useState(false);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0, bgX: 0, bgY: 0, bgWidth: 0, bgHeight: 0 });
     const [recommendedProducts, setRecommendedProducts] = useState<any[]>([]);
 
@@ -162,13 +172,26 @@ export default function ProductDetailsPage() {
                         "White": ["/images/hat-rabbit-white.png", "/images/hat-bear-white.png", "/images/placeholder-hat.png", "/images/hat-dog-dot.png"],
                         "Black": ["/images/hat-dog-black.png", "/images/baseball-cap.png", "/images/placeholder-hat.png", "/images/hat-bear.png"]
                     },
+                    allImages: [
+                        "/images/hat-dog-dot.png", "/images/placeholder-hat.png", "/images/baseball-cap.png", "/images/hat-rabbit-white.png",
+                        "/images/hat-bear.png", "/images/bucket-hat.png", "/images/hat-dog-black.png", "/images/hat-bear-white.png"
+                    ],
                     colors: [
                         { name: "Red", hex: "#B91C1C" },
                         { name: "Gray", hex: "#4B5563" },
                         { name: "White", hex: "#F3F4F6" },
                         { name: "Black", hex: "#111827" }
                     ],
-                    sizes: ["S", "M", "L", "XL"]
+                    sizes: ["S", "M", "L", "XL"],
+                    brand: "MOTIVE",
+                    material: "Premium Highland Wool Mix",
+                    size_info: "Adjustable Snapback",
+                    care: "Dry clean only",
+                    weight: "150.00",
+                    package_weight: "180.00",
+                    package_dimensions: "25 x 15 x 10",
+                    shipping_class: "Standard Express",
+                    lead_time: 2,
                 }
             };
         }
@@ -224,8 +247,18 @@ export default function ProductDetailsPage() {
                 base_price: parseFloat(product.base_price).toFixed(2),
                 original_price: (parseFloat(product.base_price) * 1.3).toFixed(2),
                 colorImages,
+                allImages: product.images && product.images.length > 0 ? product.images.map((img: any) => img.image_url) : [primaryImg],
                 colors: Array.from(colorSet.entries()).map(([name, hex]) => ({ name, hex })),
-                sizes: Array.from(sizeSet).reverse()
+                sizes: Array.from(sizeSet).reverse(),
+                brand: product.brand || null,
+                material: product.material || null,
+                size_info: product.size_info || null,
+                care: product.care || null,
+                weight: product.weight || null,
+                package_weight: product.package_weight || null,
+                package_dimensions: product.package_dimensions || null,
+                shipping_class: product.shipping_class || null,
+                lead_time: product.lead_time || null,
             }
         };
     }, [product]);
@@ -244,7 +277,7 @@ export default function ProductDetailsPage() {
 
     const handleAddToCart = () => {
         if (!inStock) return;
-        
+
         const qty = Number(quantity);
         if (qty > availableStock) {
             alert(`Sorry, we only have ${availableStock} items in stock for ${selectedColor} - ${selectedSize}.`);
@@ -336,7 +369,7 @@ export default function ProductDetailsPage() {
 
     const inStock = !isOutOfStock;
     const currentPrice = currentVariant ? parseFloat(currentVariant.price).toFixed(2) : mockProduct.base_price;
-    const displayImages = mockProduct.colorImages[selectedColor as keyof typeof mockProduct.colorImages] || mockProduct.colorImages[mockProduct.colors[0]?.name] || ["/images/placeholder-hat.png"];;
+    const displayImages = mockProduct.allImages || ["/images/placeholder-hat.png"];
 
     const renderStars = (rating: number, size = "w-3 h-3") => (
         <div className="flex gap-[2px]">
@@ -365,7 +398,7 @@ export default function ProductDetailsPage() {
 
                     {/* Left Col: Gallery */}
                     <div className="space-y-4">
-                        <div 
+                        <div
                             className={`aspect-square bg-[#F8F9FA] rounded-3xl relative overflow-hidden flex items-center justify-center group border border-gray-50 ${isZooming ? "cursor-none" : "cursor-zoom-in"}`}
                             onMouseMove={isZooming ? handleMouseMove : undefined}
                             onClick={(e) => {
@@ -387,7 +420,7 @@ export default function ProductDetailsPage() {
 
                             {/* Magnifying Glass Overlay */}
                             {isZooming && (
-                                <div 
+                                <div
                                     className="absolute w-64 h-64 border-[3px] border-white/90 rounded-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.25)] pointer-events-none z-50 overflow-hidden bg-white/95"
                                     style={{
                                         left: `${mousePos.x}%`,
@@ -400,14 +433,14 @@ export default function ProductDetailsPage() {
                                     }}
                                 />
                             )}
-                            
-                            <button 
+
+                            <button
                                 onClick={(e) => { e.stopPropagation(); setSelectedImageIdx((prev) => (prev - 1 + displayImages.length) % displayImages.length); }}
                                 className="absolute left-6 top-1/2 -translate-y-1/2 w-11 h-11 bg-white shadow-xl rounded-full flex items-center justify-center hover:bg-black hover:text-white transition-all opacity-0 group-hover:opacity-100 transform -translate-x-4 group-hover:translate-x-0"
                             >
                                 <ArrowLeft className="w-5 h-5" />
                             </button>
-                            <button 
+                            <button
                                 onClick={(e) => { e.stopPropagation(); setSelectedImageIdx((prev) => (prev + 1) % displayImages.length); }}
                                 className="absolute right-6 top-1/2 -translate-y-1/2 w-11 h-11 bg-white shadow-xl rounded-full flex items-center justify-center hover:bg-black hover:text-white transition-all opacity-0 group-hover:opacity-100 transform translate-x-4 group-hover:translate-x-0"
                             >
@@ -438,7 +471,7 @@ export default function ProductDetailsPage() {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                     <span className="px-3 py-1 bg-[#0F172A] text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-full shadow-lg">New Arrival</span>
-                                    <div 
+                                    <div
                                         className={`flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider transition-all ${isOutOfStock ? "bg-red-50 text-red-600 border-red-100 shadow-sm shadow-red-100" : "bg-emerald-50 text-emerald-600 border-emerald-100 shadow-sm shadow-emerald-100"}`}
                                     >
                                         <div className={`w-1.5 h-1.5 rounded-full ${isOutOfStock ? "bg-red-500" : "bg-emerald-500 animate-pulse"}`} />
@@ -477,7 +510,9 @@ export default function ProductDetailsPage() {
                                             key={c.name}
                                             onClick={() => {
                                                 setSelectedColor(c.name);
-                                                setSelectedImageIdx(0);
+                                                const firstImgUrl = mockProduct.colorImages[c.name]?.[0];
+                                                const idx = firstImgUrl ? mockProduct.allImages.indexOf(firstImgUrl) : 0;
+                                                setSelectedImageIdx(idx !== -1 ? idx : 0);
                                             }}
                                             className={`relative w-8 h-8 rounded-full transition-all flex items-center justify-center p-0.5 border ${selectedColor === c.name ? 'ring-2 ring-blue-600 ring-offset-2 scale-110 border-transparent shadow-xl shadow-blue-200' : 'hover:scale-110 border-gray-100'}`}
                                             title={c.name}
@@ -491,7 +526,7 @@ export default function ProductDetailsPage() {
                             <div>
                                 <div className="flex items-center justify-between mb-5">
                                     <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                                        Select Size 
+                                        Select Size
                                         {currentVariant && (
                                             <span className={`ml-4 text-[10px] p-1 px-2 rounded-md ${availableStock > 0 ? "bg-blue-50 text-blue-600" : "bg-red-50 text-red-600"}`}>
                                                 Stock: {availableStock}
@@ -520,16 +555,16 @@ export default function ProductDetailsPage() {
                         <div className="space-y-8">
                             <div className="flex items-center gap-4">
                                 <div className={`flex items-center bg-[#F8F9FA] rounded-2xl h-14 px-5 border-2 transition-all ${!inStock ? 'opacity-40 grayscale pointer-events-none' : 'focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50'}`}>
-                                    <button 
+                                    <button
                                         type="button"
-                                        onClick={() => setQuantity(prev => Math.max(1, Number(prev) - 1))} 
+                                        onClick={() => setQuantity(prev => Math.max(1, Number(prev) - 1))}
                                         className="text-gray-400 hover:text-gray-900 transition font-black text-2xl px-2 select-none"
                                     > – </button>
-                                    
-                                    <input 
+
+                                    <input
                                         type="text"
-                                        className="w-12 text-center bg-transparent text-[14px] font-black text-gray-900 outline-none" 
-                                        value={quantity} 
+                                        className="w-12 text-center bg-transparent text-[14px] font-black text-gray-900 outline-none"
+                                        value={quantity}
                                         onChange={(e) => {
                                             const val = e.target.value.replace(/\D/g, "");
                                             let numVal = val === "" ? "" : Number(val);
@@ -543,26 +578,26 @@ export default function ProductDetailsPage() {
                                             if (quantity === "" || Number(quantity) < 1) setQuantity(1);
                                         }}
                                     />
-                                    
-                                    <button 
+
+                                    <button
                                         type="button"
                                         onClick={() => setQuantity(prev => {
                                             const next = Number(prev) + 1;
                                             return next > availableStock ? prev : next;
-                                        })} 
+                                        })}
                                         className={`text-gray-400 transition font-black text-2xl px-2 select-none ${Number(quantity) >= availableStock ? "opacity-20 cursor-not-allowed" : "hover:text-gray-900"}`}
                                     > + </button>
                                 </div>
 
-                                <Button 
+                                <Button
                                     onClick={handleAddToCart}
                                     className={`flex-1 h-14 rounded-2xl text-[12px] font-black uppercase tracking-[0.1em] shadow-2xl shadow-blue-600/30 transition-all ${inStock ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed uppercase'}`}
                                     disabled={!inStock}
                                 >
                                     <ShoppingCart className="w-4 h-4 mr-2" /> {inStock ? "Add To Cart" : "Sold Out"}
                                 </Button>
-                                
-                                <Button 
+
+                                <Button
                                     className={`flex-1 h-14 rounded-2xl text-[12px] font-black uppercase tracking-[0.1em] transition-all hover:scale-[1.02] active:scale-95 ${inStock ? 'bg-[#0F172A] hover:bg-black text-white' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
                                     disabled={!inStock}
                                 >
@@ -570,14 +605,18 @@ export default function ProductDetailsPage() {
                                 </Button>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-5 bg-emerald-50 rounded-3xl border border-emerald-100 group cursor-default transition-all hover:shadow-lg hover:shadow-emerald-900/5">
-                                    <div className="flex items-center gap-4 mb-2">
-                                        <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-emerald-200"><Truck className="w-5 h-5" /></div>
-                                        <span className="text-[11px] font-black text-emerald-800 uppercase tracking-widest">Free Shipping</span>
+                            <div className={`grid ${mockProduct.shipping_class ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                                {mockProduct.shipping_class && (
+                                    <div className="p-5 bg-emerald-50 rounded-3xl border border-emerald-100 group cursor-default transition-all hover:shadow-lg hover:shadow-emerald-900/5">
+                                        <div className="flex items-center gap-4 mb-2">
+                                            <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-emerald-200"><Truck className="w-5 h-5" /></div>
+                                            <span className="text-[11px] font-black text-emerald-800 uppercase tracking-widest">{mockProduct.shipping_class}</span>
+                                        </div>
+                                        <p className="text-[10px] font-bold text-emerald-600/70 ml-14">
+                                            {mockProduct.lead_time ? `Delivery in ${mockProduct.lead_time} days` : 'Ships Next Business Day'}
+                                        </p>
                                     </div>
-                                    <p className="text-[10px] font-bold text-emerald-600/70 ml-14">Available for all orders over $99</p>
-                                </div>
+                                )}
                                 <div className="p-5 bg-blue-50 rounded-3xl border border-blue-100 group cursor-default transition-all hover:shadow-lg hover:shadow-blue-900/5">
                                     <div className="flex items-center gap-4 mb-2">
                                         <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-200"><Ticket className="w-5 h-5" /></div>
@@ -594,7 +633,7 @@ export default function ProductDetailsPage() {
                 <section className="mb-24">
                     <div className="flex gap-12 border-b border-gray-100 mb-12">
                         {["description", "review"].map((tab) => (
-                            <button 
+                            <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
                                 className={`pb-5 text-[14px] font-black uppercase tracking-[0.3em] transition-all relative ${activeTab === tab ? "text-blue-600 after:content-[''] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[4px] after:bg-blue-600 after:rounded-t-full" : "text-gray-300 hover:text-gray-600"}`}
@@ -608,9 +647,12 @@ export default function ProductDetailsPage() {
                         <div className="max-w-5xl animate-in fade-in slide-in-from-bottom-6 duration-700">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-16 mb-16">
                                 <div className="md:col-span-2 space-y-8">
-                                    <h3 className="text-[28px] font-black text-gray-900 tracking-tighter">Ultimate Warmth & Unmatched Style</h3>
-                                    <p className="text-gray-500 text-[16px] leading-relaxed">
-                                        Crafted for those who refuse to compromise on either style or comfort during the winter months. Our Plaid Dog-Ear Baseball Cap features high-performance insulated flaps that can be folded down for complete ear protection or secured up for a classic look. The premium wool-blend exterior offers natural water resistance and timeless texture.
+                                    {mockProduct.brand && (
+                                        <span className="text-[12px] font-black text-blue-600 uppercase tracking-[0.2em] mb-2 block">{mockProduct.brand}</span>
+                                    )}
+                                    <h3 className="text-[28px] font-black text-gray-900 tracking-tighter">{mockProduct.name}</h3>
+                                    <p className="text-gray-500 text-[16px] leading-relaxed whitespace-pre-line">
+                                        {mockProduct.description}
                                     </p>
                                     <div className="grid grid-cols-2 gap-8 pt-4">
                                         <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-2xl group hover:bg-blue-50 transition-colors">
@@ -630,12 +672,26 @@ export default function ProductDetailsPage() {
                                     </div>
                                 </div>
                                 <div className="space-y-8 bg-[#F8F9FA] p-8 rounded-[32px] border border-gray-50 shadow-sm">
-                                    <h4 className="text-[13px] font-black text-gray-900 uppercase tracking-widest border-b border-gray-100 pb-4 mb-4">Tech Specs</h4>
+                                    <h4 className="text-[13px] font-black text-gray-900 uppercase tracking-widest border-b border-gray-100 pb-4 mb-4">Detailed Description</h4>
                                     <div className="space-y-6">
-                                        <div><p className="text-[9px] font-black text-gray-300 uppercase mb-1">Shell Material</p><p className="text-[13px] font-bold text-gray-700">Premium Highland Wool Mix</p></div>
-                                        <div><p className="text-[9px] font-black text-gray-300 uppercase mb-1">Lining</p><p className="text-[13px] font-bold text-gray-700">Quilted Satin Finish</p></div>
-                                        <div><p className="text-[9px] font-black text-gray-300 uppercase mb-1">Strap</p><p className="text-[13px] font-bold text-gray-700">Genuine Leather w/ Brass</p></div>
-                                        <div><p className="text-[9px] font-black text-gray-300 uppercase mb-1">Insulation</p><p className="text-[13px] font-bold text-gray-700">3M Thinsulate™ Equivalent</p></div>
+                                        {mockProduct.material && (
+                                            <div><p className="text-[9px] font-black text-gray-400 uppercase mb-1">Material</p><p className="text-[13px] font-bold text-gray-800">{mockProduct.material}</p></div>
+                                        )}
+                                        {mockProduct.size_info && (
+                                            <div><p className="text-[9px] font-black text-gray-400 uppercase mb-1">Size Info</p><p className="text-[13px] font-bold text-gray-800">{mockProduct.size_info}</p></div>
+                                        )}
+                                        {mockProduct.care && (
+                                            <div><p className="text-[9px] font-black text-gray-400 uppercase mb-1">Care Guidelines</p><p className="text-[13px] font-bold text-gray-800">{mockProduct.care}</p></div>
+                                        )}
+                                        {mockProduct.weight && (
+                                            <div><p className="text-[9px] font-black text-gray-400 uppercase mb-1">Weight</p><p className="text-[13px] font-bold text-gray-800">{Number(mockProduct.weight).toFixed(0)}g</p></div>
+                                        )}
+                                        {mockProduct.package_dimensions && (
+                                            <div><p className="text-[9px] font-black text-gray-400 uppercase mb-1">Package Dimensions</p><p className="text-[13px] font-bold text-gray-800">{mockProduct.package_dimensions} cm</p></div>
+                                        )}
+                                        {!mockProduct.material && !mockProduct.size_info && !mockProduct.care && !mockProduct.weight && (
+                                            <div><p className="text-[12px] font-black text-gray-400 italic">No additional specifications provided.</p></div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -655,12 +711,12 @@ export default function ProductDetailsPage() {
                                         <div key={star} className="flex items-center gap-6 group cursor-default">
                                             <span className="text-[11px] font-black text-gray-900 w-4 tracking-tighter">{star} <span className="text-yellow-400 font-normal">★</span></span>
                                             <div className="h-3 flex-1 bg-[#F1F5F9] rounded-full overflow-hidden shadow-inner">
-                                                <div 
-                                                    className="h-full bg-blue-600 rounded-full transition-all duration-1000 group-hover:bg-blue-700 group-hover:shadow-[0_0_15px_rgba(37,99,235,0.4)]" 
-                                                    style={{ width: `${star === 5 ? 78 : star === 4 ? 15 : 7 - star}%` }} 
+                                                <div
+                                                    className="h-full bg-blue-600 rounded-full transition-all duration-1000 group-hover:bg-blue-700 group-hover:shadow-[0_0_15px_rgba(37,99,235,0.4)]"
+                                                    style={{ width: `${star === 5 ? 78 : star === 4 ? 15 : 7 - star}%` }}
                                                 />
                                             </div>
-                                            <span className="text-[11px] font-black text-gray-400 w-12 text-right">{star === 5 ? '78%' : star === 4 ? '15%' : `${7-star}%`}</span>
+                                            <span className="text-[11px] font-black text-gray-400 w-12 text-right">{star === 5 ? '78%' : star === 4 ? '15%' : `${7 - star}%`}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -680,7 +736,7 @@ export default function ProductDetailsPage() {
                                         </div>
                                     </div>
                                     <div className="bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 p-2 shadow-2xl">
-                                        <textarea 
+                                        <textarea
                                             value={reviewText}
                                             onChange={(e) => setReviewText(e.target.value)}
                                             placeholder="The hat fits perfectly and the material feels extremely premium..."
@@ -689,10 +745,10 @@ export default function ProductDetailsPage() {
                                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-4 border-t border-white/5 mt-1 gap-4">
                                             <div className="flex flex-col gap-2">
                                                 <div className="flex gap-4 items-center pl-1">
-                                                    {[1,2,3,4,5].map(s => (
-                                                        <Star 
-                                                            key={s} 
-                                                            className={`w-6 h-6 cursor-pointer transition-all hover:scale-110 ${s <= (hoverRating || reviewRating) ? "fill-yellow-400 text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]" : "text-gray-600 hover:text-yellow-400"}`} 
+                                                    {[1, 2, 3, 4, 5].map(s => (
+                                                        <Star
+                                                            key={s}
+                                                            className={`w-6 h-6 cursor-pointer transition-all hover:scale-110 ${s <= (hoverRating || reviewRating) ? "fill-yellow-400 text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]" : "text-gray-600 hover:text-yellow-400"}`}
                                                             onClick={() => { setReviewRating(s); setReviewError(""); }}
                                                             onMouseEnter={() => setHoverRating(s)}
                                                             onMouseLeave={() => setHoverRating(0)}
