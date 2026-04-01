@@ -261,7 +261,7 @@ export default function Header() {
                         <Link href="/category/flat-cap">Flat Cap</Link>
                     </li>
                     <li className="cursor-pointer hover:text-blue-600 transition pb-3 -mb-3 border-b-2 border-transparent hover:border-blue-600">
-                        <Link href="/category/others">Others</Link>
+                        <Link href="/user/search">Others</Link>
                     </li>
                 </ul>
             </nav>

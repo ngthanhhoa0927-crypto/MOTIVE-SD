@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
     ChevronRight, Star, Package, RefreshCcw, Truck, Ticket,
-    ShoppingCart, Flag, Info, ArrowLeft
+    ShoppingCart, Flag, Info, ArrowLeft, X
 } from "lucide-react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
@@ -78,6 +78,7 @@ export default function ProductDetailsPage() {
     const [isHovering, setIsHovering] = useState(false);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0, bgX: 0, bgY: 0, bgWidth: 0, bgHeight: 0 });
     const [recommendedProducts, setRecommendedProducts] = useState<any[]>([]);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
     useEffect(() => {
         const fetchRecommendations = async () => {
@@ -249,7 +250,15 @@ export default function ProductDetailsPage() {
                 colorImages,
                 allImages: product.images && product.images.length > 0 ? product.images.map((img: any) => img.image_url) : [primaryImg],
                 colors: Array.from(colorSet.entries()).map(([name, hex]) => ({ name, hex })),
-                sizes: Array.from(sizeSet).reverse(),
+                sizes: Array.from(sizeSet).sort((a, b) => {
+                    const order = ["S", "M", "L", "XL", "2XL", "Free Size"];
+                    const idxA = order.indexOf(a);
+                    const idxB = order.indexOf(b);
+                    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                    if (idxA !== -1) return -1;
+                    if (idxB !== -1) return 1;
+                    return a.localeCompare(b);
+                }),
                 brand: product.brand || null,
                 material: product.material || null,
                 size_info: product.size_info || null,
@@ -330,6 +339,20 @@ export default function ProductDetailsPage() {
         }
     }, [selectedColor, selectedSize, availableStock]);
 
+    const displayImages = mockProduct.allImages || ["/images/placeholder-hat.png"];
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "ArrowLeft") {
+                setSelectedImageIdx((prev) => (prev - 1 + displayImages.length) % displayImages.length);
+            } else if (e.key === "ArrowRight") {
+                setSelectedImageIdx((prev) => (prev + 1) % displayImages.length);
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [displayImages.length]);
+
     if (loading) {
         return (
             <div className="flex flex-col min-h-screen bg-white">
@@ -359,17 +382,14 @@ export default function ProductDetailsPage() {
         const imgWidth = width * zoomLevel;
         const imgHeight = height * zoomLevel;
 
-        const maxBgX = imgWidth - boxSize;
-        const maxBgY = imgHeight - boxSize;
-        const bgX = (px / width) * maxBgX;
-        const bgY = (py / height) * maxBgY;
+        const bgX = (boxSize / 2) - (px * zoomLevel);
+        const bgY = (boxSize / 2) - (py * zoomLevel);
 
         setMousePos({ x, y, bgX, bgY, bgWidth: imgWidth, bgHeight: imgHeight });
     };
 
     const inStock = !isOutOfStock;
     const currentPrice = currentVariant ? parseFloat(currentVariant.price).toFixed(2) : mockProduct.base_price;
-    const displayImages = mockProduct.allImages || ["/images/placeholder-hat.png"];
 
     const renderStars = (rating: number, size = "w-3 h-3") => (
         <div className="flex gap-[2px]">
@@ -487,9 +507,6 @@ export default function ProductDetailsPage() {
                             <h1 className="text-[44px] font-black text-[#0F172A] leading-[1.1] tracking-tighter">
                                 {mockProduct.name}
                             </h1>
-                            <p className="text-[15px] font-medium text-gray-500 leading-relaxed max-w-lg">
-                                {mockProduct.description}
-                            </p>
 
                             <div className="flex items-center gap-6">
                                 <span className="text-[38px] font-black text-blue-600 tracking-tighter">${currentPrice}</span>
@@ -605,7 +622,7 @@ export default function ProductDetailsPage() {
                                 </Button>
                             </div>
 
-                            <div className={`grid ${mockProduct.shipping_class ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                            <div className="flex flex-col gap-4">
                                 {mockProduct.shipping_class && (
                                     <div className="p-5 bg-emerald-50 rounded-3xl border border-emerald-100 group cursor-default transition-all hover:shadow-lg hover:shadow-emerald-900/5">
                                         <div className="flex items-center gap-4 mb-2">
@@ -617,13 +634,6 @@ export default function ProductDetailsPage() {
                                         </p>
                                     </div>
                                 )}
-                                <div className="p-5 bg-blue-50 rounded-3xl border border-blue-100 group cursor-default transition-all hover:shadow-lg hover:shadow-blue-900/5">
-                                    <div className="flex items-center gap-4 mb-2">
-                                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-200"><Ticket className="w-5 h-5" /></div>
-                                        <span className="text-[11px] font-black text-blue-800 uppercase tracking-widest">PROMO CODES</span>
-                                    </div>
-                                    <p className="text-[10px] font-bold text-blue-600/70 ml-14">Get $10 OFF with code MOTIVESD10</p>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -645,12 +655,8 @@ export default function ProductDetailsPage() {
 
                     {activeTab === "description" ? (
                         <div className="max-w-5xl animate-in fade-in slide-in-from-bottom-6 duration-700">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-16 mb-16">
-                                <div className="md:col-span-2 space-y-8">
-                                    {mockProduct.brand && (
-                                        <span className="text-[12px] font-black text-blue-600 uppercase tracking-[0.2em] mb-2 block">{mockProduct.brand}</span>
-                                    )}
-                                    <h3 className="text-[28px] font-black text-gray-900 tracking-tighter">{mockProduct.name}</h3>
+                            <div className="flex flex-col gap-10 mb-16">
+                                <div className="space-y-8 max-w-3xl">
                                     <p className="text-gray-500 text-[16px] leading-relaxed whitespace-pre-line">
                                         {mockProduct.description}
                                     </p>
@@ -670,31 +676,51 @@ export default function ProductDetailsPage() {
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="space-y-8 bg-[#F8F9FA] p-8 rounded-[32px] border border-gray-50 shadow-sm">
-                                    <h4 className="text-[13px] font-black text-gray-900 uppercase tracking-widest border-b border-gray-100 pb-4 mb-4">Detailed Description</h4>
-                                    <div className="space-y-6">
-                                        {mockProduct.material && (
-                                            <div><p className="text-[9px] font-black text-gray-400 uppercase mb-1">Material</p><p className="text-[13px] font-bold text-gray-800">{mockProduct.material}</p></div>
-                                        )}
-                                        {mockProduct.size_info && (
-                                            <div><p className="text-[9px] font-black text-gray-400 uppercase mb-1">Size Info</p><p className="text-[13px] font-bold text-gray-800">{mockProduct.size_info}</p></div>
-                                        )}
-                                        {mockProduct.care && (
-                                            <div><p className="text-[9px] font-black text-gray-400 uppercase mb-1">Care Guidelines</p><p className="text-[13px] font-bold text-gray-800">{mockProduct.care}</p></div>
-                                        )}
-                                        {mockProduct.weight && (
-                                            <div><p className="text-[9px] font-black text-gray-400 uppercase mb-1">Weight</p><p className="text-[13px] font-bold text-gray-800">{Number(mockProduct.weight).toFixed(0)}g</p></div>
-                                        )}
-                                        {mockProduct.package_dimensions && (
-                                            <div><p className="text-[9px] font-black text-gray-400 uppercase mb-1">Package Dimensions</p><p className="text-[13px] font-bold text-gray-800">{mockProduct.package_dimensions} cm</p></div>
-                                        )}
-                                        {!mockProduct.material && !mockProduct.size_info && !mockProduct.care && !mockProduct.weight && (
-                                            <div><p className="text-[12px] font-black text-gray-400 italic">No additional specifications provided.</p></div>
-                                        )}
+                                    <div className="pt-6">
+                                        <Button
+                                            onClick={() => setIsDetailsOpen(true)}
+                                            variant="outline"
+                                            className="h-12 px-8 rounded-2xl text-[12px] font-black uppercase tracking-widest border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm transition-all"
+                                        >
+                                            View Product Details
+                                        </Button>
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Details Modal */}
+                            {isDetailsOpen && (
+                                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                                    <div className="bg-white rounded-[32px] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                                        <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-[#F8F9FA]">
+                                            <h4 className="text-[14px] font-black text-gray-900 uppercase tracking-widest">Product's Details</h4>
+                                            <button onClick={() => setIsDetailsOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white hover:shadow-sm text-gray-400 hover:text-gray-900 transition-all">
+                                                <X className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                        <div className="p-8 pb-10 space-y-6">
+                                            {mockProduct.material && (
+                                                <div className="flex items-center justify-between border-b border-gray-50 pb-4"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Material</span><span className="text-[13px] font-bold text-gray-800 text-right max-w-[60%]">{mockProduct.material}</span></div>
+                                            )}
+                                            {mockProduct.size_info && (
+                                                <div className="flex items-center justify-between border-b border-gray-50 pb-4"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Size Info</span><span className="text-[13px] font-bold text-gray-800 text-right max-w-[60%]">{mockProduct.size_info}</span></div>
+                                            )}
+                                            {mockProduct.care && (
+                                                <div className="flex items-center justify-between border-b border-gray-50 pb-4"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Care Guidelines</span><span className="text-[13px] font-bold text-gray-800 text-right max-w-[60%]">{mockProduct.care}</span></div>
+                                            )}
+                                            {mockProduct.weight && (
+                                                <div className="flex items-center justify-between border-b border-gray-50 pb-4"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Weight</span><span className="text-[13px] font-bold text-gray-800 text-right max-w-[60%]">{Number(mockProduct.weight).toFixed(0)}g</span></div>
+                                            )}
+                                            {mockProduct.package_dimensions && (
+                                                <div className="flex items-center justify-between"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Package Dimensions</span><span className="text-[13px] font-bold text-gray-800 text-right max-w-[60%]">{mockProduct.package_dimensions} cm</span></div>
+                                            )}
+                                            {!mockProduct.material && !mockProduct.size_info && !mockProduct.care && !mockProduct.weight && (
+                                                <div><p className="text-[12px] font-medium text-gray-400 italic text-center">No additional product details provided.</p></div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div className="max-w-5xl animate-in fade-in slide-in-from-bottom-6 duration-700">
@@ -821,7 +847,7 @@ export default function ProductDetailsPage() {
                                             <div className="absolute top-4 left-4 z-10 bg-white px-2 py-1 rounded-lg shadow-sm border border-gray-50 flex items-center justify-center">
                                                 <span className="text-[9px] font-black text-blue-600 tracking-tighter">HOT</span>
                                             </div>
-                                            <Image src={img} alt={p.name} fill className="object-contain p-8 transform group-hover:scale-110 transition-transform duration-700 ease-out" />
+                                            <Image src={img} alt={p.name || "Product"} fill className="object-contain p-8 transform group-hover:scale-110 transition-transform duration-700 ease-out" unoptimized />
                                             <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/10 transition-colors duration-500" />
                                             <div className="absolute bottom-5 left-5 right-5 translate-y-16 group-hover:translate-y-0 transition-all duration-500 ease-out">
                                                 <Button className="w-full h-10 bg-white hover:bg-[#0F172A] hover:text-white text-gray-900 text-[10px] font-black rounded-xl shadow-xl transition-all uppercase tracking-widest border-none">View Product</Button>
@@ -830,10 +856,10 @@ export default function ProductDetailsPage() {
                                     </Link>
                                     <div className="px-2 space-y-1">
                                         <Link href={`/user/productdetail/${p.id || i}`}>
-                                            <h4 className="text-[12px] font-bold text-gray-900 leading-tight truncate group-hover:text-blue-600 transition-colors">{p.name}</h4>
+                                            <h4 className="text-[12px] font-bold text-gray-900 leading-tight truncate group-hover:text-blue-600 transition-colors">{p.name || "Unknown Product"}</h4>
                                         </Link>
                                         <div className="flex items-center justify-between">
-                                            <span className="text-[14px] font-black text-gray-600">${parseFloat(p.base_price).toFixed(2)}</span>
+                                            <span className="text-[14px] font-black text-gray-600">${p.base_price ? parseFloat(p.base_price).toFixed(2) : "0.00"}</span>
                                             <div className="flex gap-0.5">{renderStars(5, "w-2.5 h-2.5")}</div>
                                         </div>
                                     </div>
