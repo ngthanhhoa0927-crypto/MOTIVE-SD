@@ -19,14 +19,20 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
     const [stock, setStock] = useState('0');
     const [size, setSize] = useState('');
     const [color, setColor] = useState('');
-    const [categories, setCategories] = useState<any[]>([]);
+    const [categories, setCategories] = useState<any[]>([
+        { id: 1, name: 'Baseball Hat' },
+        { id: 2, name: 'Bucket Hat' },
+        { id: 3, name: 'Sun Protection Hat' },
+        { id: 4, name: 'Flat Cap' },
+        { id: 5, name: 'Others' }
+    ]);
     const [errors, setErrors] = useState<any>({});
 
     useEffect(() => {
         fetch("http://localhost:8000/categories")
             .then(res => res.json())
             .then(data => {
-                if (data.categories) {
+                if (data.categories && data.categories.length > 0) {
                     setCategories(data.categories);
                 }
             })

@@ -68,14 +68,26 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
     const [variantsData, setVariantsData] = useState<any[]>([]);
     
     // Categories and Collections
-    const [categories, setCategories] = useState<any[]>([]);
+    const [categories, setCategories] = useState<any[]>([
+        { id: 1, name: 'Baseball Hat' },
+        { id: 2, name: 'Bucket Hat' },
+        { id: 3, name: 'Sun Protection Hat' },
+        { id: 4, name: 'Flat Cap' },
+        { id: 5, name: 'Others' }
+    ]);
     const [collections, setCollections] = useState<any[]>([{ id: 1, name: 'Summer Collection' }, { id: 2, name: 'Winter Collection' }, { id: 3, name: 'Limited Edition' }]);
 
     useEffect(() => {
         fetch("http://localhost:8000/categories")
             .then(res => res.json())
-            .then(data => { if (data.categories?.length > 0) setCategories(data.categories); })
-            .catch(console.error);
+            .then(data => { 
+                if (data.categories && data.categories.length > 0) {
+                    setCategories(data.categories);
+                }
+            })
+            .catch(err => {
+                console.error("Failed to fetch categories:", err);
+            });
     }, []);
 
     // Initialize variations from initialData if present

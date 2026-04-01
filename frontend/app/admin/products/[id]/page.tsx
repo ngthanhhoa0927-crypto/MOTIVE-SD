@@ -14,7 +14,13 @@ export default function EditProductPage({ params: paramsPromise }: { params: Pro
     const [isEditing, setIsEditing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [product, setProduct] = useState<any>(null);
-    const [categories, setCategories] = useState<any[]>([]);
+    const [categories, setCategories] = useState<any[]>([
+        { id: 1, name: 'Baseball Hat' },
+        { id: 2, name: 'Bucket Hat' },
+        { id: 3, name: 'Sun Protection Hat' },
+        { id: 4, name: 'Flat Cap' },
+        { id: 5, name: 'Others' }
+    ]);
 
     const fetchProduct = async () => {
         setIsLoading(true);
@@ -46,7 +52,9 @@ export default function EditProductPage({ params: paramsPromise }: { params: Pro
                     setCategories(data.categories);
                 }
             })
-            .catch(err => console.error(err));
+            .catch(err => {
+                console.error("Failed to fetch categories:", err);
+            });
 
         if (params.id) {
             fetchProduct();
