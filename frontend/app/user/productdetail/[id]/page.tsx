@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -67,23 +67,59 @@ export default function ProductDetailsPage() {
     const [reviewSuccess, setReviewSuccess] = useState("");
     const [isZooming, setIsZooming] = useState(false);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0, bgX: 0, bgY: 0, bgWidth: 0, bgHeight: 0 });
+    const [recommendedProducts, setRecommendedProducts] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchRecommendations = async () => {
+            try {
+                const res = await fetch("http://localhost:8000/products", { cache: "no-store" });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.products && Array.isArray(data.products)) {
+                        setRecommendedProducts(data.products.reverse().slice(0, 6));
+                    }
+                }
+            } catch (e) {
+                console.log("Failed to fetch recommendations");
+            }
+        };
+        fetchRecommendations();
+    }, []);
 
     useEffect(() => {
         const token = localStorage.getItem("token");
         if (token) setIsLoggedIn(true);
 
+        // Extract product ID from the URL path
+        const pathParts = window.location.pathname.split("/");
+        const productId = pathParts[pathParts.length - 1];
+
         const fetchProduct = async () => {
+            if (!productId || isNaN(Number(productId))) {
+                setLoading(false);
+                return;
+            }
             try {
-                // Fetch real data but we will override with mock for UI demo
-                const res = await fetch("http://localhost:8000/products");
+                const res = await fetch(`http://localhost:8000/products/${productId}`, { cache: "no-store" });
                 if (res.ok) {
                     const data = await res.json();
-                    if (data.products && data.products.length > 0) {
-                        setProduct(data.products[0]);
+                    if (data.product) {
+                        // Map signed_url for images so UI can use image_url directly
+                        const mappedProduct = {
+                            ...data.product,
+                            images: (data.product.images || []).map((img: any) => ({
+                                ...img,
+                                image_url: img.signed_url || img.image_url
+                            })),
+                            variants: (data.product.variants || []).map((v: any) => ({
+                                ...v,
+                                image_url: v.signed_url || v.image_url
+                            }))
+                        };
+                        setProduct(mappedProduct);
                     }
                 }
             } catch (error) {
-                // Ignore fetch errors during UI development to prevent Next.js screen-covering error overlay
                 console.log("Backend not reachable for product fetch.");
             } finally {
                 setLoading(false);
@@ -93,91 +129,118 @@ export default function ProductDetailsPage() {
         fetchProduct();
     }, []);
 
-    // ====== GENERATE MOCK VARIANTS WITH STOCK ======
-    const mockVariants = [
-        { color: "Red", size: "S", stock: 12 },
-        { color: "Red", size: "M", stock: 5 },
-        { color: "Red", size: "L", stock: 0 }, // Out of stock sample
-        { color: "Red", size: "XL", stock: 3 },
-        { color: "Gray", size: "S", stock: 0 }, // Out of stock sample
-        { color: "Gray", size: "M", stock: 8 },
-        { color: "Gray", size: "L", stock: 15 },
-        { color: "Gray", size: "XL", stock: 2 },
-        { color: "White", size: "S", stock: 10 },
-        { color: "White", size: "M", stock: 20 },
-        { color: "White", size: "L", stock: 5 },
-        { color: "White", size: "XL", stock: 0 }, // Out of stock sample
-        { color: "Black", size: "S", stock: 7 },
-        { color: "Black", size: "M", stock: 0 }, // Out of stock sample
-        { color: "Black", size: "L", stock: 12 },
-        { color: "Black", size: "XL", stock: 18 },
-    ];
+    // ====== DYNAMIC DATA MAPPING ======
+    const displayData = useMemo(() => {
+        if (!product) {
+            return {
+                mockVariants: [
+                    { color: "Red", size: "S", stock: 12 },
+                    { color: "Red", size: "M", stock: 5 },
+                    { color: "Red", size: "L", stock: 0 },
+                    { color: "Red", size: "XL", stock: 3 },
+                    { color: "Gray", size: "S", stock: 0 },
+                    { color: "Gray", size: "M", stock: 8 },
+                    { color: "Gray", size: "L", stock: 15 },
+                    { color: "Gray", size: "XL", stock: 2 },
+                    { color: "White", size: "S", stock: 10 },
+                    { color: "White", size: "M", stock: 20 },
+                    { color: "White", size: "L", stock: 5 },
+                    { color: "White", size: "XL", stock: 0 },
+                    { color: "Black", size: "S", stock: 7 },
+                    { color: "Black", size: "M", stock: 0 },
+                    { color: "Black", size: "L", stock: 12 },
+                    { color: "Black", size: "XL", stock: 18 },
+                ],
+                mockProduct: {
+                    name: "Plaid Dog-Ear Baseball",
+                    description: "Premium quality outdoor headwear with insulated fold-down ear flaps designed for ultimate warmth and style during the colder months.",
+                    base_price: "45.00",
+                    original_price: "65.00",
+                    colorImages: {
+                        "Red": ["/images/hat-dog-dot.png", "/images/placeholder-hat.png", "/images/baseball-cap.png", "/images/hat-rabbit-white.png"],
+                        "Gray": ["/images/hat-bear.png", "/images/placeholder-hat.png", "/images/bucket-hat.png", "/images/hat-dog-black.png"],
+                        "White": ["/images/hat-rabbit-white.png", "/images/hat-bear-white.png", "/images/placeholder-hat.png", "/images/hat-dog-dot.png"],
+                        "Black": ["/images/hat-dog-black.png", "/images/baseball-cap.png", "/images/placeholder-hat.png", "/images/hat-bear.png"]
+                    },
+                    colors: [
+                        { name: "Red", hex: "#B91C1C" },
+                        { name: "Gray", hex: "#4B5563" },
+                        { name: "White", hex: "#F3F4F6" },
+                        { name: "Black", hex: "#111827" }
+                    ],
+                    sizes: ["S", "M", "L", "XL"]
+                }
+            };
+        }
 
-    const currentVariant = mockVariants.find(v => v.color === selectedColor && v.size === selectedSize);
-    const availableStock = currentVariant ? currentVariant.stock : 0;
+        const variants: any[] = [];
+        const colorSet = new Map<string, string>();
+        const sizeSet = new Set<string>();
+        const colorImages: Record<string, string[]> = {};
+
+        if (product.variants && product.variants.length > 0) {
+            product.variants.forEach((v: any) => {
+                const cName = v.color || "Default Color";
+                const cHex = v.color_hex || "#cccccc";
+                const sName = v.size || "One Size";
+                colorSet.set(cName, cHex);
+                sizeSet.add(sName);
+                variants.push({
+                    color: cName,
+                    size: sName,
+                    stock: v.stock_quantity || 0,
+                    price: parseFloat(v.price).toFixed(2)
+                });
+            });
+        }
+
+        if (colorSet.size === 0) colorSet.set("Default Color", "#cccccc");
+        if (sizeSet.size === 0) sizeSet.add("One Size");
+
+        let primaryImg = "/images/placeholder-hat.png";
+        if (product.images && product.images.length > 0) {
+            primaryImg = product.images.find((img: any) => img.is_primary)?.image_url || product.images[0].image_url;
+        }
+
+        if (product.images) {
+            product.images.forEach((img: any) => {
+                const cName = img.color || "Default Color";
+                if (!colorImages[cName]) colorImages[cName] = [];
+                colorImages[cName].push(img.image_url);
+            });
+        }
+
+        Array.from(colorSet.keys()).forEach((cName) => {
+            if (!colorImages[cName] || colorImages[cName].length === 0) {
+                colorImages[cName] = [primaryImg];
+            }
+        });
+
+        return {
+            mockVariants: variants,
+            mockProduct: {
+                name: product.name,
+                description: product.description || "No description provided.",
+                base_price: parseFloat(product.base_price).toFixed(2),
+                original_price: (parseFloat(product.base_price) * 1.3).toFixed(2),
+                colorImages,
+                colors: Array.from(colorSet.entries()).map(([name, hex]) => ({ name, hex })),
+                sizes: Array.from(sizeSet).reverse()
+            }
+        };
+    }, [product]);
+
+    const mockVariants = displayData.mockVariants;
+    const mockProduct = displayData.mockProduct;
 
     useEffect(() => {
-        setIsOutOfStock(availableStock <= 0);
-        // If current quantity exceeds new stock limit, clamp it
-        if (Number(quantity) > availableStock && availableStock > 0) {
-            setQuantity(availableStock);
-        } else if (availableStock === 0) {
-            setQuantity(1);
+        if (product) {
+            const firstColor = displayData.mockProduct.colors[0]?.name;
+            const firstSize = displayData.mockProduct.sizes[0];
+            if (firstColor && mockProduct.colors.every((c: any) => c.name !== selectedColor)) setSelectedColor(firstColor);
+            if (firstSize && !mockProduct.sizes.includes(selectedSize)) setSelectedSize(firstSize);
         }
-    }, [selectedColor, selectedSize, availableStock]);
-
-    if (loading) {
-        return (
-            <div className="flex flex-col min-h-screen bg-white">
-                <Header />
-                <main className="flex-grow flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
-                </main>
-                <Footer />
-            </div>
-        );
-    }
-
-    // ====== MOCK DATA FOR PREMIUM UI ======
-    const mockProduct = {
-        name: "Plaid Dog-Ear Baseball",
-        description: "Premium quality outdoor headwear with insulated fold-down ear flaps designed for ultimate warmth and style during the colder months.",
-        base_price: "45.00",
-        original_price: "65.00",
-        colorImages: {
-            "Red": [
-                "/images/hat-dog-dot.png", 
-                "/images/placeholder-hat.png",
-                "/images/baseball-cap.png",
-                "/images/hat-rabbit-white.png"
-            ],
-            "Gray": [
-                "/images/hat-bear.png", 
-                "/images/placeholder-hat.png",
-                "/images/bucket-hat.png",
-                "/images/hat-dog-black.png"
-            ],
-            "White": [
-                "/images/hat-rabbit-white.png", 
-                "/images/hat-bear-white.png",
-                "/images/placeholder-hat.png",
-                "/images/hat-dog-dot.png"
-            ],
-            "Black": [
-                "/images/hat-dog-black.png", 
-                "/images/baseball-cap.png",
-                "/images/placeholder-hat.png",
-                "/images/hat-bear.png"
-            ]
-        },
-        colors: [
-            { name: "Red", hex: "#B91C1C" },
-            { name: "Gray", hex: "#4B5563" },
-            { name: "White", hex: "#F3F4F6" },
-            { name: "Black", hex: "#111827" }
-        ],
-        sizes: ["S", "M", "L", "XL"]
-    };
+    }, [product, displayData]);
 
     const handleAddToCart = () => {
         if (!inStock) return;
@@ -221,6 +284,36 @@ export default function ProductDetailsPage() {
         setTimeout(() => setReviewSuccess(""), 3000); // Clear success msg shortly
     };
 
+    const currentVariant = mockVariants.find((v: any) => v.color === selectedColor && v.size === selectedSize);
+    const availableStock = currentVariant ? currentVariant.stock : 0;
+
+    useEffect(() => {
+        setIsOutOfStock(availableStock <= 0);
+        // If current quantity exceeds new stock limit, clamp it
+        if (Number(quantity) > availableStock && availableStock > 0) {
+            setQuantity(availableStock);
+        } else if (availableStock === 0) {
+            setQuantity(1);
+        }
+    }, [selectedColor, selectedSize, availableStock]);
+
+    if (loading) {
+        return (
+            <div className="flex flex-col min-h-screen bg-white">
+                <Header />
+                <main className="flex-grow flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+                </main>
+                <Footer />
+            </div>
+        );
+    }
+
+    const { x, y, bgX, bgY, bgWidth, bgHeight } = mousePos;
+
+    const handleMouseEnter = () => setIsHovering(true);
+    const handleMouseLeave = () => setIsHovering(false);
+
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
         const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
         const px = e.clientX - left;
@@ -230,19 +323,20 @@ export default function ProductDetailsPage() {
 
         const zoomLevel = 2.5; // 2.5x zoom for high-detail view
         const boxSize = 256; // w-64 h-64 in Tailwind is 256px
-        const boxCenter = boxSize / 2;
+        const imgWidth = width * zoomLevel;
+        const imgHeight = height * zoomLevel;
 
-        const bgWidth = width * zoomLevel;
-        const bgHeight = height * zoomLevel;
-        const bgX = boxCenter - px * zoomLevel;
-        const bgY = boxCenter - py * zoomLevel;
+        const maxBgX = imgWidth - boxSize;
+        const maxBgY = imgHeight - boxSize;
+        const bgX = (px / width) * maxBgX;
+        const bgY = (py / height) * maxBgY;
 
-        setMousePos({ x, y, bgX, bgY, bgWidth, bgHeight });
+        setMousePos({ x, y, bgX, bgY, bgWidth: imgWidth, bgHeight: imgHeight });
     };
 
     const inStock = !isOutOfStock;
-    const currentPrice = mockProduct.base_price;
-    const displayImages = mockProduct.colorImages[selectedColor as keyof typeof mockProduct.colorImages] || mockProduct.colorImages["Red"];
+    const currentPrice = currentVariant ? parseFloat(currentVariant.price).toFixed(2) : mockProduct.base_price;
+    const displayImages = mockProduct.colorImages[selectedColor as keyof typeof mockProduct.colorImages] || mockProduct.colorImages[mockProduct.colors[0]?.name] || ["/images/placeholder-hat.png"];;
 
     const renderStars = (rating: number, size = "w-3 h-3") => (
         <div className="flex gap-[2px]">
@@ -662,34 +756,36 @@ export default function ProductDetailsPage() {
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
-                        {[
-                            { name: "Plaid Dog-Ear Baseball Cap", price: "45.00", img: "/images/hat-dog-dot.png", tag: "HOT" },
-                            { name: "Rabbit Ear Baseball Cap", price: "39.00", img: "/images/hat-rabbit-white.png", tag: "-20%" },
-                            { name: "Blue Dog-Ear Baseball Cap", price: "45.00", img: "/images/hat-bear.png", tag: "NEW" },
-                            { name: "White Dog-Ear Baseball Cap", price: "45.00", img: "/images/hat-dog-black.png", tag: "HOT" },
-                            { name: "Classic Plaid Beanie", price: "25.00", img: "/images/hat-dog-dot.png", tag: "-10%" },
-                            { name: "Premium Fur Hat", price: "60.00", img: "/images/placeholder-hat.png", tag: "NEW" },
-                        ].map((p, i) => (
-                            <div key={i} className="group cursor-pointer">
-                                <div className="aspect-[4/5] bg-[#F8F9FA] rounded-[32px] relative overflow-hidden mb-5 border border-transparent group-hover:border-blue-100 group-hover:shadow-2xl group-hover:shadow-blue-900/5 transition-all duration-500">
-                                    <div className="absolute top-4 left-4 z-10 bg-white px-2 py-1 rounded-lg shadow-sm border border-gray-50 flex items-center justify-center">
-                                        <span className="text-[9px] font-black text-blue-600 tracking-tighter">{p.tag}</span>
-                                    </div>
-                                    <Image src={p.img} alt={p.name} fill className="object-contain p-8 transform group-hover:scale-110 transition-transform duration-700 ease-out" unoptimized />
-                                    <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/10 transition-colors duration-500" />
-                                    <div className="absolute bottom-5 left-5 right-5 translate-y-16 group-hover:translate-y-0 transition-all duration-500 ease-out">
-                                        <Button className="w-full h-10 bg-white hover:bg-[#0F172A] hover:text-white text-gray-900 text-[10px] font-black rounded-xl shadow-xl transition-all uppercase tracking-widest border-none">View Product</Button>
+                        {recommendedProducts.length > 0 ? recommendedProducts.map((p: any, i: number) => {
+                            const img = (p.images && p.images[0] && (p.images[0].signed_url || p.images[0].image_url)) || "/images/placeholder-hat.png";
+                            return (
+                                <div key={p.id || i} className="group cursor-pointer">
+                                    <Link href={`/user/productdetail/${p.id || i}`} className="block">
+                                        <div className="aspect-[4/5] bg-[#F8F9FA] rounded-[32px] relative overflow-hidden mb-5 border border-transparent group-hover:border-blue-100 group-hover:shadow-2xl group-hover:shadow-blue-900/5 transition-all duration-500">
+                                            <div className="absolute top-4 left-4 z-10 bg-white px-2 py-1 rounded-lg shadow-sm border border-gray-50 flex items-center justify-center">
+                                                <span className="text-[9px] font-black text-blue-600 tracking-tighter">HOT</span>
+                                            </div>
+                                            <Image src={img} alt={p.name} fill className="object-contain p-8 transform group-hover:scale-110 transition-transform duration-700 ease-out" />
+                                            <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/10 transition-colors duration-500" />
+                                            <div className="absolute bottom-5 left-5 right-5 translate-y-16 group-hover:translate-y-0 transition-all duration-500 ease-out">
+                                                <Button className="w-full h-10 bg-white hover:bg-[#0F172A] hover:text-white text-gray-900 text-[10px] font-black rounded-xl shadow-xl transition-all uppercase tracking-widest border-none">View Product</Button>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                    <div className="px-2 space-y-1">
+                                        <Link href={`/user/productdetail/${p.id || i}`}>
+                                            <h4 className="text-[12px] font-bold text-gray-900 leading-tight truncate group-hover:text-blue-600 transition-colors">{p.name}</h4>
+                                        </Link>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[14px] font-black text-gray-600">${parseFloat(p.base_price).toFixed(2)}</span>
+                                            <div className="flex gap-0.5">{renderStars(5, "w-2.5 h-2.5")}</div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="px-2 space-y-1">
-                                    <h4 className="text-[12px] font-bold text-gray-900 leading-tight truncate group-hover:text-blue-600 transition-colors">{p.name}</h4>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[14px] font-black text-gray-600">${p.price}</span>
-                                        <div className="flex gap-0.5">{renderStars(5, "w-2.5 h-2.5")}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        }) : (
+                            <div className="col-span-full text-center py-10 text-gray-500">Loading amazing hats...</div>
+                        )}
                     </div>
                 </section>
             </main>

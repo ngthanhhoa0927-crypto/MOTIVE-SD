@@ -97,18 +97,22 @@ export default function EditProductPage({ params: paramsPromise }: { params: Pro
                 })));
             }
 
-            // Set Variants Data
+            // Set Variants Data & extract unique size/color options
             if (p.variants && p.variants.length > 0) {
                 setVariantsData(p.variants.map((v: any) => ({
-                    name: v.sku?.split('-').pop() || 'Variant',
+                    name: [v.size, v.color].filter(Boolean).join(' - ') || 'Variant',
                     size: v.size || '',
                     color: v.color || '',
                     price: v.price || '',
-                    stock: v.stock_quantity || 0,
-                    sku: v.sku || ''
+                    stock: (v.stock_quantity ?? 0).toString(),
+                    sku: v.sku || '',
+                    is_active: v.is_active ?? true
                 })));
-                setVariation1Options([]);
-                setVariation2Options([]);
+                // Extract unique sizes and colors for the variation editor
+                const sizes = [...new Set(p.variants.map((v: any) => v.size).filter(Boolean))] as string[];
+                const colors = [...new Set(p.variants.map((v: any) => v.color).filter(Boolean))] as string[];
+                setVariation1Options(sizes);
+                setVariation2Options(colors);
             }
         };
 
@@ -293,32 +297,69 @@ export default function EditProductPage({ params: paramsPromise }: { params: Pro
     const handleSubmit = async () => {
         const newErrors: any = {};
         
+        // === Business Rule Validation ===
         if (!name.trim()) newErrors.name = "Product name is required";
+        else if (name.trim().length < 10) newErrors.name = "Product name must be at least 10 characters";
+        
         if (images.length === 0) newErrors.images = "At least one product image is required";
         else if (images.filter(img => img.is_primary).length === 0) newErrors.images = "A primary image is required";
 
+        // Weight is required
+        const parsedWeight = parseFloat(weight);
+        if (!weight || isNaN(parsedWeight) || parsedWeight <= 0) {
+            newErrors.weight = "Product weight (g) is required and must be greater than 0";
+        }
+
+        // Variants: must have ≥1, each must have size + color
+        if (variantsData.length === 0) {
+            newErrors.variantsGlobal = "At least 1 variant (size + color) is required";
+        }
+
         let hasVariantErrors = false;
         newErrors.variants = {};
+        const sizeColorCombos = new Set<string>();
+        
         for (let i = 0; i < variantsData.length; i++) {
             const v = variantsData[i];
-            if (v.is_active) {
-                const priceNum = parseFloat(v.price);
-                const stockNum = parseInt(v.stock);
-                if (isNaN(priceNum) || priceNum <= 0) {
-                    newErrors.variants[i] = { ...newErrors.variants[i], price: "Price must be greater than 0." };
-                    hasVariantErrors = true;
-                }
-                if (isNaN(stockNum) || stockNum < 0) {
-                    newErrors.variants[i] = { ...newErrors.variants[i], stock: "Stock quantity must be a positive integer." };
-                    hasVariantErrors = true;
-                }
+            
+            // Size required
+            if (!v.size || !v.size.trim()) {
+                newErrors.variants[i] = { ...newErrors.variants[i], size: "Size is required" };
+                hasVariantErrors = true;
             }
+            // Color required
+            if (!v.color || !v.color.trim()) {
+                newErrors.variants[i] = { ...newErrors.variants[i], color: "Color is required" };
+                hasVariantErrors = true;
+            }
+            // Duplicate (size, color) check
+            if (v.size && v.color) {
+                const combo = `${v.size.trim()}||${v.color.trim()}`;
+                if (sizeColorCombos.has(combo)) {
+                    newErrors.variants[i] = { ...newErrors.variants[i], color: "Duplicate (size, color) combination" };
+                    hasVariantErrors = true;
+                }
+                sizeColorCombos.add(combo);
+            }
+            // Stock validation
+            const stockNum = parseInt(v.stock);
+            if (isNaN(stockNum) || stockNum < 0) {
+                newErrors.variants[i] = { ...newErrors.variants[i], stock: "Stock must be ≥ 0" };
+                hasVariantErrors = true;
+            }
+        }
+
+        // Base price validation (product-level)
+        const basePriceNum = parseFloat(variantsData[0]?.price || '0');
+        if (isNaN(basePriceNum) || basePriceNum <= 0) {
+            newErrors.variants[0] = { ...newErrors.variants[0], price: "Price must be greater than 0" };
+            hasVariantErrors = true;
         }
 
         setErrors(newErrors);
 
-        if (newErrors.name || newErrors.images || hasVariantErrors) {
-            setErrors({ ...newErrors, global: "Please fill in the missing fields and resolve validation errors." });
+        if (newErrors.name || newErrors.images || newErrors.weight || newErrors.variantsGlobal || hasVariantErrors) {
+            setErrors({ ...newErrors, global: "Please fix all validation errors before saving." });
             window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
         }
@@ -326,29 +367,40 @@ export default function EditProductPage({ params: paramsPromise }: { params: Pro
         setIsSubmitting(true);
         const token = localStorage.getItem('admin_token');
 
-        const primaryPrice = variantsData.length > 0 ? parseFloat(variantsData[0].price) || 0 : 0;
-        
+        // Parse numeric fields safely
+        const parsedPackageWeight = parseFloat(packageWeight);
+        const parsedLeadTime = parseInt(String(leadTime).replace(/\D/g, ''));
+
+        // Auto-generate SKU: PRODUCT_CODE-SIZE-COLOR
+        const productCode = name.trim().substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'X') 
+            + String(params.id).padStart(2, '0');
+
         const payload = {
-            name,
+            name: name.trim(),
             description: description || undefined,
             category_id: parseInt(categoryId) || (categories.length > 0 ? categories[0].id : 1),
-            base_price: primaryPrice,
+            base_price: basePriceNum,
             status,
-            brand,
-            material,
-            size_info: sizeInfo,
-            weight,
-            care,
-            package_weight: packageWeight,
-            shipping_class: shippingClass,
-            package_dimensions: packageDimensions,
-            lead_time: leadTime,
-            images: images.map((img, idx) => ({ image_url: img.key, is_primary: img.is_primary, display_order: idx, color: img.color })),
+            brand: brand || undefined,
+            material: material || undefined,
+            size_info: sizeInfo || undefined,
+            weight: parsedWeight,
+            care: care || undefined,
+            package_weight: !isNaN(parsedPackageWeight) && parsedPackageWeight > 0 ? parsedPackageWeight : undefined,
+            shipping_class: shippingClass || undefined,
+            package_dimensions: packageDimensions || undefined,
+            lead_time: !isNaN(parsedLeadTime) && parsedLeadTime >= 0 ? parsedLeadTime : undefined,
+            images: images.map((img, idx) => ({ 
+                image_url: img.key, 
+                is_primary: img.is_primary, 
+                display_order: idx, 
+                color: img.color || undefined 
+            })),
             variants: variantsData.map((v, i) => ({
-                sku: v.sku || `SKU-${Date.now()}-${i}`,
-                size: v.size || undefined,
-                color: v.color || undefined,
-                price: parseFloat(v.price) || 0,
+                sku: v.sku && v.sku.trim() ? v.sku.trim() : `${productCode}-${v.size.trim().toUpperCase()}-${v.color.trim().toUpperCase()}`,
+                size: v.size.trim(),
+                color: v.color.trim(),
+                price: basePriceNum, // Single price model: all variants use base_price
                 stock_quantity: parseInt(v.stock) || 0,
                 is_active: true
             }))
@@ -365,28 +417,30 @@ export default function EditProductPage({ params: paramsPromise }: { params: Pro
             });
 
             if (res.ok) {
-                // Return to view mode
                 const updatedResponse = await res.json();
-                setProduct({
-                    ...product,
-                    ...updatedResponse.product,
-                    sale: product.sale,
-                    revenue: product.revenue
+                // Reload product data to get fresh signed URLs
+                const freshRes = await fetch(`http://localhost:8000/products/${params.id}`, { 
+                    headers: { "Authorization": `Bearer ${token}` } 
                 });
-                setIsEditing(false);
-            } else {
-                if (res.status === 409) {
-                    setErrors({ ...newErrors, global: "Product ID already exists." });
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                } else {
-                    const err = await res.json();
-                    setErrors({ ...newErrors, global: `Error: ${err.message || 'Validation failed'}` });
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                if (freshRes.ok) {
+                    const freshData = await freshRes.json();
+                    if (freshData.product) {
+                        setProduct(freshData.product);
+                    }
                 }
+                setIsEditing(false);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                const err = await res.json();
+                const detail = err.errors 
+                    ? '\n' + err.errors.map((e: any) => `${e.field}: ${e.message}`).join('\n') 
+                    : '';
+                setErrors({ ...newErrors, global: `Error: ${err.message || 'Validation failed'}${detail}` });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         } catch (error) {
             console.error(error);
-            setErrors({ ...newErrors, global: "Failed to update product" });
+            setErrors({ ...newErrors, global: "Failed to update product. Check network connection." });
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setIsSubmitting(false);
@@ -855,11 +909,12 @@ export default function EditProductPage({ params: paramsPromise }: { params: Pro
                                     <input type="text" value={sizeInfo} onChange={e => setSizeInfo(e.target.value)} placeholder="e.g. One Size Adjustable" className="w-full px-4 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:border-blue-500" />
                                 </div>
                                 <div>
-                                    <label className="block text-[13px] font-bold text-gray-700 mb-2">Product Weight</label>
+                                    <label className="block text-[13px] font-bold text-gray-700 mb-2">Product Weight <span className="text-red-500">*</span></label>
                                     <div className="relative">
-                                        <input type="number" min="0" value={weight} onChange={e => setWeight(e.target.value)} placeholder="e.g. 120" className="w-full pl-4 pr-9 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:border-blue-500" />
+                                        <input type="number" min="0" value={weight} onChange={e => { setWeight(e.target.value); setErrors({...errors, weight: undefined, global: undefined}); }} placeholder="e.g. 120" className={`w-full pl-4 pr-9 py-2.5 bg-[#F9FAFB] border ${errors.weight ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:border-blue-500`} />
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] font-medium text-gray-500 pointer-events-none">g</span>
                                     </div>
+                                    {errors.weight && <p className="text-red-500 text-[11px] font-bold mt-1.5">{errors.weight}</p>}
                                 </div>
                                 <div>
                                     <label className="block text-[13px] font-bold text-gray-700 mb-2">Care Instructions</label>

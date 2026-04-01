@@ -208,33 +208,70 @@ export default function AddProductPage() {
     const handleSubmit = async () => {
         const newErrors: any = {};
         
+        // === Business Rule Validation (synced with backend Zod schema) ===
         if (!name.trim()) newErrors.name = "Product name is required";
+        else if (name.trim().length < 10) newErrors.name = "Product name must be at least 10 characters";
         
         if (images.length === 0) newErrors.images = "At least one product image is required";
         else if (images.filter(img => img.is_primary).length === 0) newErrors.images = "A primary image is required";
 
+        // Weight is required
+        const parsedWeight = parseFloat(weight);
+        if (!weight || isNaN(parsedWeight) || parsedWeight <= 0) {
+            newErrors.weight = "Product weight (g) is required and must be greater than 0";
+        }
+
+        // Variants: must have ≥1, each must have size + color
+        if (variantsData.length === 0) {
+            newErrors.variantsGlobal = "At least 1 variant (size + color) is required";
+        }
+
         let hasVariantErrors = false;
         newErrors.variants = {};
+        const sizeColorCombos = new Set<string>();
+        
         for (let i = 0; i < variantsData.length; i++) {
             const v = variantsData[i];
-            if (v.is_active) {
-                const priceNum = parseFloat(v.price);
-                const stockNum = parseInt(v.stock);
-                if (isNaN(priceNum) || priceNum <= 0) {
-                    newErrors.variants[i] = { ...newErrors.variants[i], price: "Price must be greater than 0." };
-                    hasVariantErrors = true;
-                }
-                if (isNaN(stockNum) || stockNum < 0) {
-                    newErrors.variants[i] = { ...newErrors.variants[i], stock: "Stock quantity must be a positive integer." };
-                    hasVariantErrors = true;
-                }
+            if (!v.is_active) continue;
+            
+            // Size required
+            if (!v.size || !v.size.trim()) {
+                newErrors.variants[i] = { ...newErrors.variants[i], size: "Size is required" };
+                hasVariantErrors = true;
             }
+            // Color required
+            if (!v.color || !v.color.trim()) {
+                newErrors.variants[i] = { ...newErrors.variants[i], color: "Color is required" };
+                hasVariantErrors = true;
+            }
+            // Duplicate (size, color) check
+            if (v.size && v.color) {
+                const combo = `${v.size.trim()}||${v.color.trim()}`;
+                if (sizeColorCombos.has(combo)) {
+                    newErrors.variants[i] = { ...newErrors.variants[i], color: "Duplicate (size, color) combination" };
+                    hasVariantErrors = true;
+                }
+                sizeColorCombos.add(combo);
+            }
+            // Stock validation
+            const stockNum = parseInt(v.stock);
+            if (isNaN(stockNum) || stockNum < 0) {
+                newErrors.variants[i] = { ...newErrors.variants[i], stock: "Stock must be ≥ 0" };
+                hasVariantErrors = true;
+            }
+        }
+
+        // Base price validation (product-level, from first variant)
+        const basePriceNum = parseFloat(variantsData[0]?.price || '0');
+        if (isNaN(basePriceNum) || basePriceNum <= 0) {
+            newErrors.variants[0] = { ...newErrors.variants[0], price: "Price must be greater than 0" };
+            hasVariantErrors = true;
         }
 
         setErrors(newErrors);
 
-        if (newErrors.name || newErrors.images || hasVariantErrors) {
-            setErrors({ ...newErrors, global: "Please fill in the missing fields and resolve validation errors." });
+        if (newErrors.name || newErrors.images || newErrors.weight || newErrors.variantsGlobal || hasVariantErrors) {
+            setErrors({ ...newErrors, global: "Please fix all validation errors before saving." });
             window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
         }
@@ -242,26 +279,33 @@ export default function AddProductPage() {
         setIsSubmitting(true);
         const token = localStorage.getItem('admin_token');
 
-        const primaryPrice = variantsData.length > 0 ? parseFloat(variantsData[0].price) || 0 : 0;
+        // Auto-generate SKU: PRODUCT_CODE-SIZE-COLOR
+        const productCode = name.trim().substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'X')
+            + Math.floor(Math.random() * 100).toString().padStart(2, '0');
         
         const payload = {
-            name,
+            name: name.trim(),
             description: description || undefined,
             category_id: parseInt(categoryId) || categories[0]?.id || 1,
             collection_id: collectionId ? parseInt(collectionId) : undefined,
-            base_price: primaryPrice,
-            weight: weight ? parseFloat(weight) : undefined,
+            base_price: basePriceNum,
+            weight: parsedWeight,
             status,
-            images: images.map((img, idx) => ({ image_url: img.key, is_primary: img.is_primary, display_order: idx, color: img.color })),
-            variants: variantsData.map((v, i) => ({
-                sku: v.sku || `SKU-${Date.now()}-${i}`,
-                size: v.size || undefined,
-                color: v.color || undefined,
+            images: images.map((img, idx) => ({ 
+                image_url: img.key, 
+                is_primary: img.is_primary, 
+                display_order: idx, 
+                color: img.color || undefined 
+            })),
+            variants: variantsData.filter(v => v.is_active).map((v, i) => ({
+                sku: v.sku && v.sku.trim() ? v.sku.trim() : `${productCode}-${v.size.trim().toUpperCase()}-${v.color.trim().toUpperCase()}`,
+                size: v.size.trim(),
+                color: v.color.trim(),
                 color_hex: v.color ? v.color_hex : undefined,
-                price: parseFloat(v.price),
-                stock_quantity: parseInt(v.stock),
+                price: basePriceNum, // Single price model
+                stock_quantity: parseInt(v.stock) || 0,
                 image_url: v.image_url || undefined,
-                is_active: v.is_active
+                is_active: true
             }))
         };
 
@@ -275,18 +319,16 @@ export default function AddProductPage() {
             if (res.ok) {
                 router.push('/admin/products');
             } else {
-                if (res.status === 409) {
-                    setErrors({ ...newErrors, global: "Product ID already exists." });
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                } else {
-                    const err = await res.json();
-                    setErrors({ ...newErrors, global: `Error: ${err.message || 'Validation failed'}` });
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
+                const err = await res.json();
+                const detail = err.errors 
+                    ? '\n' + err.errors.map((e: any) => `${e.field}: ${e.message}`).join('\n') 
+                    : '';
+                setErrors({ ...newErrors, global: `Error: ${err.message || 'Validation failed'}${detail}` });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         } catch (error) {
             console.error(error);
-            setErrors({ ...newErrors, global: "Failed to create product" });
+            setErrors({ ...newErrors, global: "Failed to create product. Check network connection." });
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setIsSubmitting(false);
@@ -664,11 +706,12 @@ export default function AddProductPage() {
                     <div className="bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.05)] border border-gray-100/80 p-6">
                         <h2 className="text-[16px] font-bold text-gray-900 mb-5">Specifications</h2>
                         <div>
-                            <label className="block text-[13px] font-bold text-gray-700 mb-2">Weight</label>
+                            <label className="block text-[13px] font-bold text-gray-700 mb-2">Weight <span className="text-red-500">*</span></label>
                             <div className="relative">
-                                <input type="number" min="0" step="0.01" value={weight} onChange={e => setWeight(e.target.value)} placeholder="e.g. 150" className="w-full pl-4 pr-10 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500" />
+                                <input type="number" min="0" step="0.01" value={weight} onChange={e => { setWeight(e.target.value); setErrors({...errors, weight: undefined, global: undefined}); }} placeholder="e.g. 150" className={`w-full pl-4 pr-10 py-2.5 bg-[#F9FAFB] border ${errors.weight ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500`} />
                                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] font-bold text-gray-400 pointer-events-none">g</span>
                             </div>
+                            {errors.weight && <p className="text-red-500 text-[12px] font-bold mt-1.5">{errors.weight}</p>}
                         </div>
                     </div>
                 </div>

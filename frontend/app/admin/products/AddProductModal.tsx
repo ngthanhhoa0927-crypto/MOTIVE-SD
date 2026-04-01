@@ -14,9 +14,13 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
     const [description, setDescription] = useState('');
     const [categoryId, setCategoryId] = useState('');
     const [brand, setBrand] = useState('');
-    const [price, setPrice] = useState('0.00');
+    const [price, setPrice] = useState('');
+    const [weight, setWeight] = useState('');
     const [stock, setStock] = useState('0');
+    const [size, setSize] = useState('');
+    const [color, setColor] = useState('');
     const [categories, setCategories] = useState<any[]>([]);
+    const [errors, setErrors] = useState<any>({});
 
     useEffect(() => {
         fetch("http://localhost:8000/categories")
@@ -57,6 +61,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                 const data = await res.json();
                 setImageKey(data.key);
                 setImagePreview(data.url);
+                setErrors((prev: any) => ({ ...prev, image: undefined }));
             } else {
                 alert("Upload failed");
             }
@@ -69,20 +74,48 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
     };
 
     const handleSubmit = async (status: 'Draft' | 'Active') => {
+        const newErrors: any = {};
+
+        // === Business Rule Validation ===
+        if (!name.trim()) newErrors.name = "Product name is required";
+        else if (name.trim().length < 10) newErrors.name = "Product name must be at least 10 characters";
+
+        const priceNum = parseFloat(price);
+        if (isNaN(priceNum) || priceNum <= 0) newErrors.price = "Price must be greater than 0";
+
+        const weightNum = parseFloat(weight);
+        if (!weight || isNaN(weightNum) || weightNum <= 0) newErrors.weight = "Weight (g) is required and must be > 0";
+
+        if (!imageKey) newErrors.image = "At least 1 product image is required";
+
+        if (!size.trim()) newErrors.size = "Size is required (e.g. S, M, L, Free Size)";
+        if (!color.trim()) newErrors.color = "Color is required (e.g. Black, White, Red)";
+
+        setErrors(newErrors);
+        if (Object.keys(newErrors).length > 0) return;
+
         setIsSubmitting(true);
         const token = localStorage.getItem('admin_token');
 
+        // Auto-generate SKU: PRODUCT_CODE-SIZE-COLOR
+        const productCode = name.trim().substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'X')
+            + Math.floor(Math.random() * 100).toString().padStart(2, '0');
+        const sku = `${productCode}-${size.trim().toUpperCase()}-${color.trim().toUpperCase()}`;
+
         const payload = {
-            name,
-            description,
+            name: name.trim(),
+            description: description || undefined,
             category_id: parseInt(categoryId) || (categories.length > 0 ? categories[0].id : 1),
-            brand,
-            base_price: parseFloat(price) || 0,
+            brand: brand || undefined,
+            base_price: priceNum,
+            weight: weightNum,
             status,
-            images: imageKey ? [{ image_url: imageKey, is_primary: true, display_order: 0 }] : [],
+            images: [{ image_url: imageKey, is_primary: true, display_order: 0 }],
             variants: [{
-                sku: `SKU-${Math.floor(Math.random() * 10000)}`,
-                price: parseFloat(price) || 0,
+                sku,
+                size: size.trim(),
+                color: color.trim(),
+                price: priceNum,
                 stock_quantity: parseInt(stock) || 0,
                 is_active: true
             }]
@@ -102,11 +135,12 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                 onSuccess();
             } else {
                 const err = await res.json();
-                alert(`Error: ${err.message || 'Validation failed'}`);
+                const detail = err.errors ? '\n' + err.errors.map((e: any) => `${e.field}: ${e.message}`).join('\n') : '';
+                alert(`Error: ${err.message || 'Validation failed'}${detail}`);
             }
         } catch (error) {
-            console.error(error);
-            alert("Failed to create product");
+            console.error('Product creation error:', error);
+            alert("Failed to create product. Check if the backend server is running.");
         } finally {
             setIsSubmitting(false);
         }
@@ -129,12 +163,12 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                 </div>
 
                 {/* Body */}
-                <div className="p-6 max-h-[70vh] overflow-y-auto space-y-6 form-custom-scrollbar">
+                <div className="p-6 max-h-[70vh] overflow-y-auto space-y-5 form-custom-scrollbar">
 
                     {/* Image Upload */}
                     <div>
-                        <label className="block text-[13px] font-bold text-gray-700 mb-2">Product Images</label>
-                        <div className="relative w-full h-[140px] rounded-xl border-2 border-dashed border-[#E5E7EB] bg-[#F9FAFB] hover:bg-gray-50 transition-colors flex flex-col items-center justify-center cursor-pointer overflow-hidden group">
+                        <label className="block text-[13px] font-bold text-gray-700 mb-2">Product Image <span className="text-red-500">*</span></label>
+                        <div className={`relative w-full h-[140px] rounded-xl border-2 border-dashed ${errors.image ? 'border-red-400 bg-red-50' : 'border-[#E5E7EB] bg-[#F9FAFB]'} hover:bg-gray-50 transition-colors flex flex-col items-center justify-center cursor-pointer overflow-hidden group`}>
                             {imagePreview ? (
                                 <Image src={imagePreview} alt="Preview" fill className="object-cover" unoptimized />
                             ) : (
@@ -147,24 +181,28 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                                         )}
                                     </div>
                                     <div className="text-[14px] font-bold text-gray-700 mb-1">Click to upload or drag and drop</div>
-                                    <div className="text-[11px] font-medium text-gray-400">PNG, JPG or WebP (max. 5MB)</div>
+                                    <div className="text-[11px] font-medium text-gray-400">PNG, JPG or WebP (min 800×800)</div>
                                 </>
                             )}
                             <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/png, image/jpeg, image/webp" onChange={handleFileChange} />
                         </div>
+                        {errors.image && <p className="text-red-500 text-[12px] font-bold mt-1.5">{errors.image}</p>}
                     </div>
 
-                    {/* Target Inputs */}
+                    {/* Product Name */}
                     <div>
-                        <label className="block text-[13px] font-bold text-gray-700 mb-2">Product Name</label>
-                        <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Premium Hats" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-[13px] font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+                        <label className="block text-[13px] font-bold text-gray-700 mb-2">Product Name <span className="text-red-500">*</span> <span className="text-gray-400 font-medium">(min 10 chars)</span></label>
+                        <input type="text" value={name} onChange={e => { setName(e.target.value); setErrors((p: any) => ({...p, name: undefined})); }} placeholder="e.g. Premium Baseball Cap" className={`w-full px-4 py-3 bg-white border ${errors.name ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[13px] font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all`} />
+                        {errors.name && <p className="text-red-500 text-[12px] font-bold mt-1.5">{errors.name}</p>}
                     </div>
 
+                    {/* Description */}
                     <div>
                         <label className="block text-[13px] font-bold text-gray-700 mb-2">Description</label>
-                        <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the product features, materials, and benefits..." rows={4} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-[13px] font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none"></textarea>
+                        <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the product features, materials, and benefits..." rows={3} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-[13px] font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none"></textarea>
                     </div>
 
+                    {/* Category + Brand */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
                             <label className="block text-[13px] font-bold text-gray-700 mb-2">Category</label>
@@ -181,17 +219,47 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                         </div>
                     </div>
 
+                    {/* Price + Weight */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
-                            <label className="block text-[13px] font-bold text-gray-700 mb-2">Price</label>
+                            <label className="block text-[13px] font-bold text-gray-700 mb-2">Price <span className="text-red-500">*</span></label>
                             <div className="relative">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[13px] font-bold text-gray-500">$</span>
-                                <input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" className="w-full pl-8 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+                                <input type="number" step="0.01" value={price} onChange={e => { setPrice(e.target.value); setErrors((p: any) => ({...p, price: undefined})); }} placeholder="0.00" className={`w-full pl-8 pr-4 py-3 bg-white border ${errors.price ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all`} />
                             </div>
+                            {errors.price && <p className="text-red-500 text-[12px] font-bold mt-1.5">{errors.price}</p>}
                         </div>
                         <div>
-                            <label className="block text-[13px] font-bold text-gray-700 mb-2">Stock Quantity</label>
-                            <input type="number" value={stock} onChange={e => setStock(e.target.value)} placeholder="0" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+                            <label className="block text-[13px] font-bold text-gray-700 mb-2">Weight <span className="text-red-500">*</span></label>
+                            <div className="relative">
+                                <input type="number" min="0" value={weight} onChange={e => { setWeight(e.target.value); setErrors((p: any) => ({...p, weight: undefined})); }} placeholder="e.g. 120" className={`w-full pl-4 pr-9 py-3 bg-white border ${errors.weight ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-xl text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all`} />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] font-medium text-gray-400 pointer-events-none">g</span>
+                            </div>
+                            {errors.weight && <p className="text-red-500 text-[12px] font-bold mt-1.5">{errors.weight}</p>}
+                        </div>
+                    </div>
+
+                    {/* Size + Color (Variant) */}
+                    <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
+                        <h3 className="text-[13px] font-bold text-gray-900 mb-3 flex items-center gap-2">
+                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                            Default Variant <span className="text-red-500">*</span>
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-[12px] font-bold text-gray-600 mb-1.5">Size <span className="text-red-500">*</span></label>
+                                <input type="text" value={size} onChange={e => { setSize(e.target.value); setErrors((p: any) => ({...p, size: undefined})); }} placeholder="e.g. M" className={`w-full px-3 py-2.5 bg-white border ${errors.size ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-lg text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500`} />
+                                {errors.size && <p className="text-red-500 text-[11px] font-bold mt-1">{errors.size}</p>}
+                            </div>
+                            <div>
+                                <label className="block text-[12px] font-bold text-gray-600 mb-1.5">Color <span className="text-red-500">*</span></label>
+                                <input type="text" value={color} onChange={e => { setColor(e.target.value); setErrors((p: any) => ({...p, color: undefined})); }} placeholder="e.g. Black" className={`w-full px-3 py-2.5 bg-white border ${errors.color ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-lg text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500`} />
+                                {errors.color && <p className="text-red-500 text-[11px] font-bold mt-1">{errors.color}</p>}
+                            </div>
+                            <div>
+                                <label className="block text-[12px] font-bold text-gray-600 mb-1.5">Stock</label>
+                                <input type="number" value={stock} onChange={e => setStock(e.target.value)} placeholder="0" className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                            </div>
                         </div>
                     </div>
                 </div>

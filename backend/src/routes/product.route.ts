@@ -9,14 +9,25 @@ import { authMiddleware, adminMiddleware } from "./auth.route.js";
 
 const productRouter = new Hono();
 
-// Validate product
+// ===== Business Rule Validation Schema =====
+// Rules:
+//   - name ≥ 10 chars
+//   - base_price > 0 (single product-level price, no discount/sale_price)
+//   - weight > 0 (grams, required)
+//   - ≥ 1 image required
+//   - ≥ 1 variant required, each with size + color
+//   - No duplicate (size, color) combos
+//   - All SKUs unique
+//   - SKU format: PRODUCT_CODE-SIZE-COLOR (auto-generated on FE)
+//   - Optional weight_override_g per variant (if >5% diff from product weight)
+
 const createProductSchema = z.object({
     category_id: z.number().int().positive(),
     collection_id: z.number().int().positive().optional(),
     brand: z.string().max(255).optional(),
-    name: z.string().min(2).max(255),
-    base_price: z.number().positive(),
-    weight: z.number().positive().optional(),
+    name: z.string().min(10, "Product name must be at least 10 characters").max(255),
+    base_price: z.number().positive("Price must be greater than 0"),
+    weight: z.number().positive("Weight (g) is required and must be greater than 0"),
     description: z.string().optional(),
     material: z.string().max(255).optional(),
     size_info: z.string().max(500).optional(),
@@ -27,23 +38,32 @@ const createProductSchema = z.object({
     lead_time: z.number().int().min(0).optional(),
     status: z.enum(["Draft", "Active", "Archived"]).default("Draft"),
     images: z.array(z.object({
-        image_url: z.string(), // S3 Key
+        image_url: z.string(),
         is_primary: z.boolean().default(false),
         display_order: z.number().int().default(0),
         color: z.string().optional()
-    })).optional(),
+    })).min(1, "At least 1 product image is required"),
     variants: z.array(z.object({
         sku: z.string().min(2).max(50),
-        color: z.string().max(50).optional(),
+        color: z.string().min(1, "Color is required for each variant").max(50),
         color_hex: z.string().max(10).optional(),
-        size: z.string().max(20).optional(),
-        price: z.number().positive(),
+        size: z.string().min(1, "Size is required for each variant").max(20),
+        price: z.number().nonnegative().default(0),
         stock_quantity: z.number().int().min(0).default(0),
-        image_url: z.string().optional(), // S3 Key
-        is_active: z.boolean().default(true)
-    })).optional(),
-    promotion_ids: z.array(z.number().int().positive()).optional()
-});
+        image_url: z.string().optional(),
+        is_active: z.boolean().default(true),
+        weight_override_g: z.number().positive().optional()
+    })).min(1, "At least 1 variant (size + color) is required"),
+}).refine(data => {
+    // No duplicate (size, color) combinations
+    const combos = data.variants.map(v => `${v.size}||${v.color}`);
+    return new Set(combos).size === combos.length;
+}, { message: "Duplicate (size, color) combination found in variants", path: ["variants"] })
+.refine(data => {
+    // All SKUs must be unique
+    const skus = data.variants.map(v => v.sku);
+    return new Set(skus).size === skus.length;
+}, { message: "Duplicate SKU found in variants", path: ["variants"] });
 
 // Create a new product (Admin)
 productRouter.post(
@@ -77,7 +97,7 @@ productRouter.post(
                     name: data.name,
                     slug: slug,
                     base_price: data.base_price.toString(),
-                    weight: data.weight?.toString(),
+                    weight: data.weight.toString(),
                     description: data.description,
                     material: data.material,
                     size_info: data.size_info,
@@ -89,42 +109,29 @@ productRouter.post(
                     status: data.status,
                 }).returning();
 
-                // 2. Insert Images (from S3 uploads)
-                if (data.images && data.images.length > 0) {
-                    const imageValues = data.images.map(img => ({
-                        product_id: product.id,
-                        image_url: img.image_url,
-                        is_primary: img.is_primary,
-                        display_order: img.display_order,
-                        color: img.color
-                    }));
-                    await tx.insert(productImages).values(imageValues);
-                }
+                // 2. Insert Images (≥1 guaranteed by schema)
+                const imageValues = data.images.map(img => ({
+                    product_id: product.id,
+                    image_url: img.image_url,
+                    is_primary: img.is_primary,
+                    display_order: img.display_order,
+                    color: img.color
+                }));
+                await tx.insert(productImages).values(imageValues);
 
-                // 3. Insert Variants (SKU tracking)
-                if (data.variants && data.variants.length > 0) {
-                    const variantValues = data.variants.map(v => ({
-                        product_id: product.id,
-                        sku: v.sku,
-                        color: v.color,
-                        color_hex: v.color_hex,
-                        size: v.size,
-                        price: v.price.toString(),
-                        stock_quantity: v.stock_quantity,
-                        image_url: v.image_url,
-                        is_active: v.is_active
-                    }));
-                    await tx.insert(productVariants).values(variantValues);
-                }
-
-                // 4. Link Promotions
-                if (data.promotion_ids && data.promotion_ids.length > 0) {
-                    const promoValues = data.promotion_ids.map(promoId => ({
-                        product_id: product.id,
-                        promotion_id: promoId
-                    }));
-                    await tx.insert(productPromotions).values(promoValues);
-                }
+                // 3. Insert Variants (≥1 guaranteed by schema, each has size + color)
+                const variantValues = data.variants.map(v => ({
+                    product_id: product.id,
+                    sku: v.sku,
+                    color: v.color,
+                    color_hex: v.color_hex,
+                    size: v.size,
+                    price: data.base_price.toString(), // Single price model: use product base_price
+                    stock_quantity: v.stock_quantity,
+                    image_url: v.image_url,
+                    is_active: v.is_active
+                }));
+                await tx.insert(productVariants).values(variantValues);
 
                 return product;
             });
@@ -257,7 +264,7 @@ productRouter.put(
                     brand: data.brand,
                     name: data.name,
                     base_price: data.base_price.toString(),
-                    weight: data.weight?.toString(),
+                    weight: data.weight.toString(),
                     description: data.description,
                     material: data.material,
                     size_info: data.size_info,
@@ -270,45 +277,31 @@ productRouter.put(
                     updatedAt: new Date()
                 }).where(eq(products.id, id)).returning();
 
-                // 2. Replace Images
+                // 2. Replace Images (≥1 guaranteed by schema)
                 await tx.delete(productImages).where(eq(productImages.product_id, id));
-                if (data.images && data.images.length > 0) {
-                    const imageValues = data.images.map(img => ({
-                        product_id: id,
-                        image_url: img.image_url,
-                        is_primary: img.is_primary,
-                        display_order: img.display_order,
-                        color: img.color
-                    }));
-                    await tx.insert(productImages).values(imageValues);
-                }
+                const imageValues = data.images.map(img => ({
+                    product_id: id,
+                    image_url: img.image_url,
+                    is_primary: img.is_primary,
+                    display_order: img.display_order,
+                    color: img.color
+                }));
+                await tx.insert(productImages).values(imageValues);
 
-                // 3. Replace Variants
+                // 3. Replace Variants (≥1 guaranteed by schema, each has size + color)
                 await tx.delete(productVariants).where(eq(productVariants.product_id, id));
-                if (data.variants && data.variants.length > 0) {
-                    const variantValues = data.variants.map(v => ({
-                        product_id: id,
-                        sku: v.sku,
-                        color: v.color,
-                        color_hex: v.color_hex,
-                        size: v.size,
-                        price: v.price.toString(),
-                        stock_quantity: v.stock_quantity,
-                        image_url: v.image_url,
-                        is_active: v.is_active
-                    }));
-                    await tx.insert(productVariants).values(variantValues);
-                }
-
-                // 4. Replace Promotions
-                await tx.delete(productPromotions).where(eq(productPromotions.product_id, id));
-                if (data.promotion_ids && data.promotion_ids.length > 0) {
-                    const promoValues = data.promotion_ids.map(promoId => ({
-                        product_id: id,
-                        promotion_id: promoId
-                    }));
-                    await tx.insert(productPromotions).values(promoValues);
-                }
+                const variantValues = data.variants.map(v => ({
+                    product_id: id,
+                    sku: v.sku,
+                    color: v.color,
+                    color_hex: v.color_hex,
+                    size: v.size,
+                    price: data.base_price.toString(), // Single price model
+                    stock_quantity: v.stock_quantity,
+                    image_url: v.image_url,
+                    is_active: v.is_active
+                }));
+                await tx.insert(productVariants).values(variantValues);
                 
                 return product;
             });

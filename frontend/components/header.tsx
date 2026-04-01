@@ -20,82 +20,33 @@ export default function Header() {
     const router = useRouter();
     const pathname = usePathname();
 
-    const allProducts = [
-        {
-            name: "Black Dog Ear Baseball Cap",
-            price: "$19.00",
-            oldPrice: "$29.00",
-            image: "/images/hat-dog-black.png"
-        },
-        {
-            name: "Polka Dot Dog Ear Baseball Cap",
-            price: "$21.00",
-            oldPrice: "$29.00",
-            image: "/images/hat-dog-dot.png"
-        },
-        {
-            name: "Bear Cub Ear Baseball Cap",
-            price: "$22.00",
-            oldPrice: "$32.00",
-            image: "/images/hat-bear.png"
-        },
-        {
-            name: "White Bear Ear Baseball Cap",
-            price: "$20.00",
-            oldPrice: "$30.00",
-            image: "/images/hat-bear-white.png"
-        },
-        {
-            name: "White Rabbit Ear Baseball Cap",
-            price: "$24.00",
-            oldPrice: "$35.00",
-            image: "/images/hat-rabbit-white.png"
-        },
-        {
-            name: "Classic Beige Bucket Hat",
-            price: "$15.00",
-            oldPrice: "$25.00",
-            image: "/images/placeholder-hat.png"
-        },
-        {
-            name: "Vintage Denim Cap",
-            price: "$18.00",
-            oldPrice: "$28.00",
-            image: "/images/placeholder-hat.png"
-        },
-        {
-            name: "Minimalist Beanie",
-            price: "$12.00",
-            oldPrice: "$20.00",
-            image: "/images/placeholder-hat.png"
-        },
-        {
-            name: "Sport Visor Cap",
-            price: "$16.00",
-            oldPrice: "$26.00",
-            image: "/images/placeholder-hat.png"
-        },
-        {
-            name: "Knit Winter Hat",
-            price: "$25.00",
-            oldPrice: "$40.00",
-            image: "/images/placeholder-hat.png"
-        },
-        {
-            name: "Wide Brim Sun Hat",
-            price: "$28.00",
-            oldPrice: "$45.00",
-            image: "/images/placeholder-hat.png"
-        },
-        {
-            name: "Kids Animal Ear Cap",
-            price: "$18.00",
-            oldPrice: "$28.00",
-            image: "/images/placeholder-hat.png"
-        }
-    ];
+    const [allProducts, setAllProducts] = useState<any[]>([]);
 
-    const filteredProducts = allProducts.filter(product =>
+    useEffect(() => {
+        const fetchSearchProducts = async () => {
+             try {
+                 const res = await fetch("http://localhost:8000/products", { cache: "no-store" });
+                 if (res.ok) {
+                     const data = await res.json();
+                     if (data.products) {
+                         const mapped = data.products.map((p: any) => ({
+                             id: p.id,
+                             name: p.name,
+                             price: `$${parseFloat(p.base_price).toFixed(2)}`,
+                             oldPrice: "",
+                             image: (p.images && p.images.length > 0 && (p.images[0].signed_url || p.images[0].image_url)) || "/images/placeholder-hat.png"
+                         }));
+                         setAllProducts(mapped);
+                     }
+                 }
+             } catch (error) {
+                 console.log("Header search: backend not reachable");
+             }
+        };
+        fetchSearchProducts();
+    }, []);
+
+    const filteredProducts = searchQuery.trim() === "" ? [] : allProducts.filter(product =>
         product.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -213,8 +164,8 @@ export default function Header() {
                             {filteredProducts.length > 0 ? (
                                 <ul className="py-2">
                                     {filteredProducts.map((product, idx) => (
-                                        <li key={idx} className="hover:bg-gray-50 border-b border-gray-50 last:border-0 transition">
-                                            <Link href={`/user/productdetail/${idx + 1}`} className="flex items-center gap-3 px-4 py-2" onClick={() => setIsDropdownOpen(false)}>
+                                        <li key={product.id || idx} className="hover:bg-gray-50 border-b border-gray-50 last:border-0 transition">
+                                            <Link href={`/user/productdetail/${product.id || idx + 1}`} className="flex items-center gap-3 px-4 py-2" onClick={() => setIsDropdownOpen(false)}>
                                                 <div className="relative w-12 h-12 rounded overflow-hidden bg-gray-100 flex-shrink-0">
                                                     <Image src={product.image} alt={product.name} fill className="object-cover" />
                                                 </div>

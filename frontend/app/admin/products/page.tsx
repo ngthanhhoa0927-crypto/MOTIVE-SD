@@ -82,33 +82,40 @@ export default function ProductsPage() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // === Shared payload builder for PUT requests (synced with backend Zod schema) ===
+    const buildProductPayload = (product: any, overrides: Record<string, any> = {}) => {
+        const basePrice = parseFloat(product.base_price) || 0.01;
+        return {
+            category_id: product.category_id,
+            name: product.name,
+            base_price: basePrice,
+            weight: product.weight ? parseFloat(product.weight) : 1, // required, fallback 1g
+            description: product.description,
+            status: product.status,
+            images: (product.images || []).map((img: any, idx: number) => ({
+                image_url: img.image_url,
+                is_primary: img.is_primary ?? idx === 0,
+                display_order: img.display_order ?? idx
+            })),
+            variants: (product.variants || []).map((v: any) => ({
+                sku: v.sku || `SKU-${product.id}-${Date.now()}`,
+                color: v.color || 'Default',
+                color_hex: v.color_hex,
+                size: v.size || 'Free Size',
+                price: basePrice, // Single price model
+                stock_quantity: v.stock_quantity ?? 0,
+                image_url: v.image_url,
+                is_active: v.is_active ?? true
+            })),
+            ...overrides
+        };
+    };
+
     const toggleStatus = async (product: any) => {
         const newStatus = product.status === 'Active' ? 'Draft' : 'Active';
         const token = localStorage.getItem('admin_token');
         try {
-            const payload = {
-                category_id: product.category_id,
-                name: product.name,
-                base_price: parseFloat(product.base_price),
-                weight: product.weight ? parseFloat(product.weight) : undefined,
-                description: product.description,
-                status: newStatus,
-                images: (product.images || []).map((img: any) => ({
-                    image_url: img.image_url,
-                    is_primary: img.is_primary,
-                    display_order: img.display_order
-                })),
-                variants: (product.variants || []).map((v: any) => ({
-                    sku: v.sku,
-                    color: v.color,
-                    color_hex: v.color_hex,
-                    size: v.size,
-                    price: parseFloat(v.price),
-                    stock_quantity: v.stock_quantity,
-                    image_url: v.image_url,
-                    is_active: v.is_active
-                }))
-            };
+            const payload = buildProductPayload(product, { status: newStatus });
 
             const response = await fetch(`http://localhost:8000/products/${product.id}`, {
                 method: 'PUT',
@@ -168,29 +175,7 @@ export default function ProductsPage() {
         const token = localStorage.getItem('admin_token');
         setIsLoading(true);
         try {
-            const payload = {
-                category_id: productToArchive.category_id,
-                name: productToArchive.name,
-                base_price: parseFloat(productToArchive.base_price) || 0,
-                weight: productToArchive.weight ? parseFloat(productToArchive.weight) : undefined,
-                description: productToArchive.description,
-                status: 'Archived',
-                images: (productToArchive.images || []).map((img: any) => ({
-                    image_url: img.image_url,
-                    is_primary: img.is_primary,
-                    display_order: img.display_order
-                })),
-                variants: (productToArchive.variants || []).map((v: any) => ({
-                    sku: v.sku,
-                    color: v.color,
-                    color_hex: v.color_hex,
-                    size: v.size,
-                    price: parseFloat(v.price) || 0,
-                    stock_quantity: v.stock_quantity,
-                    image_url: v.image_url,
-                    is_active: v.is_active
-                }))
-            };
+            const payload = buildProductPayload(productToArchive, { status: 'Archived' });
 
             const response = await fetch(`http://localhost:8000/products/${productToArchive.id}`, {
                 method: 'PUT',
@@ -253,29 +238,7 @@ export default function ProductsPage() {
                     const product = products.find(p => p.id === id);
                     if (!product) return;
                     
-                    const payload = {
-                        category_id: product.category_id,
-                        name: product.name,
-                        base_price: parseFloat(product.base_price) || 0,
-                        weight: product.weight ? parseFloat(product.weight) : undefined,
-                        description: product.description,
-                        status: 'Archived',
-                        images: (product.images || []).map((img: any) => ({
-                            image_url: img.image_url,
-                            is_primary: img.is_primary,
-                            display_order: img.display_order
-                        })),
-                        variants: (product.variants || []).map((v: any) => ({
-                            sku: v.sku,
-                            color: v.color,
-                            color_hex: v.color_hex,
-                            size: v.size,
-                            price: parseFloat(v.price) || 0,
-                            stock_quantity: v.stock_quantity,
-                            image_url: v.image_url,
-                            is_active: v.is_active
-                        }))
-                    };
+                    const payload = buildProductPayload(product, { status: 'Archived' });
 
                     await fetch(`http://localhost:8000/products/${id}`, {
                         method: 'PUT',

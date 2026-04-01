@@ -4,26 +4,58 @@ import Header from "@/components/header";
 import Footer from "@/components/footer";
 import Image from "next/image";
 import Link from "next/link";
-import { Zap, Ticket, Star } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Zap, Ticket, Star, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
 export default function HomePage() {
-    // Mock data
-    const recommendations = [
-        { name: "Black Dog Ear Baseball Cap", price: "$19.00", oldPrice: "$29.00", image: "/images/hat-dog-black.png" },
-        { name: "Polka Dot Dog Ear Baseball Cap", price: "$21.00", oldPrice: "$29.00", image: "/images/hat-dog-dot.png" },
-        { name: "Bear Cub Ear Baseball Cap", price: "$22.00", oldPrice: "$32.00", image: "/images/hat-bear.png" },
-        { name: "White Bear Ear Baseball Cap", price: "$20.00", oldPrice: "$30.00", image: "/images/hat-bear-white.png" },
-        { name: "White Rabbit Ear Baseball Cap", price: "$24.00", oldPrice: "$35.00", image: "/images/placeholder-hat.png" },
-        { name: "Classic Beige Bucket Hat", price: "$15.00", oldPrice: "$25.00", image: "/images/hat-rabbit-white.png" },
-        { name: "Vintage Denim Cap", price: "$18.00", oldPrice: "$28.00", image: "/images/placeholder-hat.png" },
-        { name: "Minimalist Beanie", price: "$12.00", oldPrice: "$20.00", image: "/images/hat-dog-dot.png" },
-        { name: "Sport Visor Cap", price: "$16.00", oldPrice: "$26.00", image: "/images/placeholder-hat.png" },
-        { name: "Knit Winter Hat", price: "$25.00", oldPrice: "$40.00", image: "/images/hat-dog-black.png" },
-        { name: "Wide Brim Sun Hat", price: "$28.00", oldPrice: "$45.00", image: "/images/hat-rabbit-white.png" },
-        { name: "Kids Animal Ear Cap", price: "$18.00", oldPrice: "$28.00", image: "/images/placeholder-hat.png" }
-    ];
+    const [recommendations, setRecommendations] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const res = await fetch("http://localhost:8000/products", { cache: "no-store" });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.products && data.products.length > 0) {
+                        const mapped = data.products.map((p: any) => {
+                            const primaryImg = p.images?.find((img: any) => img.is_primary);
+                            const firstImg = p.images?.[0];
+                            const imgSrc = primaryImg?.signed_url || primaryImg?.image_url
+                                || firstImg?.signed_url || firstImg?.image_url
+                                || "/images/placeholder-hat.png";
+                            return {
+                                id: p.id,
+                                name: p.name,
+                                price: `$${parseFloat(p.base_price).toFixed(2)}`,
+                                oldPrice: "",
+                                image: imgSrc,
+                            };
+                        });
+                        setRecommendations(mapped.reverse().slice(0, 6));
+                        setLoading(false);
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.log("Backend not reachable, using fallback products");
+            }
+
+            // Fallback mock data (only when backend is unreachable)
+            setRecommendations([
+                { id: 1, name: "Black Dog Ear Baseball Cap", price: "$19.00", oldPrice: "$29.00", image: "/images/hat-dog-black.png" },
+                { id: 2, name: "Polka Dot Dog Ear Baseball Cap", price: "$21.00", oldPrice: "$29.00", image: "/images/hat-dog-dot.png" },
+                { id: 3, name: "Bear Cub Ear Baseball Cap", price: "$22.00", oldPrice: "$32.00", image: "/images/hat-bear.png" },
+                { id: 4, name: "White Bear Ear Baseball Cap", price: "$20.00", oldPrice: "$30.00", image: "/images/hat-bear-white.png" },
+                { id: 5, name: "White Rabbit Ear Baseball Cap", price: "$24.00", oldPrice: "$35.00", image: "/images/placeholder-hat.png" },
+                { id: 6, name: "Classic Beige Bucket Hat", price: "$15.00", oldPrice: "$25.00", image: "/images/hat-rabbit-white.png" },
+            ]);
+            setLoading(false);
+        };
+        fetchProducts();
+    }, []);
 
     const renderStars = (rating: number) => (
         <div className="flex gap-[2px]">
@@ -157,17 +189,22 @@ export default function HomePage() {
                         </div>
                     </div>
                     
+                    {loading ? (
+                        <div className="flex items-center justify-center py-16">
+                            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                        </div>
+                    ) : (
                     <motion.div 
                         variants={staggerContainer}
                         className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-5 gap-y-8 mb-4"
                     >
                         {recommendations.map((item, i) => (
                             <motion.div 
-                                key={i} 
+                                key={item.id || i} 
                                 variants={fadeUp}
                                 className="group relative"
                             >
-                                <Link href={`/user/productdetail/${i + 1}`} className="block relative mb-3">
+                                <Link href={`/user/productdetail/${item.id || i + 1}`} className="block relative mb-3">
                                     <div className="aspect-square bg-[#F8F9FA] rounded-xl overflow-hidden flex items-center justify-center border border-gray-100/50 transition-all duration-300 group-hover:shadow-[0_8px_25px_-5px_rgba(0,0,0,0.05)] group-hover:border-transparent">
                                         <Image src={item.image || "/images/placeholder-hat.png"} alt={item.name} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
                                     </div>
@@ -177,7 +214,7 @@ export default function HomePage() {
                                     <div className="mb-2">
                                         {renderStars(5)}
                                     </div>
-                                    <Link href={`/user/productdetail/${i + 1}`}>
+                                    <Link href={`/user/productdetail/${item.id || i + 1}`}>
                                         <h4 className="text-[13px] font-bold text-gray-800 line-clamp-2 leading-tight mb-2 hover:text-[#2563EB] transition-colors">{item.name}</h4>
                                     </Link>
 
@@ -191,6 +228,7 @@ export default function HomePage() {
                             </motion.div>
                         ))}
                     </motion.div>
+                    )}
                 </motion.section>
 
                 {/* --- ABOUT US --- */}
