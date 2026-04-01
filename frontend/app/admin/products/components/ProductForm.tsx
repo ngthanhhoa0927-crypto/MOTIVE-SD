@@ -5,6 +5,16 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+export const PREDEFINED_COLORS = [
+    { name: 'Black', hex: '#000000', style: { backgroundColor: '#000000' } },
+    { name: 'White', hex: '#FFFFFF', style: { backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB' } },
+    { name: 'Red', hex: '#EF4444', style: { backgroundColor: '#EF4444' } },
+    { name: 'Yellow', hex: '#EAB308', style: { backgroundColor: '#EAB308' } },
+    { name: 'Green', hex: '#22C55E', style: { backgroundColor: '#22C55E' } },
+    { name: 'Blue', hex: '#3B82F6', style: { backgroundColor: '#3B82F6' } },
+    { name: 'Others', hex: '', style: { background: 'linear-gradient(to right, #EF4444, #EAB308, #22C55E, #3B82F6, #A855F7)' } }
+];
+
 interface ProductFormProps {
     initialData?: any;
     isEditingMode?: boolean; // For toggling view/edit in [id] page
@@ -21,8 +31,6 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
     const [name, setName] = useState(initialData?.name || '');
     const [description, setDescription] = useState(initialData?.description || '');
     const [categoryId, setCategoryId] = useState(initialData?.category_id?.toString() || '');
-    const [collectionId, setCollectionId] = useState(initialData?.collection_id?.toString() || '');
-    const [brand, setBrand] = useState(initialData?.brand || '');
     const [status, setStatus] = useState(initialData?.status || 'Active');
     
     // Specification States
@@ -33,21 +41,28 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
 
     // Shipping States
     const [packageWeight, setPackageWeight] = useState(initialData?.package_weight ? initialData.package_weight.toString().replace(/g/gi, '').trim() : '');
-    const [shippingClass, setShippingClass] = useState(initialData?.shipping_class || '');
-    const [packageDimensions, setPackageDimensions] = useState(initialData?.package_dimensions || '');
+    const initialShippingClasses = initialData?.shipping_class ? initialData.shipping_class.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+    const [shippingClass, setShippingClass] = useState<string[]>(initialShippingClasses);
+    
+    const initialDims = initialData?.package_dimensions ? initialData.package_dimensions.split('x').map((s: string) => s.replace(/[^\d.]/g, '').trim()) : ['', '', ''];
+    const [dimL, setDimL] = useState(initialDims[0] || '');
+    const [dimW, setDimW] = useState(initialDims[1] || '');
+    const [dimH, setDimH] = useState(initialDims[2] || '');
+    
+    const dimWRef = React.useRef<HTMLInputElement>(null);
+    const dimHRef = React.useRef<HTMLInputElement>(null);
+    
     const [leadTime, setLeadTime] = useState(initialData?.lead_time || '');
 
     // Custom Dropdown States
     const [isStatusOpen, setIsStatusOpen] = useState(false);
     const [isCategoryOpen, setIsCategoryOpen] = useState(false);
-    const [isCollectionOpen, setIsCollectionOpen] = useState(false);
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (!(e.target as Element).closest('.custom-select')) {
                 setIsStatusOpen(false);
                 setIsCategoryOpen(false);
-                setIsCollectionOpen(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -75,7 +90,6 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
         { id: 4, name: 'Flat Cap' },
         { id: 5, name: 'Others' }
     ]);
-    const [collections, setCollections] = useState<any[]>([{ id: 1, name: 'Summer Collection' }, { id: 2, name: 'Winter Collection' }, { id: 3, name: 'Limited Edition' }]);
 
     useEffect(() => {
         fetch("http://localhost:8000/categories")
@@ -136,7 +150,8 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
         if (sizeOptions.length > 0 && colorOptions.length > 0) {
             sizeOptions.forEach(size => {
                 colorOptions.forEach(color => {
-                    generated.push({ name: `${size} - ${color}`, size, color, price: '', stock: '', sku: '', color_hex: '#000000', image_url: '', image_preview: '', is_active: true });
+                    const cHex = PREDEFINED_COLORS.find(c => c.name === color)?.hex || '';
+                    generated.push({ name: `${size} - ${color}`, size, color, price: '', stock: '', sku: '', color_hex: cHex, image_url: '', image_preview: '', is_active: true });
                 });
             });
         } else if (sizeOptions.length > 0) {
@@ -145,7 +160,8 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
             });
         } else if (colorOptions.length > 0) {
             colorOptions.forEach(color => {
-                generated.push({ name: color, size: '', color, price: '', stock: '', sku: '', color_hex: '#000000', image_url: '', image_preview: '', is_active: true });
+                const cHex = PREDEFINED_COLORS.find(c => c.name === color)?.hex || '';
+                generated.push({ name: color, size: '', color, price: '', stock: '', sku: '', color_hex: cHex, image_url: '', image_preview: '', is_active: true });
             });
         } else {
             generated.push({ name: 'Default', size: '', color: '', price: '', stock: '', sku: '', color_hex: '', image_url: '', image_preview: '', is_active: true });
@@ -286,15 +302,17 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
     const handleSubmit = async () => {
         const newErrors: any = {};
         
-        if (!name.trim()) newErrors.name = "Product name is required";
+        if (!name.trim()) newErrors.name = "This field cannot be left blank";
         else if (name.trim().length < 10) newErrors.name = "Product name must be at least 10 characters";
         
-        if (images.length === 0) newErrors.images = "At least one product image is required";
+        if (images.length === 0) newErrors.images = "This field cannot be left blank";
         else if (images.filter(img => img.is_primary).length === 0) newErrors.images = "A primary image is required";
 
         const parsedWeight = parseFloat(weight);
-        if (!weight || isNaN(parsedWeight) || parsedWeight <= 0) {
-            newErrors.weight = "Product weight (g) is required and must be greater than 0";
+        if (!weight) {
+            newErrors.weight = "This field cannot be left blank";
+        } else if (isNaN(parsedWeight) || parsedWeight <= 0) {
+            newErrors.weight = "Product weight (g) must be greater than 0";
         }
 
         if (variantsData.length === 0) {
@@ -310,11 +328,11 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
             if (!v.is_active) continue;
             
             if (!v.size || !v.size.trim()) {
-                newErrors.variants[i] = { ...newErrors.variants[i], size: "Size is required" };
+                newErrors.variants[i] = { ...newErrors.variants[i], size: "This field cannot be left blank" };
                 hasVariantErrors = true;
             }
             if (!v.color || !v.color.trim()) {
-                newErrors.variants[i] = { ...newErrors.variants[i], color: "Color is required" };
+                newErrors.variants[i] = { ...newErrors.variants[i], color: "This field cannot be left blank" };
                 hasVariantErrors = true;
             }
             if (v.size && v.color) {
@@ -326,34 +344,52 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                 sizeColorCombos.add(combo);
             }
             const stockNum = parseInt(v.stock);
-            if (isNaN(stockNum) || stockNum < 0) {
+            if (v.stock === '') {
+                newErrors.variants[i] = { ...newErrors.variants[i], stock: "This field cannot be left blank" };
+                hasVariantErrors = true;
+            } else if (isNaN(stockNum) || stockNum < 0) {
                 newErrors.variants[i] = { ...newErrors.variants[i], stock: "Stock must be ≥ 0" };
                 hasVariantErrors = true;
             }
         }
 
-        const basePriceNum = parseFloat(variantsData[0]?.price || '0');
-        if (isNaN(basePriceNum) || basePriceNum <= 0) {
+        const basePriceNum = parseFloat(variantsData[0]?.price || '');
+        if (!variantsData[0]?.price || variantsData[0]?.price.trim() === '') {
+            newErrors.variants[0] = { ...newErrors.variants[0], price: "This field cannot be left blank" };
+            hasVariantErrors = true;
+        } else if (isNaN(basePriceNum) || basePriceNum <= 0) {
             newErrors.variants[0] = { ...newErrors.variants[0], price: "Price must be greater than 0" };
             hasVariantErrors = true;
         }
 
         if (status === 'Active') {
-            if (!description || description.trim().length < 50 || description.trim() === "No description provided") {
+            if (!description || !description.trim()) {
+                newErrors.description = "This field cannot be left blank";
+            } else if (description.trim().length < 50 || description.trim() === "No description provided") {
                 newErrors.description = "Description must be at least 50 characters to publish";
             }
+            
             const parsedPkgWeight = parseFloat(packageWeight);
-            if (!packageWeight || isNaN(parsedPkgWeight) || parsedPkgWeight < parsedWeight) {
+            if (!packageWeight) {
+                newErrors.packageWeight = "This field cannot be left blank";
+            } else if (isNaN(parsedPkgWeight) || parsedPkgWeight < parsedWeight) {
                 newErrors.packageWeight = "Package weight must be >= product weight";
             }
-            if (!packageDimensions || !/^\d+\s*x\s*\d+\s*x\s*\d+(\s*[a-zA-Z]+)?$/i.test(packageDimensions)) {
-                newErrors.packageDimensions = "Format must be 'L x W x H' (e.g. 25 x 15 x 10)";
+            
+            if (!dimL || !dimW || !dimH) {
+                newErrors.packageDimensions = "This field cannot be left blank";
+            } else if (isNaN(parseFloat(dimL)) || isNaN(parseFloat(dimW)) || isNaN(parseFloat(dimH)) || parseFloat(dimL) <= 0 || parseFloat(dimW) <= 0 || parseFloat(dimH) <= 0) {
+                newErrors.packageDimensions = "Dimensions must be valid numbers > 0";
             }
-            if (!shippingClass || shippingClass.trim() === '') {
-                newErrors.shippingClass = "Shipping class is required to publish";
+            
+            if (!shippingClass || shippingClass.length === 0) {
+                newErrors.shippingClass = "This field cannot be left blank";
             }
+            
             const parsedLeadTime = parseInt(String(leadTime).replace(/\D/g, ''));
-            if (!leadTime || isNaN(parsedLeadTime) || parsedLeadTime < 1) {
+            if (!leadTime || String(leadTime).trim() === '') {
+                newErrors.leadTime = "This field cannot be left blank";
+            } else if (isNaN(parsedLeadTime) || parsedLeadTime < 1) {
                 newErrors.leadTime = "Lead time must be >= 1 day";
             }
 
@@ -387,17 +423,15 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
             name: name.trim(),
             description: description || undefined,
             category_id: parseInt(categoryId) || categories[0]?.id || 1,
-            collection_id: collectionId ? parseInt(collectionId) : undefined,
             base_price: basePriceNum,
             weight: parsedWeight,
             status,
-            brand: brand || undefined,
             material: material || undefined,
             size_info: sizeInfo || undefined,
             care: care || undefined,
             package_weight: !isNaN(parsedPackageWeight) && parsedPackageWeight > 0 ? parsedPackageWeight : undefined,
-            shipping_class: shippingClass || undefined,
-            package_dimensions: packageDimensions || undefined,
+            shipping_class: shippingClass && shippingClass.length > 0 ? shippingClass.join(', ') : undefined,
+            package_dimensions: (dimL && dimW && dimH) ? `${dimL.trim()} x ${dimW.trim()} x ${dimH.trim()} mm` : undefined,
             lead_time: !isNaN(parsedLeadTime) && parsedLeadTime >= 0 ? parsedLeadTime : undefined,
             images: images.map((img, idx) => ({ 
                 image_url: img.key, 
@@ -610,21 +644,24 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                         <label className="block text-[13px] font-bold text-gray-900">Color Options</label>
                                     </div>
                                     <div className="flex-1">
-                                        <div className="bg-white border border-gray-200 rounded-lg p-2 min-h-[42px] flex flex-wrap gap-2 items-center focus-within:border-blue-500">
-                                            {colorOptions.map(opt => (
-                                                <div key={opt} className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 rounded text-[13px] font-semibold text-gray-700 border border-gray-200">
-                                                    {opt}
-                                                    <button onClick={() => removeOption('color', opt)} className="text-gray-400 hover:text-red-500">×</button>
-                                                </div>
-                                            ))}
-                                            <input 
-                                                type="text" 
-                                                value={colorInput} 
-                                                onChange={e => { setColorInput(e.target.value); if(variationError?.type === 'color') setVariationError(null); }} 
-                                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addOption('color', colorInput); } }} 
-                                                placeholder="Add color (e.g. Red, Blue)..." 
-                                                className="flex-1 min-w-[120px] text-[13px] bg-transparent outline-none p-1 placeholder-gray-400 font-medium" 
-                                            />
+                                        <div className="flex flex-wrap gap-2 items-center">
+                                            {PREDEFINED_COLORS.map(color => {
+                                                const isSelected = colorOptions.includes(color.name);
+                                                return (
+                                                    <button
+                                                        key={color.name}
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            if (isSelected) removeOption('color', color.name);
+                                                            else addOption('color', color.name);
+                                                        }}
+                                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[13px] font-semibold transition-all ${isSelected ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}`}
+                                                    >
+                                                        <div className="w-4 h-4 rounded-sm" style={color.style}></div>
+                                                        {color.name}
+                                                    </button>
+                                                )
+                                            })}
                                         </div>
                                         {variationError?.type === 'color' && (
                                             <p className="text-red-500 text-[11px] font-bold mt-2">{variationError.message}</p>
@@ -642,10 +679,9 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                             <thead>
                                                 <tr className="bg-[#F9FAFB] border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                                     <th className="py-3 px-2 w-[16%]">Variant</th>
-                                                    <th className="py-3 px-2 w-[8%] text-center">Image</th>
-                                                    <th className="py-3 px-2 w-[18%]">Color Hex</th>
-                                                    <th className="py-3 px-2 w-[16%]">Price ($)*</th>
-                                                    <th className="py-3 px-2 w-[14%]">Stock*</th>
+                                                    <th className="py-3 px-2 w-[18%]">Color</th>
+                                                    <th className="py-3 px-2 w-[22%]">Price ($)*</th>
+                                                    <th className="py-3 px-2 w-[18%]">Stock*</th>
                                                     <th className="py-3 px-2 w-[18%]">SKU</th>
                                                     <th className="py-3 px-2 w-[10%] text-center">Active</th>
                                                 </tr>
@@ -653,7 +689,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                             <tbody className="divide-y divide-gray-100">
                                                 {/* Global Fill */}
                                                 <tr className="bg-blue-50/50 border-b border-blue-100">
-                                                    <td colSpan={3} className="py-2.5 px-2 text-[12px] font-bold text-blue-800 text-right pe-4">Quick apply:</td>
+                                                    <td colSpan={2} className="py-2.5 px-2 text-[12px] font-bold text-blue-800 text-right pe-4">Quick apply:</td>
                                                     <td className="py-2.5 px-2"><input type="number" onChange={handleApplyAllPrice} placeholder="Price" className="w-full px-2 py-1.5 bg-white border border-blue-200 rounded text-[13px] font-medium focus:outline-none" /></td>
                                                     <td className="py-2.5 px-2"><input type="number" onChange={handleApplyAllStock} placeholder="Stock" className="w-full px-2 py-1.5 bg-white border border-blue-200 rounded text-[13px] font-medium focus:outline-none" /></td>
                                                     <td colSpan={2}></td>
@@ -663,19 +699,15 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                                     <tr key={idx} className={`hover:bg-gray-50/50 transition-colors ${!v.is_active ? 'opacity-50 grayscale' : ''}`}>
                                                         <td className="py-3 px-2 text-[12px] font-bold text-gray-900 truncate" title={v.name}>{v.name}</td>
                                                         <td className="py-3 px-2">
-                                                            <div className="w-9 h-9 rounded border border-gray-200 bg-gray-50 relative overflow-hidden flex items-center justify-center cursor-pointer mx-auto">
-                                                                {v.image_preview ? (
-                                                                    <Image src={v.image_preview} alt="V" fill className="object-cover" unoptimized/>
+                                                            <div className="flex items-center gap-2">
+                                                                {v.color ? (
+                                                                    <>
+                                                                        <div className="w-5 h-5 rounded shadow-sm border border-gray-100 flex-shrink-0" style={PREDEFINED_COLORS.find(c => c.name === v.color)?.style || {}}></div>
+                                                                        <span className="text-[12px] font-bold text-gray-700 truncate">{v.color}</span>
+                                                                    </>
                                                                 ) : (
-                                                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                                                                    <span className="text-[12px] font-medium text-gray-400">N/A</span>
                                                                 )}
-                                                                <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={(e) => handleVariantImgChange(idx, e)} />
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-3 px-2">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <input type="color" value={v.color_hex || '#000000'} onChange={(e) => handleVariantChange(idx, 'color_hex', e.target.value)} disabled={!v.color} className={`w-5 h-5 rounded cursor-pointer ${!v.color ? 'opacity-30' : ''}`} />
-                                                                <span className="text-[10px] sm:text-[11px] font-mono text-gray-500 uppercase truncate">{v.color ? v.color_hex : 'N/A'}</span>
                                                             </div>
                                                         </td>
                                                         <td className="py-3 px-2 align-top">
@@ -693,11 +725,13 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                                         <td className="py-3 px-2">
                                                             <input type="text" value={v.sku} onChange={(e) => handleVariantChange(idx, 'sku', e.target.value)} disabled={!v.is_active} placeholder="SKU-..." className="w-full px-2 py-1.5 bg-[#F9FAFB] border border-gray-200 rounded text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 disabled:bg-gray-100 min-w-[70px]" />
                                                         </td>
-                                                        <td className="py-3 px-2 text-center">
-                                                            <label className="relative inline-flex items-center cursor-pointer">
-                                                                <input type="checkbox" checked={v.is_active} onChange={(e) => handleVariantChange(idx, 'is_active', e.target.checked)} className="sr-only peer" />
-                                                                <div className="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
-                                                            </label>
+                                                        <td className="py-3 px-2 align-top pt-4">
+                                                            <div className="flex justify-center w-full">
+                                                                <label className="relative inline-flex items-center cursor-pointer">
+                                                                    <input type="checkbox" checked={v.is_active} onChange={(e) => handleVariantChange(idx, 'is_active', e.target.checked)} className="sr-only peer" />
+                                                                    <div className="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
+                                                                </label>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -718,7 +752,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                         <div>
                             <div className="relative custom-select">
                                 <button 
-                                    onClick={() => { setIsStatusOpen(!isStatusOpen); setIsCategoryOpen(false); setIsCollectionOpen(false); }}
+                                    onClick={() => { setIsStatusOpen(!isStatusOpen); setIsCategoryOpen(false); }}
                                     className={`flex items-center justify-between w-full px-4 py-2.5 bg-[#F9FAFB] border ${isStatusOpen ? 'border-blue-500 ring-1 ring-blue-500 bg-white' : 'border-gray-200'} rounded-lg text-[13px] font-bold text-gray-900 transition-all`}
                                 >
                                     <span>{status === 'Draft' ? 'Draft' : status === 'Active' ? 'Active' : 'Archived'}</span>
@@ -742,15 +776,14 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                         </div>
                     </div>
 
-                    {/* Organization */}
+                    {/* Categories */}
                     <div className="bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.05)] border border-gray-100/80 p-6">
-                        <h2 className="text-[16px] font-bold text-gray-900 mb-5">Organization</h2>
+                        <h2 className="text-[16px] font-bold text-gray-900 mb-5">Categories <span className="text-red-500">*</span></h2>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-[13px] font-bold text-gray-700 mb-2">Category <span className="text-red-500">*</span></label>
                                 <div className="relative custom-select">
                                     <button 
-                                        onClick={() => { setIsCategoryOpen(!isCategoryOpen); setIsStatusOpen(false); setIsCollectionOpen(false); }}
+                                        onClick={() => { setIsCategoryOpen(!isCategoryOpen); setIsStatusOpen(false); }}
                                         className={`flex items-center justify-between w-full px-4 py-2.5 bg-[#F9FAFB] border ${isCategoryOpen ? 'border-blue-500 ring-1 ring-blue-500 bg-white' : 'border-gray-200'} rounded-lg text-[13px] font-medium text-gray-900 transition-all`}
                                     >
                                         <span className={!categoryId ? 'text-gray-400' : ''}>
@@ -773,45 +806,6 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                         </div>
                                     )}
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-[13px] font-bold text-gray-700 mb-2">Collection</label>
-                                <div className="relative custom-select">
-                                    <button 
-                                        onClick={() => { setIsCollectionOpen(!isCollectionOpen); setIsStatusOpen(false); setIsCategoryOpen(false); }}
-                                        className={`flex items-center justify-between w-full px-4 py-2.5 bg-[#F9FAFB] border ${isCollectionOpen ? 'border-blue-500 ring-1 ring-blue-500 bg-white' : 'border-gray-200'} rounded-lg text-[13px] font-medium text-gray-900 transition-all`}
-                                    >
-                                        <span className={!collectionId ? 'text-gray-400' : ''}>
-                                            {collectionId ? collections.find(c => c.id.toString() === collectionId)?.name || 'No Collection' : 'No Collection'}
-                                        </span>
-                                        <svg className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${isCollectionOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
-                                    </button>
-                                    {isCollectionOpen && (
-                                        <div className="absolute z-40 top-full left-0 mt-1 w-full bg-white rounded-lg shadow-lg border border-gray-100 overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-100 max-h-60 overflow-y-auto">
-                                            <button
-                                                onClick={() => { setCollectionId(''); setIsCollectionOpen(false); }}
-                                                className={`w-full text-left px-4 py-2 text-[13px] flex items-center justify-between transition-colors ${!collectionId ? 'bg-blue-50/80 text-blue-900 font-bold' : 'text-gray-700 font-medium hover:bg-gray-50'}`}
-                                            >
-                                                No Collection
-                                                {!collectionId && <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}
-                                            </button>
-                                            {collections.map(col => (
-                                                <button
-                                                    key={col.id}
-                                                    onClick={() => { setCollectionId(col.id.toString()); setIsCollectionOpen(false); }}
-                                                    className={`w-full text-left px-4 py-2 text-[13px] flex items-center justify-between transition-colors ${collectionId === col.id.toString() ? 'bg-blue-50/80 text-blue-900 font-bold' : 'text-gray-700 font-medium hover:bg-gray-50'}`}
-                                                >
-                                                    {col.name}
-                                                    {collectionId === col.id.toString() && <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-[13px] font-bold text-gray-700 mb-2">Brand</label>
-                                <input type="text" value={brand} onChange={e => setBrand(e.target.value)} placeholder="e.g. Vintage Apparel" className="w-full px-4 py-2.5 bg-[#F9FAFB] border border-gray-200 rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
                             </div>
                         </div>
                     </div>
@@ -857,12 +851,33 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                             </div>
                             <div>
                                 <label className="block text-[13px] font-bold text-gray-700 mb-2">Shipping Class {status === 'Active' && <span className="text-red-500">*</span>}</label>
-                                <input type="text" value={shippingClass} onChange={e => { setShippingClass(e.target.value); setErrors({...errors, shippingClass: undefined, global: undefined}); }} placeholder="e.g. Standard Express" className={`w-full px-4 py-2.5 bg-[#F9FAFB] border ${errors.shippingClass ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1`} />
+                                <div className="flex gap-4">
+                                    {['Standard', 'Express'].map(sc => {
+                                        const isSelected = shippingClass.includes(sc);
+                                        return (
+                                            <label key={sc} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border cursor-pointer transition-all flex-1 sm:flex-none justify-center sm:justify-start ${isSelected ? 'border-blue-500 bg-blue-50/50' : 'border-gray-200 bg-[#F9FAFB] hover:border-gray-300'}`}>
+                                                <input type="checkbox" checked={isSelected} onChange={() => {
+                                                    const newClasses = isSelected ? shippingClass.filter(c => c !== sc) : [...shippingClass, sc];
+                                                    setShippingClass(newClasses);
+                                                    setErrors({...errors, shippingClass: undefined, global: undefined});
+                                                }} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
+                                                <span className={`text-[13px] font-medium ${isSelected ? 'text-blue-900 font-bold' : 'text-gray-700'}`}>{sc}</span>
+                                            </label>
+                                        )
+                                    })}
+                                </div>
                                 {errors.shippingClass && <p className="text-red-500 text-[12px] font-bold mt-1.5">{errors.shippingClass}</p>}
                             </div>
                             <div>
                                 <label className="block text-[13px] font-bold text-gray-700 mb-2">Package Dimensions {status === 'Active' && <span className="text-red-500">*</span>}</label>
-                                <input type="text" value={packageDimensions} onChange={e => { setPackageDimensions(e.target.value); setErrors({...errors, packageDimensions: undefined, global: undefined}); }} placeholder="e.g. 250 × 150 × 100 mm" className={`w-full px-4 py-2.5 bg-[#F9FAFB] border ${errors.packageDimensions ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1`} />
+                                <div className="flex items-center gap-2">
+                                    <input type="number" min="0" value={dimL} onChange={e => { setDimL(e.target.value); setErrors({...errors, packageDimensions: undefined, global: undefined}); }} onKeyDown={e => { if (e.key === ' ' || e.key.toLowerCase() === 'x' || e.key === 'Enter') { e.preventDefault(); dimWRef.current?.focus(); } }} placeholder="L" className={`w-full px-3 py-2.5 bg-[#F9FAFB] border ${errors.packageDimensions ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:ring-blue-500'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1 text-center [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none`} />
+                                    <span className="text-gray-400 font-medium">×</span>
+                                    <input type="number" ref={dimWRef} min="0" value={dimW} onChange={e => { setDimW(e.target.value); setErrors({...errors, packageDimensions: undefined, global: undefined}); }} onKeyDown={e => { if (e.key === ' ' || e.key.toLowerCase() === 'x' || e.key === 'Enter') { e.preventDefault(); dimHRef.current?.focus(); } }} placeholder="W" className={`w-full px-3 py-2.5 bg-[#F9FAFB] border ${errors.packageDimensions ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:ring-blue-500'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1 text-center [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none`} />
+                                    <span className="text-gray-400 font-medium">×</span>
+                                    <input type="number" ref={dimHRef} min="0" value={dimH} onChange={e => { setDimH(e.target.value); setErrors({...errors, packageDimensions: undefined, global: undefined}); }} placeholder="H" className={`w-full px-3 py-2.5 bg-[#F9FAFB] border ${errors.packageDimensions ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:ring-blue-500'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1 text-center [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none`} />
+                                    <span className="text-[13px] font-medium text-gray-500 ml-1">mm</span>
+                                </div>
                                 {errors.packageDimensions && <p className="text-red-500 text-[12px] font-bold mt-1.5">{errors.packageDimensions}</p>}
                             </div>
                             <div>

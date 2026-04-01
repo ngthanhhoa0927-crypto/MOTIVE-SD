@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { PREDEFINED_COLORS } from './components/ProductForm';
 
 interface AddProductModalProps {
     isOpen: boolean;
@@ -13,7 +14,6 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [categoryId, setCategoryId] = useState('');
-    const [brand, setBrand] = useState('');
     const [price, setPrice] = useState('');
     const [weight, setWeight] = useState('');
     const [stock, setStock] = useState('0');
@@ -83,19 +83,21 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
         const newErrors: any = {};
 
         // === Business Rule Validation ===
-        if (!name.trim()) newErrors.name = "Product name is required";
+        if (!name.trim()) newErrors.name = "This field cannot be left blank";
         else if (name.trim().length < 10) newErrors.name = "Product name must be at least 10 characters";
 
         const priceNum = parseFloat(price);
-        if (isNaN(priceNum) || priceNum <= 0) newErrors.price = "Price must be greater than 0";
+        if (!price) newErrors.price = "This field cannot be left blank";
+        else if (isNaN(priceNum) || priceNum <= 0) newErrors.price = "Price must be greater than 0";
 
         const weightNum = parseFloat(weight);
-        if (!weight || isNaN(weightNum) || weightNum <= 0) newErrors.weight = "Weight (g) is required and must be > 0";
+        if (!weight) newErrors.weight = "This field cannot be left blank";
+        else if (isNaN(weightNum) || weightNum <= 0) newErrors.weight = "Weight (g) must be greater than 0";
 
-        if (!imageKey) newErrors.image = "At least 1 product image is required";
+        if (!imageKey) newErrors.image = "This field cannot be left blank";
 
-        if (!size.trim()) newErrors.size = "Size is required (e.g. S, M, L, Free Size)";
-        if (!color.trim()) newErrors.color = "Color is required (e.g. Black, White, Red)";
+        if (!size.trim()) newErrors.size = "This field cannot be left blank";
+        if (!color.trim()) newErrors.color = "This field cannot be left blank";
 
         setErrors(newErrors);
         if (Object.keys(newErrors).length > 0) return;
@@ -112,7 +114,6 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
             name: name.trim(),
             description: description || undefined,
             category_id: parseInt(categoryId) || (categories.length > 0 ? categories[0].id : 1),
-            brand: brand || undefined,
             base_price: priceNum,
             weight: weightNum,
             status,
@@ -208,21 +209,14 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                         <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the product features, materials, and benefits..." rows={3} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-[13px] font-medium placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none"></textarea>
                     </div>
 
-                    {/* Category + Brand */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div>
-                            <label className="block text-[13px] font-bold text-gray-700 mb-2">Category</label>
-                            <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all appearance-none cursor-pointer">
-                                <option value="" disabled>Select a category</option>
-                                {categories.map(cat => (
-                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-[13px] font-bold text-gray-700 mb-2">Brand Name</label>
-                            <input type="text" value={brand} onChange={e => setBrand(e.target.value)} placeholder="e.g. Vintage Apparel" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
-                        </div>
+                    <div>
+                        <label className="block text-[13px] font-bold text-gray-700 mb-2">Category</label>
+                        <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all appearance-none cursor-pointer">
+                            <option value="" disabled>Select a category</option>
+                            {categories.map(cat => (
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            ))}
+                        </select>
                     </div>
 
                     {/* Price + Weight */}
@@ -259,7 +253,12 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                             </div>
                             <div>
                                 <label className="block text-[12px] font-bold text-gray-600 mb-1.5">Color <span className="text-red-500">*</span></label>
-                                <input type="text" value={color} onChange={e => { setColor(e.target.value); setErrors((p: any) => ({...p, color: undefined})); }} placeholder="e.g. Black" className={`w-full px-3 py-2.5 bg-white border ${errors.color ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-lg text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500`} />
+                                <select value={color} onChange={e => { setColor(e.target.value); setErrors((p: any) => ({...p, color: undefined})); }} className={`w-full px-3 py-2.5 bg-white border ${errors.color ? 'border-red-400 bg-red-50' : 'border-gray-200'} rounded-lg text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer`}>
+                                    <option value="" disabled>Select color</option>
+                                    {PREDEFINED_COLORS.map(c => (
+                                        <option key={c.name} value={c.name}>{c.name}</option>
+                                    ))}
+                                </select>
                                 {errors.color && <p className="text-red-500 text-[11px] font-bold mt-1">{errors.color}</p>}
                             </div>
                             <div>

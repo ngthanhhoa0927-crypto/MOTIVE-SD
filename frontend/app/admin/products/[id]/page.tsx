@@ -176,10 +176,6 @@ export default function EditProductPage({ params: paramsPromise }: { params: Pro
                             {/* Col 1 */}
                             <div className="flex flex-col">
                                 <div className="flex justify-between items-center py-5 border-b border-gray-50">
-                                    <span className="text-[13px] font-bold text-[#8A94A6]">Brand</span>
-                                    <span className="text-[13px] font-bold text-gray-900">{product.brand || "Not specified"}</span>
-                                </div>
-                                <div className="flex justify-between items-center py-5 border-b border-gray-50">
                                     <span className="text-[13px] font-bold text-[#8A94A6]">Material</span>
                                     <span className="text-[13px] font-bold text-gray-900">{product.material || "Not specified"}</span>
                                 </div>
