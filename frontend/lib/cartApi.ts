@@ -64,6 +64,32 @@ export async function fetchCart(): Promise<CartItem[]> {
 }
 
 /**
+ * GET /carts/count - Fetch total cart item count
+ */
+export async function fetchCartCount(): Promise<number> {
+    try {
+        const token = getAuthToken();
+        if (!token) return 0;
+
+        const response = await fetch(`${API_BASE_URL}/carts/count`, {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+            },
+            cache: "no-store",
+        });
+
+        if (!response.ok) return 0;
+
+        const data = await response.json();
+        return data.count || 0;
+    } catch (error) {
+        console.error("Error fetching cart count:", error);
+        return 0;
+    }
+}
+
+/**
  * POST /api/carts - Add item to cart
  */
 export async function addToCart(request: AddToCartRequest): Promise<{

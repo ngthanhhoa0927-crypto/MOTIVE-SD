@@ -330,6 +330,7 @@ export default function ProductDetailsPage() {
             });
 
             setAddToCartSuccess(`✓ Successfully added ${qty} item(s) to cart!`);
+            window.dispatchEvent(new CustomEvent("cartUpdated"));
             setTimeout(() => setAddToCartSuccess(""), 3000);
             
             // Reset quantity
@@ -676,7 +677,7 @@ export default function ProductDetailsPage() {
                                         </>
                                     ) : (
                                         <>
-                                            <ShoppingCart className="w-4 h-4 mr-2" inline /> {inStock ? "Add To Cart" : "Sold Out"}
+                                            <ShoppingCart className="w-4 h-4 mr-2" /> {inStock ? "Add To Cart" : "Sold Out"}
                                         </>
                                     )}
                                 </Button>

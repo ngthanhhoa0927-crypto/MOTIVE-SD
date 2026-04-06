@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Playfair_Display, Inter } from "next/font/google";
 import Link from "next/link";
 import { Search, User, ShoppingCart, Bell, Globe, LogOut } from "lucide-react";
+import { fetchCartCount } from "@/lib/cartApi";
 
 export default function Header() {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -15,6 +16,7 @@ export default function Header() {
     const [avatar, setAvatar] = useState("/images/avatar-placeholder.jpg");
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [cartCount, setCartCount] = useState(0);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const userMenuRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
@@ -86,9 +88,19 @@ export default function Header() {
             });
         }
 
+        const updateCartCount = async () => {
+            const count = await fetchCartCount();
+            setCartCount(count);
+        };
+
+        updateCartCount();
+
+        window.addEventListener("cartUpdated", updateCartCount);
+
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
             window.removeEventListener('avatarUpdated', handleAvatarUpdate as EventListener);
+            window.removeEventListener("cartUpdated", updateCartCount);
         };
     }, [isLoggedIn]);
 
@@ -233,9 +245,11 @@ export default function Header() {
                     <Link href="/user/cart" className="flex items-center gap-2 cursor-pointer hover:text-blue-600 transition group">
                         <div className="relative">
                             <ShoppingCart className="w-6 h-6 text-gray-600 group-hover:text-blue-600" />
-                            <span className="absolute -top-1.5 -right-2.5 bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-white">
-                                3
-                            </span>
+                            {cartCount > 0 && (
+                                <span className="absolute -top-1.5 -right-2.5 bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-white">
+                                    {cartCount}
+                                </span>
+                            )}
                         </div>
                         <span className="text-sm font-semibold text-gray-800 group-hover:text-blue-600">Cart</span>
                     </Link>

@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import { Playfair_Display, Inter } from "next/font/google";
 import Link from "next/link";
 import Image from "next/image";
@@ -10,7 +11,8 @@ import Footer from "@/components/footer";
 const playfair = Playfair_Display({ subsets: ["latin"], style: ["normal", "italic"] });
 const inter = Inter({ subsets: ["latin"] });
 
-export default function OrderDetailsPage({ params }: { params: { id: string } }) {
+export default function OrderDetailsPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+    const params = use(paramsPromise);
     const orderId = params.id ? `#${params.id.toUpperCase()}` : "#MSD-89241";
 
     return (

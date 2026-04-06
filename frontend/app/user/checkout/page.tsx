@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight, ShieldCheck, Mail, Phone, User, MapPin, Truck, CreditCard, ArrowLeft, Lock, Check, X } from "lucide-react";
@@ -8,29 +8,26 @@ import { Playfair_Display, Inter } from "next/font/google";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { fetchCart, isAuthenticated } from "@/lib/cartApi";
 
 const playfair = Playfair_Display({ subsets: ["latin"], style: ["normal", "italic"] });
 const inter = Inter({ subsets: ["latin"] });
 
-// Mock cart items for summary
-const cartItems = [
-    {
-        id: 1,
-        name: "Black Dog Ear Baseball Cap",
-        price: 19.00,
-        image: "/images/hat-dog-black.png",
-        quantity: 1,
-    },
-    {
-        id: 2,
-        name: "Bear Cub Ear Baseball Cap",
-        price: 22.00,
-        image: "/images/hat-bear.png",
-        quantity: 2,
-    }
-];
+interface CartItem {
+    id: number;
+    quantity: number;
+    product_variant: any;
+    product: any;
+    product_image: any;
+}
 
 export default function CheckoutPage() {
+    const router = useRouter();
+    const [cartItems, setCartItems] = useState<CartItem[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [isAuthenticated_flag, setIsAuthenticated_flag] = useState(false);
+
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
     const [fullName, setFullName] = useState("");
@@ -40,6 +37,49 @@ export default function CheckoutPage() {
     const [shippingMethod, setShippingMethod] = useState("standard");
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [showSuccess, setShowSuccess] = useState(false);
+
+    useEffect(() => {
+        const initCheckout = async () => {
+            const token = localStorage.getItem("token");
+            try {
+                if (!isAuthenticated()) {
+                    setIsAuthenticated_flag(false);
+                    setLoading(false);
+                    router.push("/user/login");
+                    return;
+                }
+
+                setIsAuthenticated_flag(true);
+                
+                // Fetch Cart and Profile in parallel
+                const [cartData, profileRes] = await Promise.all([
+                    fetchCart(),
+                    fetch("http://localhost:8000/auth/me", {
+                        headers: { "Authorization": `Bearer ${token}` }
+                    })
+                ]);
+
+                setCartItems(cartData || []);
+
+                if (profileRes.ok) {
+                    const profileData = await profileRes.json();
+                    const p = profileData.profile;
+                    if (p) {
+                        if (p.email) setEmail(p.email);
+                        if (p.phone_number) setPhone(p.phone_number);
+                        if (p.full_name) setFullName(p.full_name);
+                        if (p.address) setAddress(p.address);
+                    }
+                }
+            } catch (err: any) {
+                console.error("Failed to initialize checkout:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        initCheckout();
+    }, [router]);
 
     const validateField = (field: string, value: string) => {
         let error = "";
@@ -142,10 +182,22 @@ export default function CheckoutPage() {
 
     const isFormFilled = fullName && address && city && phone;
 
-    const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const subtotal = cartItems.reduce((acc, item) => acc + (Number(item.product_variant.price) * item.quantity), 0);
     const shipping = shippingMethod === "express" ? 15.00 : (subtotal > 50 ? 0 : 5.00);
     const tax = subtotal * 0.08;
     const total = subtotal + shipping + tax;
+
+    if (loading) {
+        return (
+            <div className={`min-h-screen flex flex-col bg-[#F9F8F4] ${inter.className}`}>
+                <Header />
+                <main className="flex-grow flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+                </main>
+                <Footer />
+            </div>
+        );
+    }
 
     return (
         <div className={`min-h-screen flex flex-col bg-[#F9F8F4] ${inter.className}`}>
@@ -399,17 +451,17 @@ export default function CheckoutPage() {
                                 {cartItems.map((item) => (
                                     <div key={item.id} className="flex gap-6 items-center group">
                                         <div className="relative w-20 h-20 bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 flex-shrink-0">
-                                            <Image src={item.image} alt={item.name} fill className="object-cover group-hover:scale-110 transition-transform" />
+                                            <Image src={item.product_image?.signed_url || "/images/placeholder-hat.png"} alt={item.product.name} fill className="object-cover group-hover:scale-110 transition-transform" />
                                             <span className="absolute -top-2 -right-2 w-6 h-6 bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
                                                 {item.quantity}
                                             </span>
                                         </div>
                                         <div className="flex-grow">
-                                            <h4 className="text-sm font-bold text-gray-900 line-clamp-1">{item.name}</h4>
+                                            <h4 className="text-sm font-bold text-gray-900 line-clamp-1">{item.product.name}</h4>
                                             <p className="text-xs text-gray-400 font-medium">Qty: {item.quantity}</p>
                                         </div>
                                         <div className="text-sm font-bold text-gray-900">
-                                            ${(item.price * item.quantity).toFixed(2)}
+                                            ${(Number(item.product_variant.price) * item.quantity).toFixed(2)}
                                         </div>
                                     </div>
                                 ))}

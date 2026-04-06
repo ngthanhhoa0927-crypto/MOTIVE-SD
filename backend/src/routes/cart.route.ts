@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { db } from "../db/index.js";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { carts, cartItems, products, productVariants, productImages } from "../db/schema.js";
 import { authMiddleware } from "./auth.route.js";
 import { getPresignedDownloadUrl } from "../utils/s3.js";
@@ -11,24 +11,47 @@ const cartRouter = new Hono();
 
 cartRouter.use("*", authMiddleware);
 
+// 0. GET /count
+cartRouter.get("/count", async (c) => {
+    try {
+        const userPayload = c.get("jwtPayload") as { sub: number };
+        const userId = userPayload.sub;
+
+        const userCart = await db.select().from(carts).where(eq(carts.userId, userId));
+        if (userCart.length === 0) {
+            return c.json({ count: 0 }, 200);
+        }
+
+        const result = await db.select({
+            totalQuantity: sql<number>`sum(${cartItems.quantity})::int`
+        })
+        .from(cartItems)
+        .where(eq(cartItems.cartId, userCart[0].id));
+
+        const count = result[0]?.totalQuantity || 0;
+        return c.json({ count }, 200);
+    } catch (error) {
+        console.error("Failed to get cart count:", error);
+        return c.json({ count: 0 }, 200); // Return 0 on error to avoid breaking UI
+    }
+});
+
 // 1. GET /
 cartRouter.get("/", async (c) => {
     try {
         const userPayload = c.get("jwtPayload") as { sub: number };
         const userId = userPayload.sub;
 
-        // Ensure user has a cart
-        let userCart = await db.select().from(carts).where(eq(carts.userId, userId));
-        
-        if (userCart.length === 0) {
-            // Create cart if not exists
-            const [newCart] = await db.insert(carts).values({
-                userId: userId
-            }).returning();
-            userCart = [newCart];
-        }
+        // Get or Create cart atomically to prevent race conditions
+        const [userCart] = await db.insert(carts)
+            .values({ userId })
+            .onConflictDoUpdate({
+                target: carts.userId,
+                set: { updatedAt: new Date() }
+            })
+            .returning();
 
-        const cartId = userCart[0].id;
+        const cartId = userCart.id;
 
         // Get cart items with relations
         const items = await db.select({
@@ -102,13 +125,15 @@ cartRouter.post(
                 return c.json({ message: "Product variant not found" }, 404);
             }
 
-            // Get or create cart
-            let userCart = await db.select().from(carts).where(eq(carts.userId, userId));
-            if (userCart.length === 0) {
-                const [newCart] = await db.insert(carts).values({ userId }).returning();
-                userCart = [newCart];
-            }
-            const cartId = userCart[0].id;
+            // Get or create cart atomically to prevent race conditions
+            const [userCart] = await db.insert(carts)
+                .values({ userId })
+                .onConflictDoUpdate({
+                    target: carts.userId,
+                    set: { updatedAt: new Date() }
+                })
+                .returning();
+            const cartId = userCart.id;
 
             // Check if item already in cart
             const existingItems = await db.select()

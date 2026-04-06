@@ -66,6 +66,7 @@ export default function CartPage() {
                     item.id === cartItemId ? { ...item, quantity: newQuantity } : item
                 )
             );
+            window.dispatchEvent(new CustomEvent("cartUpdated"));
         } catch (err) {
             setError("Failed to update quantity");
         }
@@ -75,6 +76,7 @@ export default function CartPage() {
         try {
             await removeFromCart(cartItemId);
             setCartItems((prev) => prev.filter((item) => item.id !== cartItemId));
+            window.dispatchEvent(new CustomEvent("cartUpdated"));
         } catch (err) {
             setError("Failed to remove item");
         }
