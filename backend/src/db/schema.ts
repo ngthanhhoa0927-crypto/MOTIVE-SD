@@ -165,3 +165,60 @@ export const notifications = pgTable("notifications", {
     isRead: boolean("is_read").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const carts = pgTable("carts", {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").references(() => users.id).notNull().unique(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const cartItems = pgTable("cart_items", {
+    id: serial("id").primaryKey(),
+    cartId: integer("cart_id").references(() => carts.id).notNull(),
+    productVariantId: integer("product_variant_id").references(() => productVariants.id).notNull(),
+    quantity: integer("quantity").notNull().default(1),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Order enums
+export const orderStatusEnum = pgEnum("order_status", ["processing", "shipped", "delivered", "cancelled"]);
+export const paymentMethodEnum = pgEnum("payment_method", ["card", "cod"]);
+export const shippingMethodEnum = pgEnum("shipping_method", ["standard", "express"]);
+
+// Orders and Order Items tables
+export const orders = pgTable("orders", {
+    id: serial("id").primaryKey(),
+    order_code: varchar("order_code", { length: 50 }).notNull().unique(),
+    userId: integer("user_id").references(() => users.id).notNull(),
+    receiver_name: varchar("receiver_name").notNull(),
+    receiver_phone: varchar("receiver_phone").notNull(),
+    shipping_address: text("shipping_address").notNull(),
+    shipping_city: varchar("shipping_city", { length: 255 }).notNull(),
+    payment_method: paymentMethodEnum("payment_method").notNull(),
+    shipping_method: shippingMethodEnum("shipping_method").notNull(),
+    status: orderStatusEnum("status").default("processing").notNull(),
+    subtotal: decimal("subtotal", { precision: 18, scale: 2 }).notNull(),
+    shipping_fee: decimal("shipping_fee", { precision: 18, scale: 2 }).notNull(),
+    tax: decimal("tax", { precision: 18, scale: 2 }).default("0"),
+    total_amount: decimal("total_amount", { precision: 18, scale: 2 }).notNull(),
+    payment_url: varchar("payment_url", { length: 500 }),
+    payment_status: varchar("payment_status", { length: 50 }).default("pending"),
+    estimated_delivery_date: timestamp("estimated_delivery_date"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const orderItems = pgTable("order_items", {
+    id: serial("id").primaryKey(),
+    orderId: integer("order_id").references(() => orders.id).notNull(),
+    product_id: integer("product_id").references(() => products.id).notNull(),
+    product_name: varchar("product_name").notNull(),
+    product_image: varchar("product_image", { length: 500 }),
+    quantity: integer("quantity").notNull(),
+    price_at_purchase: decimal("price_at_purchase", { precision: 18, scale: 2 }).notNull(),
+    size: varchar("size", { length: 50 }),
+    color: varchar("color", { length: 50 }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+

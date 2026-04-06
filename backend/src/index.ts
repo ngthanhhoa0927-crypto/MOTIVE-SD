@@ -6,6 +6,8 @@ import fileRouter from './routes/file.route.js'
 import notificationRouter from './routes/notification.route.js'
 import categoryRouter from './routes/category.route.js'
 import productRouter from './routes/product.route.js'
+import cartRouter from './routes/cart.route.js'
+import ordersRouter from './routes/order.route.js'
 
 const app = new Hono()
 
@@ -20,6 +22,8 @@ app.route('/files', fileRouter)
 app.route('/notifications', notificationRouter)
 app.route('/categories', categoryRouter)
 app.route('/products', productRouter)
+app.route('/carts', cartRouter)
+app.route('/orders', ordersRouter)
 
 const port = process.env.PORT ? parseInt(process.env.PORT) : 8000;
 

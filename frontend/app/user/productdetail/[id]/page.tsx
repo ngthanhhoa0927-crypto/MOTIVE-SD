@@ -11,6 +11,7 @@ import {
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { Button } from "@/components/ui/button";
+import { addToCart, isAuthenticated } from "@/lib/cartApi";
 
 // ====== BE INTERFACES ======
 interface ProductImage {
@@ -79,6 +80,11 @@ export default function ProductDetailsPage() {
     const [mousePos, setMousePos] = useState({ x: 0, y: 0, bgX: 0, bgY: 0, bgWidth: 0, bgHeight: 0 });
     const [recommendedProducts, setRecommendedProducts] = useState<any[]>([]);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+    
+    // ====== ADD TO CART STATES ======
+    const [isAddingToCart, setIsAddingToCart] = useState(false);
+    const [addToCartError, setAddToCartError] = useState<string>("");
+    const [addToCartSuccess, setAddToCartSuccess] = useState<string>("");
 
     useEffect(() => {
         const fetchRecommendations = async () => {
@@ -284,17 +290,57 @@ export default function ProductDetailsPage() {
         }
     }, [product, displayData]);
 
-    const handleAddToCart = () => {
+    const handleAddToCart = async () => {
         if (!inStock) return;
-
-        const qty = Number(quantity);
-        if (qty > availableStock) {
-            alert(`Sorry, we only have ${availableStock} items in stock for ${selectedColor} - ${selectedSize}.`);
-            setQuantity(availableStock);
+        
+        // Check if user is logged in
+        if (!isAuthenticated()) {
+            setAddToCartError("Please login to add items to cart");
+            setTimeout(() => setAddToCartError(""), 5000);
+            setTimeout(() => router.push("/user/login"), 1000);
             return;
         }
 
-        alert(`Successfully added ${qty} items of ${selectedColor} - ${selectedSize} to cart!`);
+        const qty = Number(quantity);
+        if (qty > availableStock) {
+            setAddToCartError(`Sorry, we only have ${availableStock} items in stock for ${selectedColor} - ${selectedSize}.`);
+            setQuantity(availableStock);
+            setTimeout(() => setAddToCartError(""), 5000);
+            return;
+        }
+
+        // Find the variant ID from product variants
+        const selectedVariant = product?.variants.find(
+            (v) => (v.color || "Default Color") === selectedColor && (v.size || "One Size") === selectedSize
+        );
+
+        if (!selectedVariant) {
+            setAddToCartError("Selected variant not found");
+            setTimeout(() => setAddToCartError(""), 5000);
+            return;
+        }
+
+        try {
+            setIsAddingToCart(true);
+            setAddToCartError("");
+            
+            await addToCart({
+                product_variant_id: selectedVariant.id,
+                quantity: qty,
+            });
+
+            setAddToCartSuccess(`✓ Successfully added ${qty} item(s) to cart!`);
+            setTimeout(() => setAddToCartSuccess(""), 3000);
+            
+            // Reset quantity
+            setQuantity(1);
+        } catch (error: any) {
+            const errorMessage = error?.message || "Failed to add to cart";
+            setAddToCartError(errorMessage);
+            console.error("Add to cart error:", error);
+        } finally {
+            setIsAddingToCart(false);
+        }
     };
 
     const handlePostReview = () => {
@@ -606,12 +652,33 @@ export default function ProductDetailsPage() {
                                     > + </button>
                                 </div>
 
+                                {/* Success/Error Messages */}
+                                {addToCartError && (
+                                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs font-semibold">
+                                        {addToCartError}
+                                    </div>
+                                )}
+                                {addToCartSuccess && (
+                                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-xs font-semibold">
+                                        {addToCartSuccess}
+                                    </div>
+                                )}
+
                                 <Button
                                     onClick={handleAddToCart}
-                                    className={`flex-1 h-14 rounded-2xl text-[12px] font-black uppercase tracking-[0.1em] shadow-2xl shadow-blue-600/30 transition-all ${inStock ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed uppercase'}`}
-                                    disabled={!inStock}
+                                    disabled={!inStock || isAddingToCart}
+                                    className={`flex-1 h-14 rounded-2xl text-[12px] font-black uppercase tracking-[0.1em] shadow-2xl shadow-blue-600/30 transition-all ${inStock && !isAddingToCart ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed uppercase'}`}
                                 >
-                                    <ShoppingCart className="w-4 h-4 mr-2" /> {inStock ? "Add To Cart" : "Sold Out"}
+                                    {isAddingToCart ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                                            Adding...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <ShoppingCart className="w-4 h-4 mr-2" inline /> {inStock ? "Add To Cart" : "Sold Out"}
+                                        </>
+                                    )}
                                 </Button>
 
                                 <Button
