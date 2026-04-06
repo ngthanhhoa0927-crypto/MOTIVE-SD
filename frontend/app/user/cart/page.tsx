@@ -48,9 +48,12 @@ export default function CartPage() {
 
 
     const updateQuantity = (id: number, delta: number) => {
-        setCartItems(prev => prev.map(item =>
-            item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item
-        ));
+        setCartItems(prev => {
+            const updated = prev.map(item =>
+                item.id === id ? { ...item, quantity: item.quantity + delta } : item
+            );
+            return updated.filter(item => item.quantity > 0);
+        });
     };
 
     const removeItem = (id: number) => {
@@ -58,32 +61,9 @@ export default function CartPage() {
     };
 
     const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-    const shipping = subtotal > 50 ? 0 : 5.00;
+    const shipping = subtotal === 0 ? 0 : (subtotal > 50 ? 0 : 5.00);
     const tax = subtotal * 0.08;
     const total = subtotal + shipping + tax;
-
-    if (cartItems.length === 0) {
-        return (
-            <div className={`min-h-screen flex flex-col bg-[#F9F8F4] ${inter.className}`}>
-                <Header />
-                <main className="flex-grow flex flex-col items-center justify-center p-8 text-center">
-                    <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-sm mb-6">
-                        <ShoppingBag className="w-10 h-10 text-gray-300" />
-                    </div>
-                    <h2 className={`${playfair.className} text-4xl text-gray-900 mb-4`}>Your cart is empty</h2>
-                    <p className="text-gray-500 max-w-md mb-8">
-                        It looks like you haven't added anything to your cart yet. Explore our latest collections and find your perfect style.
-                    </p>
-                    <Link href="/user/homepage">
-                        <Button className="bg-[#2C2B29] hover:bg-black text-white px-8 py-6 rounded-full font-semibold transition-all">
-                            Start Shopping
-                        </Button>
-                    </Link>
-                </main>
-                <Footer />
-            </div>
-        );
-    }
 
     return (
         <div className={`min-h-screen flex flex-col bg-[#F9F8F4] ${inter.className}`}>
@@ -108,8 +88,16 @@ export default function CartPage() {
                         </div>
 
                         <div className="space-y-6">
-                            {cartItems.map((item) => (
-                                <div key={item.id} className="group relative bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col sm:flex-row items-center gap-8 transition-all hover:shadow-md hover:border-blue-100">
+                            {cartItems.length === 0 ? (
+                                <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm">
+                                    <div className="w-24 h-24 bg-[#F9F8F4] rounded-full flex items-center justify-center mx-auto mb-6">
+                                        <ShoppingBag className="w-10 h-10 text-gray-300" />
+                                    </div>
+                                    <h2 className={`${playfair.className} text-3xl text-gray-900 mb-4`}>There are no items in the cart.</h2>
+                                </div>
+                            ) : (
+                                cartItems.map((item) => (
+                                    <div key={item.id} className="group relative bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col sm:flex-row items-center gap-8 transition-all hover:shadow-md hover:border-blue-100">
                                     {/* Image Container */}
                                     <div className="relative w-32 h-32 bg-[#F3F4F6] rounded-xl overflow-hidden flex-shrink-0">
                                         <Image
@@ -157,7 +145,8 @@ export default function CartPage() {
                                         </button>
                                     </div>
                                 </div>
-                            ))}
+                                ))
+                            )}
                         </div>
 
                         {/* Back to Home */}
@@ -198,11 +187,17 @@ export default function CartPage() {
                                 <span className="text-3xl font-extrabold text-blue-600">${total.toFixed(2)}</span>
                             </div>
 
-                            <Link href="/user/checkout" className="w-full">
-                                <Button className="w-full bg-[#2C2B29] hover:bg-black text-white py-7 rounded-2xl font-bold uppercase tracking-[0.2em] shadow-lg shadow-gray-200 transition-all transform active:scale-[0.98]">
+                            {cartItems.length === 0 ? (
+                                <Button disabled className="w-full bg-gray-200 text-gray-400 py-7 rounded-2xl font-bold uppercase tracking-[0.2em] cursor-not-allowed">
                                     Proceed To Checkout
                                 </Button>
-                            </Link>
+                            ) : (
+                                <Link href="/user/checkout" className="w-full">
+                                    <Button className="w-full bg-[#2C2B29] hover:bg-black text-white py-7 rounded-2xl font-bold uppercase tracking-[0.2em] shadow-lg shadow-gray-200 transition-all transform active:scale-[0.98]">
+                                        Proceed To Checkout
+                                    </Button>
+                                </Link>
+                            )}
 
                             <div className="mt-6 flex justify-center items-center gap-4">
                                 <Image src="/images/logo.png" alt="Payment Logos" width={100} height={30} className="opacity-20 grayscale brightness-0" />
