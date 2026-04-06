@@ -32,7 +32,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
     const [description, setDescription] = useState(initialData?.description || '');
     const [categoryId, setCategoryId] = useState(initialData?.category_id?.toString() || '');
     const [status, setStatus] = useState(initialData?.status || 'Active');
-    
+
     // Specification States
     const [material, setMaterial] = useState(initialData?.material || '');
     const [sizeInfo, setSizeInfo] = useState(initialData?.size_info || '');
@@ -43,15 +43,15 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
     const [packageWeight, setPackageWeight] = useState(initialData?.package_weight ? initialData.package_weight.toString().replace(/g/gi, '').trim() : '');
     const initialShippingClasses = initialData?.shipping_class ? initialData.shipping_class.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
     const [shippingClass, setShippingClass] = useState<string[]>(initialShippingClasses);
-    
+
     const initialDims = initialData?.package_dimensions ? initialData.package_dimensions.split('x').map((s: string) => s.replace(/[^\d.]/g, '').trim()) : ['', '', ''];
     const [dimL, setDimL] = useState(initialDims[0] || '');
     const [dimW, setDimW] = useState(initialDims[1] || '');
     const [dimH, setDimH] = useState(initialDims[2] || '');
-    
+
     const dimWRef = React.useRef<HTMLInputElement>(null);
     const dimHRef = React.useRef<HTMLInputElement>(null);
-    
+
     const [leadTime, setLeadTime] = useState(initialData?.lead_time || '');
 
     // Custom Dropdown States
@@ -70,7 +70,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
     }, []);
 
     // Multiple Images
-    const [images, setImages] = useState<{url: string, key: string, is_primary: boolean, color?: string}[]>([]);
+    const [images, setImages] = useState<{ url: string, key: string, is_primary: boolean, color?: string }[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [selectedImageColor, setSelectedImageColor] = useState<string | null>(null);
 
@@ -81,7 +81,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
     const [colorInput, setColorInput] = useState('');
 
     const [variantsData, setVariantsData] = useState<any[]>([]);
-    
+
     // Categories and Collections
     const [categories, setCategories] = useState<any[]>([
         { id: 1, name: 'Baseball Hat' },
@@ -94,7 +94,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
     useEffect(() => {
         fetch("http://localhost:8000/categories")
             .then(res => res.json())
-            .then(data => { 
+            .then(data => {
                 if (data.categories && data.categories.length > 0) {
                     setCategories(data.categories);
                 }
@@ -140,7 +140,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
     useEffect(() => {
         // Prevent clearing existing variant data when it's initialized from DB
         if (!initialData && sizeOptions.length === 0 && colorOptions.length === 0) return;
-        if (initialData && variantsData.length > 0 && 
+        if (initialData && variantsData.length > 0 &&
             sizeOptions.length === [...new Set(initialData.variants.map((v: any) => v.size).filter(Boolean))].length &&
             colorOptions.length === [...new Set(initialData.variants.map((v: any) => v.color).filter(Boolean))].length) {
             return;
@@ -166,7 +166,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
         } else {
             generated.push({ name: 'Default', size: '', color: '', price: '', stock: '', sku: '', color_hex: '', image_url: '', image_preview: '', is_active: true });
         }
-        
+
         setVariantsData(prev => {
             return generated.map(g => {
                 const existing = prev.find(p => p.name === g.name);
@@ -192,7 +192,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
     const handleMainImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
-        
+
         const remaining = 10 - images.length;
         if (remaining <= 0) {
             alert("Maximum 10 images reached.");
@@ -218,12 +218,12 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                     return newImages.slice(0, 10);
                 });
             }
-        } catch(error) {
+        } catch (error) {
             console.error(error);
             alert("Upload failed");
         } finally {
             setIsUploading(false);
-            e.target.value = ''; 
+            e.target.value = '';
         }
     };
 
@@ -239,7 +239,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
         setImages(images.map((img, i) => ({ ...img, is_primary: i === index })));
     };
 
-    const [variationError, setVariationError] = useState<{type: 'size' | 'color', message: string} | null>(null);
+    const [variationError, setVariationError] = useState<{ type: 'size' | 'color', message: string } | null>(null);
 
     const addOption = (type: 'size' | 'color', value: string) => {
         const trimmed = value.trim();
@@ -288,7 +288,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
             const data = await handleFileUpload(file);
             handleVariantChange(idx, 'image_url', data.key);
             handleVariantChange(idx, 'image_preview', data.url);
-        } catch(error) {
+        } catch (error) {
             alert("Variant image upload failed");
         }
     };
@@ -301,10 +301,10 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
 
     const handleSubmit = async () => {
         const newErrors: any = {};
-        
+
         if (!name.trim()) newErrors.name = "This field cannot be left blank";
         else if (name.trim().length < 10) newErrors.name = "Product name must be at least 10 characters";
-        
+
         if (images.length === 0) newErrors.images = "This field cannot be left blank";
         else if (images.filter(img => img.is_primary).length === 0) newErrors.images = "A primary image is required";
 
@@ -322,11 +322,11 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
         let hasVariantErrors = false;
         newErrors.variants = {};
         const sizeColorCombos = new Set<string>();
-        
+
         for (let i = 0; i < variantsData.length; i++) {
             const v = variantsData[i];
             if (!v.is_active) continue;
-            
+
             if (!v.size || !v.size.trim()) {
                 newErrors.variants[i] = { ...newErrors.variants[i], size: "This field cannot be left blank" };
                 hasVariantErrors = true;
@@ -368,24 +368,24 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
             } else if (description.trim().length < 50 || description.trim() === "No description provided") {
                 newErrors.description = "Description must be at least 50 characters to publish";
             }
-            
+
             const parsedPkgWeight = parseFloat(packageWeight);
             if (!packageWeight) {
                 newErrors.packageWeight = "This field cannot be left blank";
             } else if (isNaN(parsedPkgWeight) || parsedPkgWeight < parsedWeight) {
                 newErrors.packageWeight = "Package weight must be >= product weight";
             }
-            
+
             if (!dimL || !dimW || !dimH) {
                 newErrors.packageDimensions = "This field cannot be left blank";
             } else if (isNaN(parseFloat(dimL)) || isNaN(parseFloat(dimW)) || isNaN(parseFloat(dimH)) || parseFloat(dimL) <= 0 || parseFloat(dimW) <= 0 || parseFloat(dimH) <= 0) {
                 newErrors.packageDimensions = "Dimensions must be valid numbers > 0";
             }
-            
+
             if (!shippingClass || shippingClass.length === 0) {
                 newErrors.shippingClass = "This field cannot be left blank";
             }
-            
+
             const parsedLeadTime = parseInt(String(leadTime).replace(/\D/g, ''));
             if (!leadTime || String(leadTime).trim() === '') {
                 newErrors.leadTime = "This field cannot be left blank";
@@ -415,7 +415,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
 
         const productCode = name.trim().substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'X')
             + (initialData?.id ? String(initialData.id).padStart(2, '0') : Math.floor(Math.random() * 100).toString().padStart(2, '0'));
-        
+
         const parsedPackageWeight = parseFloat(packageWeight);
         const parsedLeadTime = parseInt(String(leadTime).replace(/\D/g, ''));
 
@@ -433,11 +433,11 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
             shipping_class: shippingClass && shippingClass.length > 0 ? shippingClass.join(', ') : undefined,
             package_dimensions: (dimL && dimW && dimH) ? `${dimL.trim()} x ${dimW.trim()} x ${dimH.trim()} mm` : undefined,
             lead_time: !isNaN(parsedLeadTime) && parsedLeadTime >= 0 ? parsedLeadTime : undefined,
-            images: images.map((img, idx) => ({ 
-                image_url: img.key, 
-                is_primary: img.is_primary, 
-                display_order: idx, 
-                color: img.color || undefined 
+            images: images.map((img, idx) => ({
+                image_url: img.key,
+                is_primary: img.is_primary,
+                display_order: idx,
+                color: img.color || undefined
             })),
             variants: variantsData.filter(v => v.is_active).map((v, i) => ({
                 sku: v.sku && v.sku.trim() ? v.sku.trim() : `${productCode}-${v.size.trim().toUpperCase()}-${v.color.trim().toUpperCase()}`,
@@ -454,7 +454,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
         try {
             const url = initialData ? `http://localhost:8000/products/${initialData.id}` : "http://localhost:8000/products";
             const method = initialData ? "PUT" : "POST";
-            
+
             const res = await fetch(url, {
                 method,
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
@@ -472,8 +472,8 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                 router.push('/admin/products');
             } else {
                 const err = await res.json();
-                const detail = err.errors 
-                    ? '\n' + err.errors.map((e: any) => `${e.field}: ${e.message}`).join('\n') 
+                const detail = err.errors
+                    ? '\n' + err.errors.map((e: any) => `${e.field}: ${e.message}`).join('\n')
                     : '';
                 setErrors({ ...newErrors, global: `Error: ${err.message || 'Validation failed'}${detail}` });
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -498,7 +498,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                         <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"></path></svg>
                     </div>
                     <p className="text-[13px] font-bold text-red-900">{errors.global}</p>
-                    <button onClick={() => setErrors({...errors, global: null})} className="ml-auto text-red-400 hover:text-red-600 transition-colors">
+                    <button onClick={() => setErrors({ ...errors, global: null })} className="ml-auto text-red-400 hover:text-red-600 transition-colors">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
@@ -507,19 +507,19 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
             <div className="flex flex-col lg:flex-row gap-6">
                 {/* Left Column - Main Details */}
                 <div className="w-full lg:w-2/3 space-y-6">
-                    
+
                     {/* General Information */}
                     <div className="bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.05)] border border-gray-100/80 p-6">
                         <h2 className="text-[16px] font-bold text-gray-900 mb-5">General Information</h2>
                         <div className="space-y-5">
                             <div>
                                 <label className="block text-[13px] font-bold text-gray-700 mb-2">Product Name <span className="text-red-500">*</span></label>
-                                <input type="text" value={name} onChange={e => { setName(e.target.value); setErrors({...errors, name: undefined, global: undefined}); }} placeholder="Enter product name..." className={`w-full px-4 py-2.5 bg-[#F9FAFB] border ${errors.name ? 'border-red-500 focus:ring-red-500 bg-red-50' : 'border-gray-200 focus:ring-blue-500'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1`} />
+                                <input type="text" value={name} onChange={e => { setName(e.target.value); setErrors({ ...errors, name: undefined, global: undefined }); }} placeholder="Enter product name..." className={`w-full px-4 py-2.5 bg-[#F9FAFB] border ${errors.name ? 'border-red-500 focus:ring-red-500 bg-red-50' : 'border-gray-200 focus:ring-blue-500'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1`} />
                                 {errors.name && <p className="text-red-500 text-[12px] font-bold mt-1.5">{errors.name}</p>}
                             </div>
                             <div>
                                 <label className="block text-[13px] font-bold text-gray-700 mb-2">Product Description {status === 'Active' && <span className="text-red-500">*</span>}</label>
-                                <textarea value={description} onChange={e => { setDescription(e.target.value); setErrors({...errors, description: undefined, global: undefined}); }} placeholder="Write something..." rows={5} className={`w-full p-4 bg-[#F9FAFB] border ${errors.description ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'} rounded-lg focus:bg-white text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-1 resize-none`} />
+                                <textarea value={description} onChange={e => { setDescription(e.target.value); setErrors({ ...errors, description: undefined, global: undefined }); }} placeholder="Write something..." rows={5} className={`w-full p-4 bg-[#F9FAFB] border ${errors.description ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'} rounded-lg focus:bg-white text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-1 resize-none`} />
                                 {errors.description && <p className="text-red-500 text-[12px] font-bold mt-1.5">{errors.description}</p>}
                             </div>
                             <div>
@@ -541,7 +541,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                             </span>
                         </div>
                         {errors.images && <p className="text-red-500 text-[12px] font-bold mb-4 whitespace-pre-wrap">{errors.images}</p>}
-                        
+
                         <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide border-b border-gray-100">
                             <button
                                 onClick={() => setSelectedImageColor(null)}
@@ -567,8 +567,8 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
 
                                 return (
                                     <div key={idx} className={`relative w-full aspect-square rounded-xl border-2 ${img.is_primary ? 'border-blue-500' : 'border-gray-200'} overflow-hidden group`}>
-                                        <Image src={img.url} alt="Product" fill className="object-cover" unoptimized/>
-                                        
+                                        <Image src={img.url} alt="Product" fill className="object-cover" unoptimized />
+
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 pointer-events-none">
                                             <div className="pointer-events-auto flex flex-col gap-2">
                                                 {!img.is_primary && (
@@ -583,7 +583,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                     </div>
                                 );
                             })}
-                            
+
                             {images.length < 10 && (
                                 <div className="relative w-full aspect-square rounded-xl border-2 border-dashed border-gray-300 bg-[#F9FAFB] hover:bg-gray-50 transition-colors flex flex-col items-center justify-center cursor-pointer overflow-hidden group">
                                     {isUploading ? (
@@ -605,7 +605,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                         <div className="flex justify-between items-center mb-5">
                             <h2 className="text-[16px] font-bold text-gray-900">Product Variations</h2>
                         </div>
-                        
+
                         <div className="space-y-6">
                             {/* Size Options */}
                             <div className="p-4 rounded-xl border border-gray-100 bg-gray-50/30">
@@ -621,13 +621,13 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                                     <button onClick={() => removeOption('size', opt)} className="text-gray-400 hover:text-red-500">×</button>
                                                 </div>
                                             ))}
-                                            <input 
-                                                type="text" 
-                                                value={sizeInput} 
-                                                onChange={e => { setSizeInput(e.target.value); if(variationError?.type === 'size') setVariationError(null); }} 
-                                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addOption('size', sizeInput); } }} 
-                                                placeholder="Add size (e.g. L, XL)..." 
-                                                className="flex-1 min-w-[120px] text-[13px] bg-transparent outline-none p-1 placeholder-gray-400 font-medium" 
+                                            <input
+                                                type="text"
+                                                value={sizeInput}
+                                                onChange={e => { setSizeInput(e.target.value); if (variationError?.type === 'size') setVariationError(null); }}
+                                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addOption('size', sizeInput); } }}
+                                                placeholder="Add size (e.g. L, XL)..."
+                                                className="flex-1 min-w-[120px] text-[13px] bg-transparent outline-none p-1 placeholder-gray-400 font-medium"
                                             />
                                         </div>
                                         {variationError?.type === 'size' && (
@@ -711,13 +711,13 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                                             </div>
                                                         </td>
                                                         <td className="py-3 px-2 align-top">
-                                                            <input type="number" min="0" step="0.01" value={v.price} onChange={(e) => { handleVariantChange(idx, 'price', e.target.value); if(errors.variants?.[idx]?.price){ const nv = {...errors.variants}; delete nv[idx]?.price; setErrors({...errors, variants: nv, global: undefined}); } }} disabled={!v.is_active} placeholder="0.00" className={`w-full px-2 py-1.5 bg-[#F9FAFB] border ${errors.variants?.[idx]?.price ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:border-blue-500'} rounded text-[13px] font-medium focus:bg-white focus:outline-none disabled:bg-gray-100 min-w-[60px]`} />
+                                                            <input type="number" min="0" step="0.01" value={v.price} onChange={(e) => { handleVariantChange(idx, 'price', e.target.value); if (errors.variants?.[idx]?.price) { const nv = { ...errors.variants }; delete nv[idx]?.price; setErrors({ ...errors, variants: nv, global: undefined }); } }} disabled={!v.is_active} placeholder="0.00" className={`w-full px-2 py-1.5 bg-[#F9FAFB] border ${errors.variants?.[idx]?.price ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:border-blue-500'} rounded text-[13px] font-medium focus:bg-white focus:outline-none disabled:bg-gray-100 min-w-[60px]`} />
                                                             {errors.variants?.[idx]?.price && (
                                                                 <p className="text-red-500 text-[10px] font-bold mt-1 leading-tight">{errors.variants[idx].price}</p>
                                                             )}
                                                         </td>
                                                         <td className="py-3 px-2 align-top">
-                                                            <input type="number" min="0" value={v.stock} onChange={(e) => { handleVariantChange(idx, 'stock', e.target.value); if(errors.variants?.[idx]?.stock){ const nv = {...errors.variants}; delete nv[idx]?.stock; setErrors({...errors, variants: nv, global: undefined}); } }} disabled={!v.is_active} placeholder="0" className={`w-full px-2 py-1.5 bg-[#F9FAFB] border ${errors.variants?.[idx]?.stock ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:border-blue-500'} rounded text-[13px] font-medium focus:bg-white focus:outline-none disabled:bg-gray-100 min-w-[50px]`} />
+                                                            <input type="number" min="0" value={v.stock} onChange={(e) => { handleVariantChange(idx, 'stock', e.target.value); if (errors.variants?.[idx]?.stock) { const nv = { ...errors.variants }; delete nv[idx]?.stock; setErrors({ ...errors, variants: nv, global: undefined }); } }} disabled={!v.is_active} placeholder="0" className={`w-full px-2 py-1.5 bg-[#F9FAFB] border ${errors.variants?.[idx]?.stock ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:border-blue-500'} rounded text-[13px] font-medium focus:bg-white focus:outline-none disabled:bg-gray-100 min-w-[50px]`} />
                                                             {errors.variants?.[idx]?.stock && (
                                                                 <p className="text-red-500 text-[10px] font-bold mt-1 leading-tight">{errors.variants[idx].stock}</p>
                                                             )}
@@ -751,7 +751,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                         <h2 className="text-[16px] font-bold text-gray-900 mb-5">Status & Visibility</h2>
                         <div>
                             <div className="relative custom-select">
-                                <button 
+                                <button
                                     onClick={() => { setIsStatusOpen(!isStatusOpen); setIsCategoryOpen(false); }}
                                     className={`flex items-center justify-between w-full px-4 py-2.5 bg-[#F9FAFB] border ${isStatusOpen ? 'border-blue-500 ring-1 ring-blue-500 bg-white' : 'border-gray-200'} rounded-lg text-[13px] font-bold text-gray-900 transition-all`}
                                 >
@@ -782,7 +782,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                         <div className="space-y-4">
                             <div>
                                 <div className="relative custom-select">
-                                    <button 
+                                    <button
                                         onClick={() => { setIsCategoryOpen(!isCategoryOpen); setIsStatusOpen(false); }}
                                         className={`flex items-center justify-between w-full px-4 py-2.5 bg-[#F9FAFB] border ${isCategoryOpen ? 'border-blue-500 ring-1 ring-blue-500 bg-white' : 'border-gray-200'} rounded-lg text-[13px] font-medium text-gray-900 transition-all`}
                                     >
@@ -817,7 +817,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                             <div>
                                 <label className="block text-[13px] font-bold text-gray-700 mb-2">Weight <span className="text-red-500">*</span></label>
                                 <div className="relative">
-                                    <input type="number" min="0" step="0.01" value={weight} onChange={e => { setWeight(e.target.value); setErrors({...errors, weight: undefined, global: undefined}); }} placeholder="e.g. 150" className={`w-full pl-4 pr-10 py-2.5 bg-[#F9FAFB] border ${errors.weight ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500`} />
+                                    <input type="number" min="0" step="0.01" value={weight} onChange={e => { setWeight(e.target.value); setErrors({ ...errors, weight: undefined, global: undefined }); }} placeholder="e.g. 150" className={`w-full pl-4 pr-10 py-2.5 bg-[#F9FAFB] border ${errors.weight ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500`} />
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] font-bold text-gray-400 pointer-events-none">g</span>
                                 </div>
                                 {errors.weight && <p className="text-red-500 text-[12px] font-bold mt-1.5">{errors.weight}</p>}
@@ -844,7 +844,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                             <div>
                                 <label className="block text-[13px] font-bold text-gray-700 mb-2">Package Weight {status === 'Active' && <span className="text-red-500">*</span>}</label>
                                 <div className="relative">
-                                    <input type="number" min="0" value={packageWeight} onChange={e => { setPackageWeight(e.target.value); setErrors({...errors, packageWeight: undefined, global: undefined}); }} placeholder="e.g. 200" className={`w-full pl-4 pr-9 py-2.5 bg-[#F9FAFB] border ${errors.packageWeight ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1`} />
+                                    <input type="number" min="0" value={packageWeight} onChange={e => { setPackageWeight(e.target.value); setErrors({ ...errors, packageWeight: undefined, global: undefined }); }} placeholder="e.g. 200" className={`w-full pl-4 pr-9 py-2.5 bg-[#F9FAFB] border ${errors.packageWeight ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1`} />
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] font-medium text-gray-500 pointer-events-none">g</span>
                                 </div>
                                 {errors.packageWeight && <p className="text-red-500 text-[12px] font-bold mt-1.5">{errors.packageWeight}</p>}
@@ -859,7 +859,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                                 <input type="checkbox" checked={isSelected} onChange={() => {
                                                     const newClasses = isSelected ? shippingClass.filter(c => c !== sc) : [...shippingClass, sc];
                                                     setShippingClass(newClasses);
-                                                    setErrors({...errors, shippingClass: undefined, global: undefined});
+                                                    setErrors({ ...errors, shippingClass: undefined, global: undefined });
                                                 }} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
                                                 <span className={`text-[13px] font-medium ${isSelected ? 'text-blue-900 font-bold' : 'text-gray-700'}`}>{sc}</span>
                                             </label>
@@ -871,18 +871,18 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                             <div>
                                 <label className="block text-[13px] font-bold text-gray-700 mb-2">Package Dimensions {status === 'Active' && <span className="text-red-500">*</span>}</label>
                                 <div className="flex items-center gap-2">
-                                    <input type="number" min="0" value={dimL} onChange={e => { setDimL(e.target.value); setErrors({...errors, packageDimensions: undefined, global: undefined}); }} onKeyDown={e => { if (e.key === ' ' || e.key.toLowerCase() === 'x' || e.key === 'Enter') { e.preventDefault(); dimWRef.current?.focus(); } }} placeholder="L" className={`w-full px-3 py-2.5 bg-[#F9FAFB] border ${errors.packageDimensions ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:ring-blue-500'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1 text-center [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none`} />
+                                    <input type="number" min="0" value={dimL} onChange={e => { setDimL(e.target.value); setErrors({ ...errors, packageDimensions: undefined, global: undefined }); }} onKeyDown={e => { if (e.key === ' ' || e.key.toLowerCase() === 'x' || e.key === 'Enter') { e.preventDefault(); dimWRef.current?.focus(); } }} placeholder="L" className={`w-full px-3 py-2.5 bg-[#F9FAFB] border ${errors.packageDimensions ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:ring-blue-500'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1 text-center [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none`} />
                                     <span className="text-gray-400 font-medium">×</span>
-                                    <input type="number" ref={dimWRef} min="0" value={dimW} onChange={e => { setDimW(e.target.value); setErrors({...errors, packageDimensions: undefined, global: undefined}); }} onKeyDown={e => { if (e.key === ' ' || e.key.toLowerCase() === 'x' || e.key === 'Enter') { e.preventDefault(); dimHRef.current?.focus(); } }} placeholder="W" className={`w-full px-3 py-2.5 bg-[#F9FAFB] border ${errors.packageDimensions ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:ring-blue-500'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1 text-center [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none`} />
+                                    <input type="number" ref={dimWRef} min="0" value={dimW} onChange={e => { setDimW(e.target.value); setErrors({ ...errors, packageDimensions: undefined, global: undefined }); }} onKeyDown={e => { if (e.key === ' ' || e.key.toLowerCase() === 'x' || e.key === 'Enter') { e.preventDefault(); dimHRef.current?.focus(); } }} placeholder="W" className={`w-full px-3 py-2.5 bg-[#F9FAFB] border ${errors.packageDimensions ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:ring-blue-500'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1 text-center [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none`} />
                                     <span className="text-gray-400 font-medium">×</span>
-                                    <input type="number" ref={dimHRef} min="0" value={dimH} onChange={e => { setDimH(e.target.value); setErrors({...errors, packageDimensions: undefined, global: undefined}); }} placeholder="H" className={`w-full px-3 py-2.5 bg-[#F9FAFB] border ${errors.packageDimensions ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:ring-blue-500'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1 text-center [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none`} />
+                                    <input type="number" ref={dimHRef} min="0" value={dimH} onChange={e => { setDimH(e.target.value); setErrors({ ...errors, packageDimensions: undefined, global: undefined }); }} placeholder="H" className={`w-full px-3 py-2.5 bg-[#F9FAFB] border ${errors.packageDimensions ? 'border-red-500 bg-red-50' : 'border-gray-200 focus:ring-blue-500'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1 text-center [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none`} />
                                     <span className="text-[13px] font-medium text-gray-500 ml-1">mm</span>
                                 </div>
                                 {errors.packageDimensions && <p className="text-red-500 text-[12px] font-bold mt-1.5">{errors.packageDimensions}</p>}
                             </div>
                             <div>
                                 <label className="block text-[13px] font-bold text-gray-700 mb-2">Lead Time {status === 'Active' && <span className="text-red-500">*</span>}</label>
-                                <input type="text" value={leadTime} onChange={e => { setLeadTime(e.target.value); setErrors({...errors, leadTime: undefined, global: undefined}); }} placeholder="e.g. 2 Days" className={`w-full px-4 py-2.5 bg-[#F9FAFB] border ${errors.leadTime ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1`} />
+                                <input type="text" value={leadTime} onChange={e => { setLeadTime(e.target.value); setErrors({ ...errors, leadTime: undefined, global: undefined }); }} placeholder="e.g. 2 Days" className={`w-full px-4 py-2.5 bg-[#F9FAFB] border ${errors.leadTime ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'} rounded-lg text-[13px] font-medium placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-1`} />
                                 {errors.leadTime && <p className="text-red-500 text-[12px] font-bold mt-1.5">{errors.leadTime}</p>}
                             </div>
                         </div>
@@ -894,14 +894,14 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
             <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200/80 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)] lg:ml-[260px]">
                 <div className="max-w-[1400px] mx-auto px-4 sm:px-8 flex justify-end">
                     <div className="py-3 sm:py-4 flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
-                        <button 
-                            onClick={onCancel ? onCancel : () => router.push('/admin/products')} 
+                        <button
+                            onClick={onCancel ? onCancel : () => router.push('/admin/products')}
                             className="flex-1 sm:flex-none px-4 sm:px-6 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-xl text-[12px] sm:text-[13px] font-bold hover:bg-gray-50 transition-colors shadow-sm min-w-[100px]"
                         >
                             {initialData ? 'Discard' : 'Cancel'}
                         </button>
-                        <button 
-                            onClick={handleSubmit} 
+                        <button
+                            onClick={handleSubmit}
                             disabled={isSubmitting}
                             className="flex-1 sm:flex-none px-4 sm:px-8 py-2.5 bg-[#2563EB] text-white rounded-xl text-[12px] sm:text-[13px] font-bold hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 min-w-[140px]"
                         >

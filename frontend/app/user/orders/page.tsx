@@ -118,10 +118,10 @@ export default function MyOrdersPage() {
                                         </div>
                                         <div className="sm:text-right flex sm:flex-col items-center sm:items-end justify-between sm:justify-center">
                                             <p className="font-bold text-gray-900 text-lg">{order.total}</p>
-                                            <button className="text-sm text-blue-600 font-semibold mt-1 flex items-center gap-1 hover:text-blue-800 transition">
+                                            <Link href={`/user/orders/${order.id.replace('#', '')}`} className="text-sm text-blue-600 font-semibold mt-1 flex items-center gap-1 hover:text-blue-800 transition">
                                                 View Details
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
-                                            </button>
+                                            </Link>
                                         </div>
                                     </div>
                                 ))}
