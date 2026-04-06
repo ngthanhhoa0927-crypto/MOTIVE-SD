@@ -8,7 +8,7 @@ import { Playfair_Display, Inter } from "next/font/google";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { fetchCart, isAuthenticated } from "@/lib/cartApi";
 
 const playfair = Playfair_Display({ subsets: ["latin"], style: ["normal", "italic"] });
@@ -24,6 +24,8 @@ interface CartItem {
 
 export default function CheckoutPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const isBuyNow = searchParams.get("buyNow") === "true";
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAuthenticated_flag, setIsAuthenticated_flag] = useState(false);
@@ -50,25 +52,49 @@ export default function CheckoutPage() {
                 }
 
                 setIsAuthenticated_flag(true);
-                
-                // Fetch Cart and Profile in parallel
-                const [cartData, profileRes] = await Promise.all([
-                    fetchCart(),
-                    fetch("http://localhost:8000/auth/me", {
+
+                // If Buy Now mode, load item from sessionStorage instead of cart
+                if (isBuyNow) {
+                    const buyNowData = sessionStorage.getItem("buyNowItem");
+                    if (buyNowData) {
+                        const buyNowItem = JSON.parse(buyNowData);
+                        setCartItems([buyNowItem]);
+                    }
+
+                    // Still fetch profile for auto-fill
+                    const profileRes = await fetch("http://localhost:8000/auth/me", {
                         headers: { "Authorization": `Bearer ${token}` }
-                    })
-                ]);
+                    });
+                    if (profileRes.ok) {
+                        const profileData = await profileRes.json();
+                        const p = profileData.profile;
+                        if (p) {
+                            if (p.email) setEmail(p.email);
+                            if (p.phone_number) setPhone(p.phone_number);
+                            if (p.full_name) setFullName(p.full_name);
+                            if (p.address) setAddress(p.address);
+                        }
+                    }
+                } else {
+                    // Normal checkout: fetch cart + profile in parallel
+                    const [cartData, profileRes] = await Promise.all([
+                        fetchCart(),
+                        fetch("http://localhost:8000/auth/me", {
+                            headers: { "Authorization": `Bearer ${token}` }
+                        })
+                    ]);
 
-                setCartItems(cartData || []);
+                    setCartItems(cartData || []);
 
-                if (profileRes.ok) {
-                    const profileData = await profileRes.json();
-                    const p = profileData.profile;
-                    if (p) {
-                        if (p.email) setEmail(p.email);
-                        if (p.phone_number) setPhone(p.phone_number);
-                        if (p.full_name) setFullName(p.full_name);
-                        if (p.address) setAddress(p.address);
+                    if (profileRes.ok) {
+                        const profileData = await profileRes.json();
+                        const p = profileData.profile;
+                        if (p) {
+                            if (p.email) setEmail(p.email);
+                            if (p.phone_number) setPhone(p.phone_number);
+                            if (p.full_name) setFullName(p.full_name);
+                            if (p.address) setAddress(p.address);
+                        }
                     }
                 }
             } catch (err: any) {
@@ -79,7 +105,14 @@ export default function CheckoutPage() {
         };
 
         initCheckout();
-    }, [router]);
+
+        // Clean up buyNow data when leaving
+        return () => {
+            if (isBuyNow) {
+                sessionStorage.removeItem("buyNowItem");
+            }
+        };
+    }, [router, isBuyNow]);
 
     const validateField = (field: string, value: string) => {
         let error = "";

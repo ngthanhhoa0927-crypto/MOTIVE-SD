@@ -344,6 +344,61 @@ export default function ProductDetailsPage() {
         }
     };
 
+    const handleBuyNow = () => {
+        if (!inStock) return;
+
+        if (!isAuthenticated()) {
+            setAddToCartError("Please login to purchase");
+            setTimeout(() => setAddToCartError(""), 5000);
+            setTimeout(() => router.push("/user/login"), 1000);
+            return;
+        }
+
+        const qty = Number(quantity);
+        if (qty > availableStock) {
+            setAddToCartError(`Sorry, we only have ${availableStock} items in stock for ${selectedColor} - ${selectedSize}.`);
+            setQuantity(availableStock);
+            setTimeout(() => setAddToCartError(""), 5000);
+            return;
+        }
+
+        // Find the variant from product variants
+        const selectedVariant = product?.variants.find(
+            (v) => (v.color || "Default Color") === selectedColor && (v.size || "One Size") === selectedSize
+        );
+
+        if (!selectedVariant) {
+            setAddToCartError("Selected variant not found");
+            setTimeout(() => setAddToCartError(""), 5000);
+            return;
+        }
+
+        // Get the primary image for this product
+        const primaryImage = displayImages[selectedImageIdx] || displayImages[0] || "/images/placeholder-hat.png";
+
+        // Build a cart-item-shaped object for checkout to consume
+        const buyNowItem = {
+            id: 0, // Not a real cart item ID
+            quantity: qty,
+            product_variant: {
+                id: selectedVariant.id,
+                color: selectedColor,
+                size: selectedSize,
+                price: currentPrice,
+            },
+            product: {
+                id: product?.id,
+                name: mockProduct.name,
+            },
+            product_image: {
+                signed_url: primaryImage,
+            },
+        };
+
+        sessionStorage.setItem("buyNowItem", JSON.stringify(buyNowItem));
+        router.push("/user/checkout?buyNow=true");
+    };
+
     const handlePostReview = () => {
         setReviewError("");
         setReviewSuccess("");
@@ -370,7 +425,7 @@ export default function ProductDetailsPage() {
         setReviewRating(0);
         setHoverRating(0);
         setReviewSuccess("Thanks for your review!");
-        setTimeout(() => setReviewSuccess(""), 3000); // Clear success msg shortly
+        setTimeout(() => setReviewSuccess(""), 3000);
     };
 
     const currentVariant = mockVariants.find((v: any) => v.color === selectedColor && v.size === selectedSize);
@@ -683,6 +738,7 @@ export default function ProductDetailsPage() {
                                 </Button>
 
                                 <Button
+                                    onClick={handleBuyNow}
                                     className={`flex-1 h-14 rounded-2xl text-[12px] font-black uppercase tracking-[0.1em] transition-all hover:scale-[1.02] active:scale-95 ${inStock ? 'bg-[#0F172A] hover:bg-black text-white' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
                                     disabled={!inStock}
                                 >
