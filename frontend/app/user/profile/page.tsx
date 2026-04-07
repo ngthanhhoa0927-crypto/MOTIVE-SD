@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Playfair_Display, Inter } from "next/font/google";
-import { User, Mail, Phone, Calendar, MapPin, Camera, Edit2, Shield, CreditCard, Package, AlertTriangle, X } from "lucide-react";
+import { User, Mail, Phone, Calendar, MapPin, Camera, Edit2, Shield, Package, AlertTriangle, X } from "lucide-react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { useRouter } from "next/navigation";
@@ -322,10 +322,7 @@ export default function ProfilePage() {
                                     <Package className="w-5 h-5" />
                                     My Orders
                                 </Link>
-                                <Link href="/user/payments" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition">
-                                    <CreditCard className="w-5 h-5" />
-                                    Payment Methods
-                                </Link>
+
                                 <Link href="/user/security" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition">
                                     <Shield className="w-5 h-5" />
                                     Security settings

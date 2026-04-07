@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight, ShieldCheck, Mail, Phone, User, MapPin, Truck, CreditCard, ArrowLeft, Lock, Check, X } from "lucide-react";
+import { ChevronRight, ShieldCheck, Mail, Phone, User, MapPin, Truck, ArrowLeft, Lock, Check, X } from "lucide-react";
 import { Playfair_Display, Inter } from "next/font/google";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
-import { fetchCart, isAuthenticated } from "@/lib/cartApi";
+import { fetchCart, isAuthenticated, removeFromCart } from "@/lib/cartApi";
 
 const playfair = Playfair_Display({ subsets: ["latin"], style: ["normal", "italic"] });
 const inter = Inter({ subsets: ["latin"] });
@@ -33,68 +33,47 @@ export default function CheckoutPage() {
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
     const [fullName, setFullName] = useState("");
-    const [address, setAddress] = useState("");
-    const [city, setCity] = useState("");
-    const [paymentMethod, setPaymentMethod] = useState("card");
+    const [province, setProvince] = useState<any>(null);
+    const [district, setDistrict] = useState<any>(null);
+    const [ward, setWard] = useState<any>(null);
+    const [specificAddress, setSpecificAddress] = useState("");
+    const [provincesData, setProvincesData] = useState<any[]>([]);
+    const [districtsData, setDistrictsData] = useState<any[]>([]);
+    const [wardsData, setWardsData] = useState<any[]>([]);
+    const [paymentMethod, setPaymentMethod] = useState("cod");
     const [shippingMethod, setShippingMethod] = useState("standard");
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [showSuccess, setShowSuccess] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
         const initCheckout = async () => {
-            const token = localStorage.getItem("token");
+            setLoading(true);
             try {
-                if (!isAuthenticated()) {
-                    setIsAuthenticated_flag(false);
-                    setLoading(false);
-                    router.push("/user/login");
+                const authenticated = await isAuthenticated();
+                if (!authenticated) {
+                    router.push("/user/login?redirect=/user/checkout");
                     return;
                 }
-
                 setIsAuthenticated_flag(true);
 
-                // If Buy Now mode, load item from sessionStorage instead of cart
-                if (isBuyNow) {
-                    const buyNowData = sessionStorage.getItem("buyNowItem");
-                    if (buyNowData) {
-                        const buyNowItem = JSON.parse(buyNowData);
-                        setCartItems([buyNowItem]);
+                const cart = await fetchCart();
+                setCartItems(cart);
+                
+                // Fetch profile to pre-fill info
+                const response = await fetch("http://localhost:8000/auth/me", {
+                    headers: {
+                        "Authorization": `Bearer ${localStorage.getItem("token")}`
                     }
-
-                    // Still fetch profile for auto-fill
-                    const profileRes = await fetch("http://localhost:8000/auth/me", {
-                        headers: { "Authorization": `Bearer ${token}` }
-                    });
-                    if (profileRes.ok) {
-                        const profileData = await profileRes.json();
-                        const p = profileData.profile;
-                        if (p) {
-                            if (p.email) setEmail(p.email);
-                            if (p.phone_number) setPhone(p.phone_number);
-                            if (p.full_name) setFullName(p.full_name);
-                            if (p.address) setAddress(p.address);
-                        }
-                    }
-                } else {
-                    // Normal checkout: fetch cart + profile in parallel
-                    const [cartData, profileRes] = await Promise.all([
-                        fetchCart(),
-                        fetch("http://localhost:8000/auth/me", {
-                            headers: { "Authorization": `Bearer ${token}` }
-                        })
-                    ]);
-
-                    setCartItems(cartData || []);
-
-                    if (profileRes.ok) {
-                        const profileData = await profileRes.json();
-                        const p = profileData.profile;
-                        if (p) {
-                            if (p.email) setEmail(p.email);
-                            if (p.phone_number) setPhone(p.phone_number);
-                            if (p.full_name) setFullName(p.full_name);
-                            if (p.address) setAddress(p.address);
-                        }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.profile) {
+                         const p = data.profile;
+                         setEmail(p.email || "");
+                         setFullName(p.full_name || "");
+                         setPhone(p.phone_number || "");
+                         setSpecificAddress(p.address || "");
                     }
                 }
             } catch (err: any) {
@@ -105,6 +84,17 @@ export default function CheckoutPage() {
         };
 
         initCheckout();
+
+        // Fetch provinces
+        fetch("https://provinces.open-api.vn/api/?depth=3")
+            .then(res => res.json())
+            .then(data => {
+                const popularNames = ["Thành phố Hà Nội", "Thành phố Hồ Chí Minh", "Thành phố Đà Nẵng", "Thành phố Hải Phòng", "Thành phố Cần Thơ"];
+                const popular = data.filter((p: any) => popularNames.includes(p.name)).sort((a: any, b: any) => popularNames.indexOf(a.name) - popularNames.indexOf(b.name));
+                const others = data.filter((p: any) => !popularNames.includes(p.name));
+                setProvincesData([...popular, ...others]);
+            })
+            .catch(err => console.error("Failed to fetch provinces:", err));
 
         // Clean up buyNow data when leaving
         return () => {
@@ -127,18 +117,20 @@ export default function CheckoutPage() {
                     error = "Full name must be at least 2 characters.";
                 }
                 break;
-            case "address":
+            case "province":
+                if (!value) error = "Province/City is required.";
+                break;
+            case "district":
+                if (!value) error = "District is required.";
+                break;
+            case "ward":
+                if (!value) error = "Ward/Commune is required.";
+                break;
+            case "specificAddress":
                 if (!value) {
-                    error = "Street address is required.";
+                    error = "Specific address is required.";
                 } else if (value.trim().length < 5) {
                     error = "Address must be at least 5 characters.";
-                }
-                break;
-            case "city":
-                if (!value) {
-                    error = "City is required.";
-                } else if (/[0-9]/.test(value) || /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/.test(value)) {
-                    error = "City must contain only letters.";
                 }
                 break;
             case "phone":
@@ -176,18 +168,14 @@ export default function CheckoutPage() {
             newErrors.fullName = "Full name must be at least 2 characters.";
         }
 
-        // Street Address
-        if (!address) {
-            newErrors.address = "Street address is required.";
-        } else if (address.trim().length < 5) {
-            newErrors.address = "Address must be at least 5 characters.";
-        }
-
-        // City
-        if (!city) {
-            newErrors.city = "City is required.";
-        } else if (/[0-9]/.test(city) || /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/.test(city)) {
-            newErrors.city = "City must contain only letters.";
+        if (!province) newErrors.province = "Province/City is required.";
+        if (!district) newErrors.district = "District is required.";
+        if (!ward) newErrors.ward = "Ward/Commune is required.";
+        
+        if (!specificAddress) {
+            newErrors.specificAddress = "Specific address is required.";
+        } else if (specificAddress.trim().length < 5) {
+            newErrors.specificAddress = "Address must be at least 5 characters.";
         }
 
         // Phone
@@ -203,22 +191,32 @@ export default function CheckoutPage() {
         return newErrors;
     };
 
-    const handleCheckout = () => {
+    const handleCheckout = async () => {
         const validationErrors = validateForm();
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
         } else {
             setErrors({});
-            setShowSuccess(true);
+            setIsProcessing(true);
+            try {
+                if (!isBuyNow) {
+                    await Promise.all(cartItems.map(item => removeFromCart(item.id)));
+                    window.dispatchEvent(new Event("cartUpdated"));
+                }
+            } catch (err) {
+                console.error("Error clearing cart items:", err);
+            } finally {
+                setIsProcessing(false);
+                setShowSuccess(true);
+            }
         }
     };
 
-    const isFormFilled = fullName && address && city && phone;
+    const isFormFilled = fullName && province && district && ward && specificAddress && phone;
 
     const subtotal = cartItems.reduce((acc, item) => acc + (Number(item.product_variant.price) * item.quantity), 0);
     const shipping = shippingMethod === "express" ? 15.00 : (subtotal > 50 ? 0 : 5.00);
-    const tax = subtotal * 0.08;
-    const total = subtotal + shipping + tax;
+    const total = subtotal + shipping;
 
     if (loading) {
         return (
@@ -354,43 +352,119 @@ export default function CheckoutPage() {
                                     />
                                     {errors.fullName && <p className="text-red-500 text-xs font-medium">{errors.fullName}</p>}
                                 </div>
-                                <div className="md:col-span-2 space-y-2">
-                                    <label className={`text-xs font-bold uppercase tracking-widest flex items-center gap-2 ${errors.address ? 'text-red-500' : 'text-gray-500'}`}>
-                                        <MapPin className="w-3 h-3" /> Street Address
+                                <div className="space-y-2">
+                                    <label className={`text-xs font-bold uppercase tracking-widest flex items-center gap-2 ${errors.province ? 'text-red-500' : 'text-gray-500'}`}>
+                                        <MapPin className="w-3 h-3" /> Province / City
                                     </label>
-                                    <input
-                                        type="text"
-                                        placeholder="123 Fashion Ave, Suite 456"
-                                        className={`w-full bg-[#F3F4F6] border-2 rounded-xl px-4 py-4 text-sm focus:outline-none transition-all ${errors.address ? 'border-red-500 focus:ring-red-500' : 'border-transparent focus:ring-2 focus:ring-blue-600'}`}
-                                        value={address}
-                                        onChange={(e) => setAddress(e.target.value)}
-                                        onBlur={(e) => validateField("address", e.target.value)}
-                                    />
-                                    {errors.address && <p className="text-red-500 text-xs font-medium">{errors.address}</p>}
+                                    <div className="relative">
+                                        <select
+                                            className={`w-full bg-[#F3F4F6] border-2 rounded-xl px-4 py-4 text-sm focus:outline-none transition-all appearance-none cursor-pointer ${errors.province ? 'border-red-500 focus:ring-red-500' : 'border-transparent focus:ring-2 focus:ring-blue-600'}`}
+                                            value={province?.code || ""}
+                                            onChange={(e) => {
+                                                if (!e.target.value) {
+                                                    setProvince(null);
+                                                    setDistrict(null);
+                                                    setWard(null);
+                                                    setDistrictsData([]);
+                                                    setWardsData([]);
+                                                } else {
+                                                    const p = provincesData.find(p => p.code == e.target.value);
+                                                    setProvince(p);
+                                                    setDistrict(null);
+                                                    setWard(null);
+                                                    setDistrictsData(p?.districts || []);
+                                                    setWardsData([]);
+                                                }
+                                                validateField("province", e.target.value);
+                                            }}
+                                            onBlur={(e) => validateField("province", e.target.value)}
+                                        >
+                                            <option value="">Select Province / City</option>
+                                            {provincesData.map((p: any) => (
+                                                <option key={p.code} value={p.code}>{p.name}</option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                                            <ChevronRight className="w-4 h-4 text-gray-400 rotate-90" />
+                                        </div>
+                                    </div>
+                                    {errors.province && <p className="text-red-500 text-xs font-medium">{errors.province}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className={`text-xs font-bold uppercase tracking-widest flex items-center gap-2 ${errors.city ? 'text-red-500' : 'text-gray-500'}`}>
-                                        City
+                                    <label className={`text-xs font-bold uppercase tracking-widest flex items-center gap-2 ${errors.district ? 'text-red-500' : 'text-gray-500'}`}>
+                                        District
                                     </label>
-                                    <input
-                                        type="text"
-                                        placeholder="New York"
-                                        className={`w-full bg-[#F3F4F6] border-2 rounded-xl px-4 py-4 text-sm focus:outline-none transition-all ${errors.city ? 'border-red-500 focus:ring-red-500' : 'border-transparent focus:ring-2 focus:ring-blue-600'}`}
-                                        value={city}
-                                        onChange={(e) => setCity(e.target.value)}
-                                        onBlur={(e) => validateField("city", e.target.value)}
-                                    />
-                                    {errors.city && <p className="text-red-500 text-xs font-medium">{errors.city}</p>}
+                                    <div className="relative">
+                                        <select
+                                            className={`w-full bg-[#F3F4F6] border-2 rounded-xl px-4 py-4 text-sm focus:outline-none transition-all appearance-none cursor-pointer ${!province ? 'opacity-50 cursor-not-allowed' : ''} ${errors.district ? 'border-red-500 focus:ring-red-500' : 'border-transparent focus:ring-2 focus:ring-blue-600'}`}
+                                            value={district?.code || ""}
+                                            disabled={!province}
+                                            onChange={(e) => {
+                                                if (!e.target.value) {
+                                                    setDistrict(null);
+                                                    setWard(null);
+                                                    setWardsData([]);
+                                                } else {
+                                                    const d = districtsData.find(d => d.code == e.target.value);
+                                                    setDistrict(d);
+                                                    setWard(null);
+                                                    setWardsData(d?.wards || []);
+                                                }
+                                                validateField("district", e.target.value);
+                                            }}
+                                            onBlur={(e) => validateField("district", e.target.value)}
+                                        >
+                                            <option value="">Select District</option>
+                                            {districtsData.map((d: any) => (
+                                                <option key={d.code} value={d.code}>{d.name}</option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                                            <ChevronRight className="w-4 h-4 text-gray-400 rotate-90" />
+                                        </div>
+                                    </div>
+                                    {errors.district && <p className="text-red-500 text-xs font-medium">{errors.district}</p>}
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                                        Postal Code
+                                    <label className={`text-xs font-bold uppercase tracking-widest flex items-center gap-2 ${errors.ward ? 'text-red-500' : 'text-gray-500'}`}>
+                                        Ward / Commune
+                                    </label>
+                                    <div className="relative">
+                                        <select
+                                            className={`w-full bg-[#F3F4F6] border-2 rounded-xl px-4 py-4 text-sm focus:outline-none transition-all appearance-none cursor-pointer ${!district ? 'opacity-50 cursor-not-allowed' : ''} ${errors.ward ? 'border-red-500 focus:ring-red-500' : 'border-transparent focus:ring-2 focus:ring-blue-600'}`}
+                                            value={ward?.code || ""}
+                                            disabled={!district}
+                                            onChange={(e) => {
+                                                const w = wardsData.find(w => w.code == e.target.value);
+                                                setWard(w || null);
+                                                validateField("ward", e.target.value);
+                                            }}
+                                            onBlur={(e) => validateField("ward", e.target.value)}
+                                        >
+                                            <option value="">Select Ward / Commune</option>
+                                            {wardsData.map((w: any) => (
+                                                <option key={w.code} value={w.code}>{w.name}</option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                                            <ChevronRight className="w-4 h-4 text-gray-400 rotate-90" />
+                                        </div>
+                                    </div>
+                                    {errors.ward && <p className="text-red-500 text-xs font-medium">{errors.ward}</p>}
+                                </div>
+                                <div className="space-y-2">
+                                    <label className={`text-xs font-bold uppercase tracking-widest flex items-center gap-2 ${errors.specificAddress ? 'text-red-500' : 'text-gray-500'}`}>
+                                        Specific Address
                                     </label>
                                     <input
                                         type="text"
-                                        placeholder="10001"
-                                        className="w-full bg-[#F3F4F6] border-none rounded-xl px-4 py-4 text-sm focus:ring-2 focus:ring-blue-600 transition-all outline-none"
+                                        placeholder="House number, Street name"
+                                        className={`w-full bg-[#F3F4F6] border-2 rounded-xl px-4 py-4 text-sm focus:outline-none transition-all ${errors.specificAddress ? 'border-red-500 focus:ring-red-500' : 'border-transparent focus:ring-2 focus:ring-blue-600'}`}
+                                        value={specificAddress}
+                                        onChange={(e) => setSpecificAddress(e.target.value)}
+                                        onBlur={(e) => validateField("specificAddress", e.target.value)}
                                     />
+                                    {errors.specificAddress && <p className="text-red-500 text-xs font-medium">{errors.specificAddress}</p>}
                                 </div>
                             </div>
                         </section>
@@ -436,28 +510,18 @@ export default function CheckoutPage() {
                                 <h2 className="text-xl font-bold text-gray-900">Payment Method</h2>
                             </div>
                             <div className="space-y-4">
-                                <label className={`flex items-center justify-between p-6 rounded-3xl border-2 transition-all cursor-pointer ${paymentMethod === 'card' ? 'border-blue-600 bg-blue-50/30' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
+                                <div className="flex items-center justify-between p-6 rounded-3xl border-2 border-blue-600 bg-blue-50/30 transition-all">
                                     <div className="flex items-center gap-4">
-                                        <input type="radio" name="payment" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} className="w-5 h-5 text-blue-600" />
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-gray-900">Credit or Debit Card</span>
-                                            <span className="text-xs text-gray-500">Secure payment via Stripe</span>
+                                        <div className="w-5 h-5 rounded-full border-2 border-blue-600 flex items-center justify-center flex-shrink-0">
+                                            <div className="w-2.5 h-2.5 bg-blue-600 rounded-full" />
                                         </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <CreditCard className="w-6 h-6 text-gray-400" />
-                                    </div>
-                                </label>
-                                <label className={`flex items-center justify-between p-6 rounded-3xl border-2 transition-all cursor-pointer ${paymentMethod === 'cod' ? 'border-blue-600 bg-blue-50/30' : 'border-gray-100 bg-white hover:border-gray-200'}`}>
-                                    <div className="flex items-center gap-4">
-                                        <input type="radio" name="payment" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} className="w-5 h-5 text-blue-600" />
                                         <div className="flex flex-col">
-                                            <span className="font-bold text-gray-900">Cash on Delivery</span>
+                                            <span className="font-bold text-gray-900">Cash on Delivery (COD)</span>
                                             <span className="text-xs text-gray-500">Pay when you receive the product</span>
                                         </div>
                                     </div>
-                                    <Truck className="w-6 h-6 text-gray-400" />
-                                </label>
+                                    <Truck className="w-6 h-6 text-blue-600" />
+                                </div>
                             </div>
                         </section>
 
@@ -466,8 +530,8 @@ export default function CheckoutPage() {
                             <Link href="/user/cart" className="text-sm font-bold text-gray-400 hover:text-blue-600 transition-colors flex items-center gap-2 mb-6">
                                 <ArrowLeft className="w-4 h-4" /> Edit Shopping Cart
                             </Link>
-                            <Button disabled={!isFormFilled} onClick={handleCheckout} className={`w-full text-white py-8 rounded-3xl font-bold text-lg uppercase tracking-[0.2em] shadow-xl transition-all transform ${isFormFilled ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-100 hover:scale-[1.01] active:scale-[0.98]' : 'bg-gray-300 cursor-not-allowed shadow-none'}`}>
-                                Complete Order
+                            <Button disabled={!isFormFilled || isProcessing} onClick={handleCheckout} className={`w-full text-white py-8 rounded-3xl font-bold text-lg uppercase tracking-[0.2em] shadow-xl transition-all transform ${isFormFilled && !isProcessing ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-100 hover:scale-[1.01] active:scale-[0.98]' : 'bg-gray-300 cursor-not-allowed shadow-none'}`}>
+                                {isProcessing ? "Processing..." : "Complete Order"}
                             </Button>
                             <p className="text-center text-xs text-gray-400 mt-6 flex items-center justify-center gap-2">
                                 <Lock className="w-3 h-3" /> Your transaction is secured with industry-standard encryption.
@@ -510,10 +574,6 @@ export default function CheckoutPage() {
                                     <span className={`${shipping === 0 ? "text-green-600" : "text-gray-900"} font-bold`}>
                                         {shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}
                                     </span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-500 font-medium">Tax</span>
-                                    <span className="text-gray-900 font-bold">${tax.toFixed(2)}</span>
                                 </div>
                             </div>
 
