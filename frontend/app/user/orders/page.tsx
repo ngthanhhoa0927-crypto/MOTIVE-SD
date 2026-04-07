@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Playfair_Display, Inter } from "next/font/google";
-import { User, Shield, CreditCard, Package } from "lucide-react";
+import { User, Shield, Package } from "lucide-react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { useRouter } from "next/navigation";
@@ -17,30 +17,64 @@ export default function MyOrdersPage() {
     const [user, setUser] = useState({ fullName: "", avatar: "/images/avatar-placeholder.jpg" });
     const [isLoading, setIsLoading] = useState(true);
 
-    const mockOrders = [
-        { id: "#ORD-00124", date: "Oct 24, 2025", total: "$124.00", status: "Delivered", items: 2 },
-        { id: "#ORD-00123", date: "Oct 15, 2025", total: "$56.50", status: "Processing", items: 1 },
-        { id: "#ORD-00120", date: "Sep 02, 2025", total: "$230.00", status: "Cancelled", items: 4 },
-    ];
+    const [orders, setOrders] = useState<any[]>([]);
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (!token) {
-            router.push("/user/login");
-            return;
-        }
+        const fetchOrdersAndProfile = async () => {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                router.push("/user/login");
+                return;
+            }
 
-        if (token.startsWith("fake.")) {
+            if (token.startsWith("fake.")) {
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    setUser({
+                        fullName: payload.full_name || "Regular User",
+                        avatar: "/images/avatar-placeholder.jpg"
+                    });
+                } catch (e) {}
+                setIsLoading(false);
+                return;
+            }
+
             try {
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                setUser({
-                    fullName: payload.full_name || "Regular User",
-                    avatar: "/images/avatar-placeholder.jpg"
+                // Fetch profile
+                const profileRes = await fetch("http://localhost:8000/auth/me", {
+                    headers: { "Authorization": `Bearer ${token}` }
                 });
-            } catch (e) {}
-        }
-        
-        setIsLoading(false);
+                if (profileRes.ok) {
+                    const profileData = await profileRes.json();
+                    setUser({
+                        fullName: profileData.profile?.full_name || "User",
+                        avatar: profileData.profile?.avatar_view_url || "/images/avatar-placeholder.jpg"
+                    });
+                }
+
+                // Fetch orders
+                const ordersRes = await fetch("http://localhost:8000/orders", {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                if (ordersRes.ok) {
+                    const data = await ordersRes.json();
+                    const mappedOrders = (data.data || []).map((o: any) => ({
+                        id: o.order_code,
+                        date: new Date(o.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                        total: `$${Number(o.total_amount).toFixed(2)}`,
+                        status: o.status.charAt(0).toUpperCase() + o.status.slice(1),
+                        items: "-" // Omitting exact item count as API list doesn't return it
+                    }));
+                    setOrders(mappedOrders);
+                }
+            } catch (err) {
+                console.error("Failed to load user orders:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchOrdersAndProfile();
     }, [router]);
 
     if (isLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -80,10 +114,7 @@ export default function MyOrdersPage() {
                                     <Package className="w-5 h-5" />
                                     My Orders
                                 </Link>
-                                <Link href="/user/payments" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition">
-                                    <CreditCard className="w-5 h-5" />
-                                    Payment Methods
-                                </Link>
+
                                 <Link href="/user/security" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition">
                                     <Shield className="w-5 h-5" />
                                     Security settings
@@ -101,7 +132,13 @@ export default function MyOrdersPage() {
 
                         <div className="p-8">
                             <div className="space-y-4">
-                                {mockOrders.map((order, i) => (
+                                {orders.length === 0 ? (
+                                    <div className="text-center py-10 text-gray-500">
+                                        <p className="mb-4">You have not placed any orders yet.</p>
+                                        <Link href="/user/homepage" className="text-blue-600 hover:underline">Start shopping</Link>
+                                    </div>
+                                ) : (
+                                    orders.map((order, i) => (
                                     <div key={i} className="border border-gray-200 rounded-xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-blue-300 transition-colors shadow-sm bg-white">
                                         <div>
                                             <div className="flex items-center gap-3 mb-2">
@@ -114,7 +151,7 @@ export default function MyOrdersPage() {
                                                     {order.status}
                                                 </span>
                                             </div>
-                                            <p className="text-sm text-gray-500 font-medium">Placed on {order.date} • {order.items} items</p>
+                                            <p className="text-sm text-gray-500 font-medium">Placed on {order.date}</p>
                                         </div>
                                         <div className="sm:text-right flex sm:flex-col items-center sm:items-end justify-between sm:justify-center">
                                             <p className="font-bold text-gray-900 text-lg">{order.total}</p>
@@ -124,7 +161,8 @@ export default function MyOrdersPage() {
                                             </Link>
                                         </div>
                                     </div>
-                                ))}
+                                    ))
+                                )}
                             </div>
                         </div>
                     </div>
