@@ -2,12 +2,7 @@
 import React from 'react';
 
 // Mock data as BE does not have dashboard stats APIs yet
-const RECENT_ORDERS = [
-    { id: '#ORD-8921', customer: 'Sarah Jenkins', initials: 'SJ', avatarColor: 'bg-blue-100 text-blue-600', date: 'Oct 24, 2023', amount: '$245.99', status: 'Completed', statusColor: 'bg-emerald-50 text-emerald-600 ring-emerald-100' },
-    { id: '#ORD-8920', customer: 'Michael Brown', initials: 'MB', avatarColor: 'bg-purple-100 text-purple-600', date: 'Oct 24, 2023', amount: '$1,020.00', status: 'Confirmed', statusColor: 'bg-purple-50 text-purple-600 ring-purple-100' },
-    { id: '#ORD-8919', customer: 'Emma Lawson', initials: 'EL', avatarColor: 'bg-pink-100 text-pink-600', date: 'Oct 23, 2023', amount: '$89.50', status: 'Pending', statusColor: 'bg-yellow-50 text-yellow-600 ring-yellow-100' },
-    { id: '#ORD-8918', customer: 'David Kim', initials: 'DK', avatarColor: 'bg-indigo-100 text-indigo-600', date: 'Oct 23, 2023', amount: '$432.00', status: 'Shipping', statusColor: 'bg-blue-50 text-blue-600 ring-blue-100' },
-];
+const RECENT_ORDERS: any[] = [];
 
 export default function DashboardPage() {
     return (

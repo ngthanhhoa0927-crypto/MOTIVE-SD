@@ -5,38 +5,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-// --- MOCK DATA FOR DEMO PURPOSES ---
-// TODO: REMOVE THIS MOCK DATA BLOCK LATER ALONG WITH REFERENCES IN fetchProducts()
-const MOCK_PRODUCTS = [
-    {
-        id: 9991,
-        name: "[MOCK] Classic Beige Baseball Cap",
-        base_price: "25.00",
-        category_id: 1, // Baseball Hat
-        status: "Active",
-        images: [{ signed_url: "https://images.unsplash.com/photo-1588850561407-ed78c8bf9414?w=500&q=80", is_primary: true }],
-        variants: [{ stock_quantity: 45 }]
-    },
-    {
-        id: 9992,
-        name: "[MOCK] Vintage Denim Bucket Hat",
-        base_price: "32.00",
-        category_id: 2, // Bucket Hat
-        status: "Active",
-        images: [{ signed_url: "https://images.unsplash.com/photo-1596706950290-aab01048e9c7?w=500&q=80", is_primary: true }],
-        variants: [{ stock_quantity: 12 }]
-    },
-    {
-        id: 9993,
-        name: "[MOCK] Wide Brim Sun Hat",
-        base_price: "45.00",
-        category_id: 3, // Sun Protection Hat
-        status: "Draft",
-        images: [{ signed_url: "https://images.unsplash.com/photo-1533827432537-70133748f5c8?w=500&q=80", is_primary: true }],
-        variants: [{ stock_quantity: 0 }]
-    }
-];
-// --- END MOCK DATA ---
 
 export default function ProductsPage() {
     const router = useRouter();
@@ -87,13 +55,13 @@ export default function ProductsPage() {
             });
             if (res.ok) {
                 const data = await res.json();
-                setProducts([...MOCK_PRODUCTS, ...(data.products || [])]); // TODO: REMOVE MOCK_PRODUCTS
+                setProducts(data.products || []);
             } else {
-                setProducts(MOCK_PRODUCTS); // Fallback to mock data on error. TODO: Remove
+                setProducts([]);
             }
         } catch (error) {
             console.error("Failed to fetch products:", error);
-            setProducts(MOCK_PRODUCTS); // Fallback to mock data on network error. TODO: Remove
+            setProducts([]);
         } finally {
             setIsLoading(false);
         }
