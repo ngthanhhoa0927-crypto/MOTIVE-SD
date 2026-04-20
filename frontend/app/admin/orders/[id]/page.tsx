@@ -14,46 +14,12 @@ import {
     Clock
 } from 'lucide-react';
 
-const MOCK_ORDER = {
-    id: "MSD-88291",
-    date: "October 24, 2023",
-    status: "Pending",
-    customer: {
-        fullName: "Jonathan H. Sterling",
-        phone: "+1 (555) 012-3456",
-        email: "j.sterling@example.com"
-    },
-    payment: {
-        method: "Cash on Delivery (COD)",
-        methodDesc: "Pay upon receipt of goods",
-        billingAddress: "742 Evergreen Terrace\nSuite 402, Financial District\nNew York, NY 10005"
-    },
-    shipping: {
-        method: "Standard Shipping",
-        methodDesc: "FedEx Ground Service",
-        deliveryTime: "3-5 Business Days",
-        fee: 0,
-        estimatedDelivery: "October 29 - 31, 2023"
-    },
-    delivery: {
-        address: "Jonathan H. Sterling\n742 Evergreen Terrace\nSuite 402, Financial District\nNew York, NY 10005, US",
-        note: "Please leave the package with the front desk concierge. Gate code is #1234."
-    },
-    items: [
-        { name: "Plaid Dog-Ear Baseball Cap", color: "Red", size: "M", qty: 1, price: 45.00, image: "/images/avatar-placeholder.jpg" },
-        { name: "Plaid Dog-Ear Baseball Cap", color: "Red", size: "M", qty: 1, price: 50.00, image: "/images/avatar-placeholder.jpg" },
-        { name: "Plaid Dog-Ear Baseball Cap", color: "Red", size: "M", qty: 1, price: 100.00, image: "/images/avatar-placeholder.jpg" },
-    ],
-    subtotal: 195.00,
-    total: 195.00
-};
-
 export default function OrderDetailsPage() {
     const params = useParams();
     const router = useRouter();
     const orderId = params.id as string;
 
-    const [order, setOrder] = useState<any>(MOCK_ORDER);
+    const [order, setOrder] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
 
@@ -88,7 +54,7 @@ export default function OrderDetailsPage() {
         }
     };
 
-    if (isLoading) return <div className="p-20 text-center text-gray-500">Loading order details...</div>;
+    if (isLoading || !order) return <div className="p-20 text-center text-gray-500">Loading order details...</div>;
 
     const statusStyle = getStatusStyles(order.status);
 

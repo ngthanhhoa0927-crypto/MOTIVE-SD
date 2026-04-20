@@ -3,76 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 // Mock Data
-const INITIAL_ORDERS = [
-    {
-        id: "ORD-8921",
-        customerName: "Sarah Jenkins",
-        email: "sarah.j@example.com",
-        date: "Oct 24, 2023",
-        totalAmount: 245.99,
-        status: "Completed",
-        paymentMethod: "Credit Card",
-        shippingAddress: "123 Main St, New York, NY 10001",
-        items: [
-            { name: "Black Dog Ear Baseball Cap", quantity: 2, price: 19.00 },
-            { name: "Classic Beige Bucket Hat", quantity: 1, price: 15.00 }
-        ]
-    },
-    {
-        id: "ORD-8920",
-        customerName: "Michael Brown",
-        email: "mbrown@example.com",
-        date: "Oct 24, 2023",
-        totalAmount: 1020.00,
-        status: "Confirmed",
-        paymentMethod: "PayPal",
-        shippingAddress: "456 Oak Ave, Los Angeles, CA 90001",
-        items: [
-            { name: "Vintage Denim Cap", quantity: 5, price: 18.00 },
-            { name: "Knit Winter Hat", quantity: 2, price: 25.00 }
-        ]
-    },
-    {
-        id: "ORD-8919",
-        customerName: "Emma Lawson",
-        email: "emma.l@example.com",
-        date: "Oct 23, 2023",
-        totalAmount: 89.50,
-        status: "Pending",
-        paymentMethod: "Credit Card",
-        shippingAddress: "789 Pine Rd, Chicago, IL 60601",
-        items: [
-            { name: "White Bear Ear Baseball Cap", quantity: 1, price: 20.00 },
-            { name: "Sport Visor Cap", quantity: 2, price: 16.00 }
-        ]
-    },
-    {
-        id: "ORD-8918",
-        customerName: "David Kim",
-        email: "dkim@example.com",
-        date: "Oct 23, 2023",
-        totalAmount: 432.00,
-        status: "Shipping",
-        paymentMethod: "Stripe",
-        shippingAddress: "321 Elm St, Seattle, WA 98101",
-        items: [
-            { name: "Wide Brim Sun Hat", quantity: 4, price: 28.00 },
-        ]
-    },
-    {
-        id: "ORD-8917",
-        customerName: "Sophia Martinez",
-        email: "sophia.m@example.com",
-        date: "Oct 21, 2023",
-        totalAmount: 125.00,
-        status: "Cancelled",
-        paymentMethod: "Credit Card",
-        shippingAddress: "654 Birch Blvd, Miami, FL 33101",
-        items: [
-            { name: "Polka Dot Dog Ear Baseball Cap", quantity: 3, price: 21.00 }
-        ]
-    }
-];
+const INITIAL_ORDERS: any[] = [];
 
 export default function OrdersPage() {
     const router = useRouter();
