@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 // Mock Data
 const INITIAL_ORDERS = [
@@ -9,7 +10,7 @@ const INITIAL_ORDERS = [
         email: "sarah.j@example.com",
         date: "Oct 24, 2023",
         totalAmount: 245.99,
-        status: "Delivered",
+        status: "Completed",
         paymentMethod: "Credit Card",
         shippingAddress: "123 Main St, New York, NY 10001",
         items: [
@@ -23,7 +24,7 @@ const INITIAL_ORDERS = [
         email: "mbrown@example.com",
         date: "Oct 24, 2023",
         totalAmount: 1020.00,
-        status: "Processing",
+        status: "Confirmed",
         paymentMethod: "PayPal",
         shippingAddress: "456 Oak Ave, Los Angeles, CA 90001",
         items: [
@@ -51,7 +52,7 @@ const INITIAL_ORDERS = [
         email: "dkim@example.com",
         date: "Oct 23, 2023",
         totalAmount: 432.00,
-        status: "Shipped",
+        status: "Shipping",
         paymentMethod: "Stripe",
         shippingAddress: "321 Elm St, Seattle, WA 98101",
         items: [
@@ -74,6 +75,7 @@ const INITIAL_ORDERS = [
 ];
 
 export default function OrdersPage() {
+    const router = useRouter();
     const [orders, setOrders] = useState<any[]>(INITIAL_ORDERS);
     const [isLoading, setIsLoading] = useState(false);
     const [search, setSearch] = useState('');
@@ -83,7 +85,9 @@ export default function OrdersPage() {
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+
+    // Dropdown state
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
     // Form states for Editing
     const [editData, setEditData] = useState({
@@ -93,6 +97,16 @@ export default function OrdersPage() {
     // In a real app, you would fetch orders here
     useEffect(() => {
         // fetchOrders()
+    }, []);
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (!(e.target as Element).closest('.actions-dropdown')) {
+                setOpenMenuId(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const openEditModal = (order: any) => {
@@ -109,14 +123,12 @@ export default function OrdersPage() {
     };
 
     const openViewModal = (order: any) => {
-        setSelectedOrder(order);
-        setIsViewModalOpen(true);
+        router.push(`/admin/orders/${order.id}`);
     };
 
     const closeModals = () => {
         setIsEditModalOpen(false);
         setIsDeleteModalOpen(false);
-        setIsViewModalOpen(false);
         setTimeout(() => setSelectedOrder(null), 200);
     };
 
@@ -140,6 +152,15 @@ export default function OrdersPage() {
         closeModals();
     };
 
+    const handleUpdateOrderStatus = (order: any, newStatus: string) => {
+        const updatedOrders = orders.map(o => 
+            o.id === order.id ? { ...o, status: newStatus } : o
+        );
+        setOrders(updatedOrders);
+        // alert(`Order status updated to ${newStatus}`);
+        setOpenMenuId(null);
+    };
+
     const filteredOrders = orders.filter(order => {
         const matchesSearch = order.customerName.toLowerCase().includes(search.toLowerCase()) || 
                               order.id.toLowerCase().includes(search.toLowerCase());
@@ -148,13 +169,14 @@ export default function OrdersPage() {
     });
 
     const getStatusStyles = (status: string) => {
-        switch(status) {
-            case 'Delivered': return { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' };
-            case 'Processing': return { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' };
-            case 'Shipped': return { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' };
-            case 'Pending': return { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' };
-            case 'Cancelled': return { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' };
-            default: return { bg: 'bg-gray-50', text: 'text-gray-700', dot: 'bg-gray-500' };
+        const s = (status || "").toLowerCase();
+        switch(s) {
+            case 'pending': return { bg: 'bg-yellow-50', text: 'text-yellow-700', dot: 'bg-yellow-500' };
+            case 'confirmed': return { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' };
+            case 'shipping': return { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' };
+            case 'completed': return { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' };
+            case 'cancelled': return { bg: 'bg-gray-100', text: 'text-gray-700', dot: 'bg-gray-500' };
+            default: return { bg: 'bg-gray-50', text: 'text-gray-500', dot: 'bg-gray-400' };
         }
     };
 
@@ -181,9 +203,9 @@ export default function OrdersPage() {
                         >
                             <option>All Status</option>
                             <option>Pending</option>
-                            <option>Processing</option>
-                            <option>Shipped</option>
-                            <option>Delivered</option>
+                            <option>Confirmed</option>
+                            <option>Shipping</option>
+                            <option>Completed</option>
                             <option>Cancelled</option>
                         </select>
                         <svg className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
@@ -243,17 +265,73 @@ export default function OrdersPage() {
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="py-4 px-6 text-right whitespace-nowrap">
-                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => openViewModal(order)} className="text-gray-400 hover:text-blue-600 transition-colors p-1.5 rounded-md hover:bg-blue-50" title="View Order">
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                    <td className="py-4 px-6 text-right whitespace-nowrap actions-dropdown">
+                                        <div className="relative inline-block text-left">
+                                            <button 
+                                                onClick={() => setOpenMenuId(openMenuId === order.id ? null : order.id)}
+                                                className="text-gray-400 hover:text-gray-900 transition-colors p-1.5 rounded-md hover:bg-gray-100"
+                                            >
+                                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" /></svg>
                                             </button>
-                                            <button onClick={() => openEditModal(order)} className="text-gray-400 hover:text-gray-900 transition-colors p-1.5 rounded-md hover:bg-gray-100" title="Update Status">
-                                                <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                            </button>
-                                            <button onClick={() => openDeleteModal(order)} className="text-gray-400 hover:text-red-600 transition-colors p-1.5 rounded-md hover:bg-red-50" title="Delete Order">
-                                                <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            </button>
+
+                                            {openMenuId === order.id && (
+                                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 z-50 overflow-hidden text-left animate-in fade-in zoom-in-95 duration-100">
+                                                    <div className="py-1">
+                                                        <button 
+                                                            onClick={() => { openViewModal(order); setOpenMenuId(null); }}
+                                                            className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors"
+                                                        >
+                                                            <svg className="w-4.5 h-4.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                            View
+                                                        </button>
+
+                                                        {(order.status === 'Pending' || order.status === 'Confirmed' || order.status === 'Shipping') && <div className="h-px bg-gray-100 my-1"></div>}
+
+                                                        {order.status === 'Pending' && (
+                                                            <button 
+                                                                onClick={() => handleUpdateOrderStatus(order, 'Confirmed')}
+                                                                className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-[#2563EB] hover:bg-blue-50 flex items-center gap-2.5 transition-colors"
+                                                            >
+                                                                <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                                Confirm
+                                                            </button>
+                                                        )}
+
+                                                        {order.status === 'Confirmed' && (
+                                                            <button 
+                                                                onClick={() => handleUpdateOrderStatus(order, 'Shipping')}
+                                                                className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-[#2563EB] hover:bg-blue-50 flex items-center gap-2.5 transition-colors"
+                                                            >
+                                                                <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                                Mark as Shipping
+                                                            </button>
+                                                        )}
+
+                                                        {order.status === 'Shipping' && (
+                                                            <button 
+                                                                onClick={() => handleUpdateOrderStatus(order, 'Completed')}
+                                                                className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-[#2563EB] hover:bg-blue-50 flex items-center gap-2.5 transition-colors"
+                                                            >
+                                                                <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                                Mark as Completed
+                                                            </button>
+                                                        )}
+
+                                                        {(order.status === 'Pending' || order.status === 'Confirmed') && (
+                                                            <>
+                                                                <div className="h-px bg-gray-100 my-1"></div>
+                                                                <button 
+                                                                    onClick={() => handleUpdateOrderStatus(order, 'Cancelled')}
+                                                                    className="w-full text-left px-4 py-2.5 text-[13px] font-semibold text-[#DC2626] hover:bg-red-50 flex items-center gap-2.5 transition-colors"
+                                                                >
+                                                                    <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                                    Cancel
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -271,7 +349,7 @@ export default function OrdersPage() {
             )}
 
             {/* Overlays for Modals */}
-            {(isEditModalOpen || isDeleteModalOpen || isViewModalOpen) && (
+            {(isEditModalOpen || isDeleteModalOpen) && (
                 <div className="fixed inset-0 z-40 bg-[#0F172AC4] backdrop-blur-[2px] transition-opacity" onClick={closeModals}></div>
             )}
 
@@ -296,9 +374,9 @@ export default function OrdersPage() {
                                     className="w-full appearance-none pl-4 pr-10 py-3 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 font-medium focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none shadow-sm"
                                 >
                                     <option value="Pending">Pending</option>
-                                    <option value="Processing">Processing</option>
-                                    <option value="Shipped">Shipped</option>
-                                    <option value="Delivered">Delivered</option>
+                                    <option value="Confirmed">Confirmed</option>
+                                    <option value="Shipping">Shipping</option>
+                                    <option value="Completed">Completed</option>
                                     <option value="Cancelled">Cancelled</option>
                                 </select>
                                 <svg className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
@@ -310,94 +388,6 @@ export default function OrdersPage() {
                         <button onClick={closeModals} className="flex-1 py-2.5 text-sm font-semibold border text-gray-700 border-gray-200 bg-white rounded-lg hover:bg-gray-50 transition-colors shadow-sm">Cancel</button>
                         <button onClick={handleUpdateOrder} className="flex-1 py-2.5 text-sm font-semibold bg-[#2563EB] text-white rounded-lg hover:bg-blue-700 transition-colors shadow flex items-center justify-center gap-2">
                             Update Status
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* View Order Modal */}
-            {isViewModalOpen && selectedOrder && (
-                <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-0 overflow-hidden flex flex-col max-h-[90vh]">
-                    <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-                        <div>
-                            <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3">
-                                Order Details 
-                                <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${getStatusStyles(selectedOrder.status).bg} ${getStatusStyles(selectedOrder.status).text}`}>
-                                    {selectedOrder.status}
-                                </span>
-                            </h3>
-                            <p className="text-sm text-gray-500 mt-1">{selectedOrder.id} • {selectedOrder.date}</p>
-                        </div>
-                        <button onClick={closeModals} className="text-gray-400 hover:text-gray-800 transition-colors p-2 bg-white rounded-full border border-gray-200 shadow-sm">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                    </div>
-                    
-                    <div className="p-6 overflow-y-auto flex-1">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                            {/* Customer Info */}
-                            <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Customer Information</h4>
-                                <div className="space-y-2">
-                                    <p className="text-sm font-bold text-gray-900">{selectedOrder.customerName}</p>
-                                    <p className="text-sm font-medium text-gray-500 flex items-center gap-2"><svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> {selectedOrder.email}</p>
-                                </div>
-                            </div>
-
-                            {/* Shipping Info */}
-                            <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Shipping & Payment</h4>
-                                <div className="space-y-2">
-                                    <p className="text-sm font-medium text-gray-700 flex items-start gap-2">
-                                        <svg className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                        <span className="leading-tight">{selectedOrder.shippingAddress}</span>
-                                    </p>
-                                    <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                        <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
-                                        Payment: <strong className="text-gray-900">{selectedOrder.paymentMethod}</strong>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Order Items */}
-                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Order Items</h4>
-                        <div className="border border-gray-100 rounded-xl overflow-hidden shadow-sm">
-                            <table className="w-full text-left">
-                                <thead className="bg-[#FAFBFD] border-b border-gray-100">
-                                    <tr>
-                                        <th className="py-3 px-4 text-[11px] font-bold text-gray-500 uppercase">Product</th>
-                                        <th className="py-3 px-4 text-[11px] font-bold text-gray-500 uppercase text-center">Qty</th>
-                                        <th className="py-3 px-4 text-[11px] font-bold text-gray-500 uppercase text-right">Price</th>
-                                        <th className="py-3 px-4 text-[11px] font-bold text-gray-500 uppercase text-right">Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {selectedOrder.items.map((item: any, idx: number) => (
-                                        <tr key={idx} className="bg-white">
-                                            <td className="py-3 px-4 text-sm font-bold text-gray-900">{item.name}</td>
-                                            <td className="py-3 px-4 text-sm text-gray-500 text-center font-medium">x{item.quantity}</td>
-                                            <td className="py-3 px-4 text-sm text-gray-500 text-right font-medium">${item.price.toFixed(2)}</td>
-                                            <td className="py-3 px-4 text-sm text-gray-900 font-bold text-right">${(item.quantity * item.price).toFixed(2)}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                                <tfoot className="bg-[#FAFBFD]">
-                                    <tr>
-                                        <td colSpan={3} className="py-4 px-4 text-right text-sm font-semibold text-gray-500">Total Amount:</td>
-                                        <td className="py-4 px-4 text-right text-lg font-black text-blue-600">${selectedOrder.totalAmount.toFixed(2)}</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 shrink-0">
-                        <button onClick={() => { setIsViewModalOpen(false); setTimeout(() => openEditModal(selectedOrder), 200); }} className="py-2.5 px-6 text-sm font-bold text-[#2563EB] bg-white border border-[#2563EB] rounded-lg hover:bg-blue-50 transition-colors shadow-sm">
-                            Update Status
-                        </button>
-                        <button onClick={closeModals} className="py-2.5 px-6 shrink-0 text-sm font-bold bg-[#2563EB] text-white rounded-lg hover:bg-blue-700 transition-colors shadow">
-                            Close
                         </button>
                     </div>
                 </div>

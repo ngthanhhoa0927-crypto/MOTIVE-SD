@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Playfair_Display, Inter } from "next/font/google";
-import { User, Mail, Phone, Calendar, MapPin, Camera, Edit2, Shield, Package, AlertTriangle, X } from "lucide-react";
+import { User, Mail, Phone, Calendar, MapPin, Camera, Edit2, Shield, Package, AlertTriangle, X, CheckCircle } from "lucide-react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { useRouter } from "next/navigation";
@@ -48,6 +48,7 @@ export default function ProfilePage() {
     });
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [isLoading, setIsLoading] = useState(true);
+    const [showSuccessToast, setShowSuccessToast] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -205,7 +206,8 @@ export default function ProfilePage() {
                     avatarKey: p.avatar_url || ""
                 });
                 setIsEditing(false);
-                alert("Profile updated successfully!");
+                setShowSuccessToast(true);
+                setTimeout(() => setShowSuccessToast(false), 3000);
             } else {
                 console.error("Failed to update profile:", data.message);
                 alert(data.message || "Failed to update profile");
@@ -620,6 +622,24 @@ export default function ProfilePage() {
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Success Toast */}
+            {showSuccessToast && (
+                <div className="fixed top-24 right-6 z-50 animate-in slide-in-from-right-8 fade-in duration-300">
+                    <div className="bg-white px-6 py-4 rounded-xl shadow-2xl border border-gray-100 flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
+                            <CheckCircle className="w-5 h-5 text-green-600" />
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-bold text-gray-900">Profile Updated</h4>
+                            <p className="text-xs text-gray-500 mt-0.5">Your changes have been saved successfully.</p>
+                        </div>
+                        <button onClick={() => setShowSuccessToast(false)} className="ml-4 text-gray-400 hover:text-gray-600">
+                            <X className="w-4 h-4" />
+                        </button>
                     </div>
                 </div>
             )}
