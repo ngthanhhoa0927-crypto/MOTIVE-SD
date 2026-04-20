@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { CheckCircle, X } from 'lucide-react';
 
 export const PREDEFINED_COLORS = [
     { name: 'Black', hex: '#000000', style: { backgroundColor: '#000000' } },
@@ -26,6 +27,8 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
     const router = useRouter();
 
     const [isLoading, setIsLoading] = useState(false);
+    const [showSuccessToast, setShowSuccessToast] = useState(false);
+    const [successMessage, setSuccessMessage] = useState("");
 
     // Form States
     const [name, setName] = useState(initialData?.name || '');
@@ -469,7 +472,11 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                         return;
                     }
                 }
-                router.push('/admin/products');
+                setSuccessMessage(initialData ? "Product updated successfully." : "Product added successfully.");
+                setShowSuccessToast(true);
+                setTimeout(() => {
+                    router.push('/admin/products');
+                }, 1500);
             } else {
                 const err = await res.json();
                 const detail = err.errors
@@ -910,6 +917,24 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                     </div>
                 </div>
             </div>
+
+            {/* Success Toast */}
+            {showSuccessToast && (
+                <div className="fixed top-24 right-6 z-[9999] animate-in slide-in-from-right-8 fade-in duration-300">
+                    <div className="bg-white px-6 py-4 rounded-xl shadow-2xl border border-gray-100 flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
+                            <CheckCircle className="w-5 h-5 text-green-600" />
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-bold text-gray-900">Success</h4>
+                            <p className="text-xs text-gray-500 mt-0.5">{successMessage}</p>
+                        </div>
+                        <button onClick={() => setShowSuccessToast(false)} className="ml-4 text-gray-400 hover:text-gray-600">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

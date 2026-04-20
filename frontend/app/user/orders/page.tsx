@@ -144,9 +144,11 @@ export default function MyOrdersPage() {
                                             <div className="flex items-center gap-3 mb-2">
                                                 <h3 className="font-bold text-gray-900">{order.id}</h3>
                                                 <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                                    order.status === 'Delivered' ? 'bg-emerald-100 text-emerald-700' :
-                                                    order.status === 'Processing' ? 'bg-amber-100 text-amber-700' :
-                                                    'bg-red-100 text-red-700'
+                                                    order.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' :
+                                                    order.status === 'Confirmed' ? 'bg-purple-100 text-purple-700' :
+                                                    order.status === 'Shipping' ? 'bg-blue-100 text-blue-700' :
+                                                    order.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-gray-100 text-gray-700'
                                                 }`}>
                                                     {order.status}
                                                 </span>
