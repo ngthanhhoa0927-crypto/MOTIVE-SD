@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
     ChevronRight, Star, Package, RefreshCcw, Truck, Ticket,
-    ShoppingCart, Flag, Info, ArrowLeft, X
+    ShoppingCart, Flag, Info, ArrowLeft, X, Minus, Plus
 } from "lucide-react";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
@@ -150,55 +150,11 @@ export default function ProductDetailsPage() {
     const displayData = useMemo(() => {
         if (!product) {
             return {
-                mockVariants: [
-                    { color: "Red", size: "S", stock: 12 },
-                    { color: "Red", size: "M", stock: 5 },
-                    { color: "Red", size: "L", stock: 0 },
-                    { color: "Red", size: "XL", stock: 3 },
-                    { color: "Gray", size: "S", stock: 0 },
-                    { color: "Gray", size: "M", stock: 8 },
-                    { color: "Gray", size: "L", stock: 15 },
-                    { color: "Gray", size: "XL", stock: 2 },
-                    { color: "White", size: "S", stock: 10 },
-                    { color: "White", size: "M", stock: 20 },
-                    { color: "White", size: "L", stock: 5 },
-                    { color: "White", size: "XL", stock: 0 },
-                    { color: "Black", size: "S", stock: 7 },
-                    { color: "Black", size: "M", stock: 0 },
-                    { color: "Black", size: "L", stock: 12 },
-                    { color: "Black", size: "XL", stock: 18 },
-                ],
+                mockVariants: [],
                 mockProduct: {
-                    name: "Plaid Dog-Ear Baseball",
-                    description: "Premium quality outdoor headwear with insulated fold-down ear flaps designed for ultimate warmth and style during the colder months.",
-                    base_price: "45.00",
-                    original_price: "65.00",
-                    colorImages: {
-                        "Red": ["/images/hat-dog-dot.png", "/images/placeholder-hat.png", "/images/baseball-cap.png", "/images/hat-rabbit-white.png"],
-                        "Gray": ["/images/hat-bear.png", "/images/placeholder-hat.png", "/images/bucket-hat.png", "/images/hat-dog-black.png"],
-                        "White": ["/images/hat-rabbit-white.png", "/images/hat-bear-white.png", "/images/placeholder-hat.png", "/images/hat-dog-dot.png"],
-                        "Black": ["/images/hat-dog-black.png", "/images/baseball-cap.png", "/images/placeholder-hat.png", "/images/hat-bear.png"]
-                    },
-                    allImages: [
-                        "/images/hat-dog-dot.png", "/images/placeholder-hat.png", "/images/baseball-cap.png", "/images/hat-rabbit-white.png",
-                        "/images/hat-bear.png", "/images/bucket-hat.png", "/images/hat-dog-black.png", "/images/hat-bear-white.png"
-                    ],
-                    colors: [
-                        { name: "Red", hex: "#B91C1C" },
-                        { name: "Gray", hex: "#4B5563" },
-                        { name: "White", hex: "#F3F4F6" },
-                        { name: "Black", hex: "#111827" }
-                    ],
-                    sizes: ["S", "M", "L", "XL"],
-                    brand: "MOTIVE",
-                    material: "Premium Highland Wool Mix",
-                    size_info: "Adjustable Snapback",
-                    care: "Dry clean only",
-                    weight: "150.00",
-                    package_weight: "180.00",
-                    package_dimensions: "25 x 15 x 10",
-                    shipping_class: "Standard Express",
-                    lead_time: 2,
+                    name: "", description: "", base_price: "0.00", original_price: "0.00",
+                    colorImages: {}, allImages: ["/images/placeholder-hat.png"], colors: [], sizes: [], brand: null,
+                    material: null, size_info: null, care: null, weight: null, package_weight: null, package_dimensions: null, shipping_class: null, lead_time: null
                 }
             };
         }
@@ -467,6 +423,25 @@ export default function ProductDetailsPage() {
         );
     }
 
+    if (!product) {
+        return (
+            <div className="flex flex-col min-h-screen bg-white">
+                <Header />
+                <main className="flex-grow flex items-center justify-center flex-col gap-4">
+                    <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-2">
+                        <Package className="w-10 h-10 text-gray-300" />
+                    </div>
+                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Product Not Found</h2>
+                    <p className="text-sm font-medium text-gray-500 text-center max-w-md">The product you are looking for does not exist, is currently unavailable, or has been removed.</p>
+                    <Link href="/user/homepage" className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-600/20">
+                        Back to Homepage
+                    </Link>
+                </main>
+                <Footer />
+            </div>
+        );
+    }
+
     const { x, y, bgX, bgY, bgWidth, bgHeight } = mousePos;
 
     const handleMouseEnter = () => setIsHovering(true);
@@ -661,7 +636,7 @@ export default function ProductDetailsPage() {
                                         <button
                                             key={s}
                                             onClick={() => setSelectedSize(s)}
-                                            className={`w-16 h-12 flex items-center justify-center rounded-2xl text-[13px] font-black transition-all border-2 ${selectedSize === s ? 'border-blue-600 bg-blue-50/20 text-blue-600 shadow-md scale-[1.02]' : 'border-[#F1F5F9] text-gray-400 hover:border-gray-200'}`}
+                                            className={`min-w-[4rem] px-4 h-12 flex items-center justify-center rounded-2xl text-[13px] font-black transition-all border-2 ${selectedSize === s ? 'border-blue-600 bg-blue-50/20 text-blue-600 shadow-md scale-[1.02]' : 'border-[#F1F5F9] text-gray-400 hover:border-gray-200'}`}
                                         >
                                             {s}
                                         </button>
@@ -677,8 +652,10 @@ export default function ProductDetailsPage() {
                                     <button
                                         type="button"
                                         onClick={() => setQuantity(prev => Math.max(1, Number(prev) - 1))}
-                                        className="text-gray-400 hover:text-gray-900 transition font-black text-2xl px-2 select-none"
-                                    > – </button>
+                                        className="text-gray-400 hover:text-gray-900 transition px-2 select-none flex items-center justify-center"
+                                    >
+                                        <Minus className="w-[18px] h-[18px]" strokeWidth={2.5} />
+                                    </button>
 
                                     <input
                                         type="text"
@@ -704,8 +681,10 @@ export default function ProductDetailsPage() {
                                             const next = Number(prev) + 1;
                                             return next > availableStock ? prev : next;
                                         })}
-                                        className={`text-gray-400 transition font-black text-2xl px-2 select-none ${Number(quantity) >= availableStock ? "opacity-20 cursor-not-allowed" : "hover:text-gray-900"}`}
-                                    > + </button>
+                                        className={`text-gray-400 transition px-2 select-none flex items-center justify-center ${Number(quantity) >= availableStock ? "opacity-20 cursor-not-allowed" : "hover:text-gray-900"}`}
+                                    >
+                                        <Plus className="w-[18px] h-[18px]" strokeWidth={2.5} />
+                                    </button>
                                 </div>
 
                                 {/* Success/Error Messages */}
@@ -830,7 +809,7 @@ export default function ProductDetailsPage() {
                                                 <div className="flex items-center justify-between border-b border-gray-50 pb-4"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Size Info</span><span className="text-[13px] font-bold text-gray-800 text-right max-w-[60%]">{mockProduct.size_info}</span></div>
                                             )}
                                             {mockProduct.care && (
-                                                <div className="flex items-center justify-between border-b border-gray-50 pb-4"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Care Guidelines</span><span className="text-[13px] font-bold text-gray-800 text-right max-w-[60%]">{mockProduct.care}</span></div>
+                                                <div className="flex items-center justify-between border-b border-gray-50 pb-4"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Care Instruction</span><span className="text-[13px] font-bold text-gray-800 text-right max-w-[60%]">{mockProduct.care}</span></div>
                                             )}
                                             {mockProduct.weight && (
                                                 <div className="flex items-center justify-between border-b border-gray-50 pb-4"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Weight</span><span className="text-[13px] font-bold text-gray-800 text-right max-w-[60%]">{Number(mockProduct.weight).toFixed(0)}g</span></div>
