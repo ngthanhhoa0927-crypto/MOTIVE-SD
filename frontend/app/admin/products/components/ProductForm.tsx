@@ -302,7 +302,8 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
     const [errors, setErrors] = useState<any>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (overrideStatus?: string) => {
+        const finalStatus = overrideStatus || status;
         const newErrors: any = {};
 
         if (!name.trim()) newErrors.name = "This field cannot be left blank";
@@ -365,7 +366,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
             hasVariantErrors = true;
         }
 
-        if (status === 'Active') {
+        if (finalStatus === 'Active') {
             if (!description || !description.trim()) {
                 newErrors.description = "This field cannot be left blank";
             } else if (description.trim().length < 50 || description.trim() === "No description provided") {
@@ -428,7 +429,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
             category_id: parseInt(categoryId) || categories[0]?.id || 1,
             base_price: basePriceNum,
             weight: parsedWeight,
-            status,
+            status: finalStatus,
             material: material || undefined,
             size_info: sizeInfo || undefined,
             care: care || undefined,
@@ -767,7 +768,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                 </button>
                                 {isStatusOpen && (
                                     <div className="absolute z-40 top-full left-0 mt-1 w-full bg-white rounded-lg shadow-lg border border-gray-100 overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-100">
-                                        {['Draft', 'Active', 'Archived'].map(val => (
+                                        {['Active', 'Archived'].map(val => (
                                             <button
                                                 key={val}
                                                 onClick={() => { 
@@ -916,7 +917,14 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                             {initialData ? 'Discard' : 'Cancel'}
                         </button>
                         <button
-                            onClick={handleSubmit}
+                            onClick={() => handleSubmit('Draft')}
+                            disabled={isSubmitting}
+                            className="flex-1 sm:flex-none px-4 sm:px-6 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-xl text-[12px] sm:text-[13px] font-bold hover:bg-gray-50 transition-colors shadow-sm min-w-[100px]"
+                        >
+                            Save as Draft
+                        </button>
+                        <button
+                            onClick={() => handleSubmit()}
                             disabled={isSubmitting}
                             className="flex-1 sm:flex-none px-4 sm:px-8 py-2.5 bg-[#2563EB] text-white rounded-xl text-[12px] sm:text-[13px] font-bold hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 min-w-[140px]"
                         >
