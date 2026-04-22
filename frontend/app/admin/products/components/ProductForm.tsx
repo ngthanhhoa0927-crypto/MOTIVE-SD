@@ -442,15 +442,15 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                 display_order: idx,
                 color: img.color || undefined
             })),
-            variants: variantsData.filter(v => v.is_active).map((v, i) => ({
+            variants: variantsData.map((v, i) => ({
                 sku: v.sku && v.sku.trim() ? v.sku.trim() : `${productCode}-${v.size.trim().toUpperCase()}-${v.color.trim().toUpperCase()}`,
                 size: v.size.trim(),
                 color: v.color.trim(),
                 color_hex: v.color ? v.color_hex : undefined,
-                price: basePriceNum,
+                price: parseFloat(v.price) || basePriceNum,
                 stock_quantity: parseInt(v.stock) || 0,
                 image_url: v.image_url || undefined,
-                is_active: true
+                is_active: v.is_active
             }))
         };
 
@@ -770,7 +770,15 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                         {['Draft', 'Active', 'Archived'].map(val => (
                                             <button
                                                 key={val}
-                                                onClick={() => { setStatus(val); setIsStatusOpen(false); }}
+                                                onClick={() => { 
+                                                    setStatus(val); 
+                                                    setIsStatusOpen(false); 
+                                                    if (val === 'Active') {
+                                                        setVariantsData(prev => prev.map(v => ({ ...v, is_active: true })));
+                                                    } else {
+                                                        setVariantsData(prev => prev.map(v => ({ ...v, is_active: false })));
+                                                    }
+                                                }}
                                                 className={`w-full text-left px-4 py-2 text-[13px] flex items-center justify-between transition-colors ${status === val ? 'bg-blue-50/80 text-blue-900 font-bold' : 'text-gray-700 font-medium hover:bg-gray-50'}`}
                                             >
                                                 {val}

@@ -18,6 +18,18 @@ export default function Header() {
     const [searchQuery, setSearchQuery] = useState("");
     const [cartCount, setCartCount] = useState(0);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const [selectedCategory, setSelectedCategory] = useState({ id: "all", name: "All categories" });
+    const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+    const categoryDropdownRef = useRef<HTMLDivElement>(null);
+    const categories = [
+        { id: "all", name: "All categories" },
+        { id: "1", name: "Baseball Hat" },
+        { id: "2", name: "Bucket Hat" },
+        { id: "3", name: "Sun Protection Hat" },
+        { id: "4", name: "Flat Cap" },
+        { id: "5", name: "Others" }
+    ];
     const userMenuRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
     const pathname = usePathname();
@@ -59,6 +71,9 @@ export default function Header() {
             }
             if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
                 setUserMenuOpen(false);
+            }
+            if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+                setIsCategoryDropdownOpen(false);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
@@ -109,6 +124,7 @@ export default function Header() {
         setUserMenuOpen(false);
         setIsDropdownOpen(false);
         setIsCartOpen(false);
+        setIsCategoryDropdownOpen(false);
     }, [pathname]);
 
     const handleSearchSubmit = (e: React.FormEvent) => {
@@ -138,24 +154,44 @@ export default function Header() {
 
                 {/* Search Bar */}
                 <div className="flex-1 max-w-2xl mx-8 relative" ref={dropdownRef}>
-                    <form onSubmit={handleSearchSubmit} className="flex border-2 border-blue-600 rounded-md overflow-hidden h-10 bg-white">
-                        <div className="bg-gray-50 border-r border-gray-200 flex items-center px-1">
-                            <select className="bg-transparent text-sm text-gray-700 outline-none w-[140px] px-2 py-1 appearance-none cursor-pointer">
-                                <option value="all">All categories</option>
-                                <option value="1">Baseball Hat</option>
-                                <option value="2">Bucket Hat</option>
-                                <option value="3">Sun Protection Hat</option>
-                                <option value="4">Flat Cap</option>
-                                <option value="5">Others</option>
-                            </select>
-                            <span className="pointer-events-none -ml-5 opacity-70">
-                                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            </span>
+                    <form onSubmit={handleSearchSubmit} className="flex border-2 border-blue-600 rounded-md h-10 bg-white shadow-sm hover:shadow-md transition-shadow">
+                        <div className="relative border-r border-gray-200 flex items-center" ref={categoryDropdownRef}>
+                            <button
+                                type="button"
+                                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                                className="flex items-center justify-between w-[150px] px-4 py-2 bg-gray-50 hover:bg-gray-100 transition-colors h-full text-[13px] font-bold text-gray-700 focus:outline-none rounded-l-[4px]"
+                            >
+                                <span className="truncate">{selectedCategory.name}</span>
+                                <svg className={`w-3.5 h-3.5 ml-2 text-gray-500 transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+
+                            {isCategoryDropdownOpen && (
+                                <div className="absolute top-[calc(100%+4px)] left-0 w-[200px] bg-white border border-gray-100 shadow-2xl rounded-xl z-[60] overflow-hidden py-2 animate-in fade-in zoom-in-95 duration-100">
+                                    {categories.map((cat) => (
+                                        <button
+                                            key={cat.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedCategory(cat);
+                                                setIsCategoryDropdownOpen(false);
+                                            }}
+                                            className={`w-full text-left px-4 py-2.5 text-[13px] transition-colors flex items-center justify-between ${selectedCategory.id === cat.id ? 'bg-blue-50/80 text-blue-700 font-bold' : 'text-gray-700 font-medium hover:bg-gray-50 hover:text-blue-600'}`}
+                                        >
+                                            {cat.name}
+                                            {selectedCategory.id === cat.id && (
+                                                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         <input
                             type="text"
                             placeholder="Search fashion hats..."
-                            className="flex-1 px-4 outline-none text-sm text-gray-700"
+                            className="flex-1 px-4 outline-none text-[13px] font-medium text-gray-700 bg-transparent"
                             value={searchQuery}
                             onChange={(e) => {
                                 setSearchQuery(e.target.value);
@@ -165,7 +201,7 @@ export default function Header() {
                                 if (searchQuery.length > 0) setIsDropdownOpen(true);
                             }}
                         />
-                        <button type="submit" className="bg-blue-600 px-6 flex items-center justify-center hover:bg-blue-700 transition">
+                        <button type="submit" className="bg-blue-600 px-6 flex items-center justify-center hover:bg-blue-700 transition rounded-r-[4px]">
                             <Search className="w-4 h-4 text-white" />
                         </button>
                     </form>
