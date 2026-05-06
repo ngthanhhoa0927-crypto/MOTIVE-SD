@@ -42,11 +42,11 @@ export async function seedData() {
         if (catResult.length === 0) {
             console.log("Seeding categories...");
             await db.insert(categories).values([
-                { name: "Baseball Caps" },
-                { name: "Bucket Hats" },
-                { name: "Beanies" },
-                { name: "Visors" },
-                { name: "Snapbacks" }
+                { name: "Baseball Hat" },
+                { name: "Bucket Hat" },
+                { name: "Sun Protection Hat" },
+                { name: "Flat Cap" },
+                { name: "Others" }
             ]);
             console.log("- Categories created.");
         }

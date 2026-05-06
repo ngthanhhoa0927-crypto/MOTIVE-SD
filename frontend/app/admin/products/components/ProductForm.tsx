@@ -94,18 +94,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
         { id: 5, name: 'Others' }
     ]);
 
-    useEffect(() => {
-        fetch("http://localhost:8000/categories")
-            .then(res => res.json())
-            .then(data => {
-                if (data.categories && data.categories.length > 0) {
-                    setCategories(data.categories);
-                }
-            })
-            .catch(err => {
-                console.error("Failed to fetch categories:", err);
-            });
-    }, []);
+
 
     // Initialize variations from initialData if present
     useEffect(() => {
