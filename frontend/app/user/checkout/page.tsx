@@ -45,6 +45,7 @@ export default function CheckoutPage() {
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [showSuccess, setShowSuccess] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [saveInfo, setSaveInfo] = useState(false);
 
     useEffect(() => {
         const initCheckout = async () => {
@@ -70,10 +71,32 @@ export default function CheckoutPage() {
                     const data = await response.json();
                     if (data.profile) {
                          const p = data.profile;
-                         setEmail(p.email || "");
-                         setFullName(p.full_name || "");
-                         setPhone(p.phone_number || "");
-                         setSpecificAddress(p.address || "");
+                         const saved = localStorage.getItem("savedCheckoutInfo");
+                         if (saved) {
+                             try {
+                                 const parsed = JSON.parse(saved);
+                                 setEmail(parsed.email || p.email || "");
+                                 setFullName(parsed.fullName || p.full_name || "");
+                                 setPhone(parsed.phone || p.phone_number || "");
+                                 setSpecificAddress(parsed.specificAddress || p.address || "");
+                                 if (parsed.province) setProvince(parsed.province);
+                                 if (parsed.district) setDistrict(parsed.district);
+                                 if (parsed.ward) setWard(parsed.ward);
+                                 if (parsed.districtsData) setDistrictsData(parsed.districtsData);
+                                 if (parsed.wardsData) setWardsData(parsed.wardsData);
+                                 setSaveInfo(true);
+                             } catch(e) {
+                                 setEmail(p.email || "");
+                                 setFullName(p.full_name || "");
+                                 setPhone(p.phone_number || "");
+                                 setSpecificAddress(p.address || "");
+                             }
+                         } else {
+                             setEmail(p.email || "");
+                             setFullName(p.full_name || "");
+                             setPhone(p.phone_number || "");
+                             setSpecificAddress(p.address || "");
+                         }
                     }
                 }
             } catch (err: any) {
@@ -206,6 +229,15 @@ export default function CheckoutPage() {
             } catch (err) {
                 console.error("Error clearing cart items:", err);
             } finally {
+                if (saveInfo) {
+                    localStorage.setItem("savedCheckoutInfo", JSON.stringify({
+                        email, fullName, phone, specificAddress,
+                        province, district, ward,
+                        districtsData, wardsData
+                    }));
+                } else {
+                    localStorage.removeItem("savedCheckoutInfo");
+                }
                 setIsProcessing(false);
                 setShowSuccess(true);
             }
@@ -274,16 +306,7 @@ export default function CheckoutPage() {
                         </div>
                         <h1 className={`${playfair.className} text-5xl text-gray-900`}>Secure Checkout</h1>
                     </div>
-                    <div className="hidden md:flex items-center gap-4 text-gray-500 text-sm font-medium">
-                        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-gray-100 shadow-sm">
-                            <Lock className="w-4 h-4 text-green-600" />
-                            <span>SSL Encrypted</span>
-                        </div>
-                        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-gray-100 shadow-sm">
-                            <ShieldCheck className="w-4 h-4 text-blue-600" />
-                            <span>Buyer Protection</span>
-                        </div>
-                    </div>
+
                 </div>
 
                 <div className="flex flex-col lg:flex-row gap-16">
@@ -324,8 +347,8 @@ export default function CheckoutPage() {
                                 </div>
                                 <div className="md:col-span-2">
                                     <label className="flex items-center gap-3 cursor-pointer group">
-                                        <input type="checkbox" className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-600" />
-                                        <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors">Keep me updated on news and exclusive offers</span>
+                                        <input type="checkbox" checked={saveInfo} onChange={(e) => setSaveInfo(e.target.checked)} className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-600" />
+                                        <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors">Save my information</span>
                                     </label>
                                 </div>
                             </div>

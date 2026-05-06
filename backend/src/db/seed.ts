@@ -1,6 +1,7 @@
 import { db } from "./index.js";
 import { users, categories } from "./schema.js";
 import * as bcrypt from "bcryptjs";
+import { eq } from "drizzle-orm";
 
 export async function seedData() {
     try {
@@ -49,8 +50,6 @@ export async function seedData() {
             ]);
             console.log("- Categories created.");
         }
-
-
 
         console.log("Database seeding completed successfully.");
     } catch (error) {

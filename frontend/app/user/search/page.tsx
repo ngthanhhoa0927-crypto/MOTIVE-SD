@@ -77,7 +77,7 @@ function SearchContent() {
         const fetchProducts = async () => {
             let fetchedProducts = [];
             try {
-                const res = await fetch("http://localhost:8000/products", { cache: "no-store" });
+                const res = await fetch("http://localhost:8000/products?status=Active", { cache: "no-store" });
                 if (res.ok) {
                     const data = await res.json();
                     fetchedProducts = data.products || [];
@@ -86,23 +86,7 @@ function SearchContent() {
                 console.log("Backend not reachable, using mock products");
             }
 
-            // BE not available or empty -> Use Mocks designed as BE schema
-            if (fetchedProducts.length === 0) {
-                fetchedProducts = [
-                    { id: 1, name: "Black Dog Ear Baseball Cap", base_price: "19.00", oldPrice: "$29.00", images: [{ image_url: "/images/hat-dog-black.png" }] },
-                    { id: 2, name: "Polka Dot Dog Ear Baseball Cap", base_price: "21.00", oldPrice: "$29.00", images: [{ image_url: "/images/hat-dog-dot.png" }] },
-                    { id: 3, name: "Bear Cub Ear Baseball Cap", base_price: "22.00", oldPrice: "$32.00", images: [{ image_url: "/images/hat-bear.png" }] },
-                    { id: 4, name: "White Bear Ear Baseball Cap", base_price: "20.00", oldPrice: "$30.00", images: [{ image_url: "/images/hat-bear-white.png" }] },
-                    { id: 5, name: "White Rabbit Ear Baseball Cap", base_price: "24.00", oldPrice: "$35.00", images: [{ image_url: "/images/hat-rabbit-white.png" }] },
-                    { id: 6, name: "Classic Beige Bucket Hat", base_price: "15.00", oldPrice: "$25.00", images: [{ image_url: "/images/placeholder-hat.png" }] },
-                    { id: 7, name: "Vintage Denim Cap", base_price: "18.00", oldPrice: "$28.00", images: [{ image_url: "/images/placeholder-hat.png" }] },
-                    { id: 8, name: "Minimalist Beanie", base_price: "12.00", oldPrice: "$20.00", images: [{ image_url: "/images/placeholder-hat.png" }] },
-                    { id: 9, name: "Sport Visor Cap", base_price: "16.00", oldPrice: "$26.00", images: [{ image_url: "/images/placeholder-hat.png" }] },
-                    { id: 10, name: "Knit Winter Hat", base_price: "25.00", oldPrice: "$40.00", images: [{ image_url: "/images/placeholder-hat.png" }] },
-                    { id: 11, name: "Wide Brim Sun Hat", base_price: "28.00", oldPrice: "$45.00", images: [{ image_url: "/images/placeholder-hat.png" }] },
-                    { id: 12, name: "Kids Animal Ear Cap", base_price: "18.00", oldPrice: "$28.00", images: [{ image_url: "/images/placeholder-hat.png" }] }
-                ];
-            }
+
 
             setProducts(fetchedProducts);
             setFilteredProducts(fetchedProducts);

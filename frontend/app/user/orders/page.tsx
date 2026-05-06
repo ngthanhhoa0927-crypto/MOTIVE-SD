@@ -27,18 +27,6 @@ export default function MyOrdersPage() {
                 return;
             }
 
-            if (token.startsWith("fake.")) {
-                try {
-                    const payload = JSON.parse(atob(token.split('.')[1]));
-                    setUser({
-                        fullName: payload.full_name || "Regular User",
-                        avatar: "/images/avatar-placeholder.jpg"
-                    });
-                } catch (e) {}
-                setIsLoading(false);
-                return;
-            }
-
             try {
                 // Fetch profile
                 const profileRes = await fetch("http://localhost:8000/auth/me", {
@@ -52,7 +40,6 @@ export default function MyOrdersPage() {
                     });
                 }
 
-                // Fetch orders
                 const ordersRes = await fetch("http://localhost:8000/orders", {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
@@ -67,11 +54,12 @@ export default function MyOrdersPage() {
                     }));
                     setOrders(mappedOrders);
                 }
+                setIsLoading(false);
             } catch (err) {
                 console.error("Failed to load user orders:", err);
-            } finally {
                 setIsLoading(false);
             }
+
         };
 
         fetchOrdersAndProfile();

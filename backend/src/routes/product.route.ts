@@ -9,6 +9,19 @@ import { authMiddleware, adminMiddleware } from "./auth.route.js";
 
 const productRouter = new Hono();
 
+// Check if SKU is available
+productRouter.get("/check-sku", async (c) => {
+    try {
+        const sku = c.req.query("sku");
+        if (!sku) return c.json({ available: false }, 400);
+        
+        // Check if SKU exists in db
+        const existing = await db.select().from(productVariants).where(eq(productVariants.sku, sku));
+        return c.json({ available: existing.length === 0 }, 200);
+    } catch (error) {
+        return c.json({ available: false, message: "Error checking SKU" }, 500);
+    }
+});
 // ===== Business Rule Validation Schema =====
 // Rules:
 //   - name ≥ 10 chars
@@ -25,9 +38,9 @@ const createProductSchema = z.object({
     category_id: z.number().int().positive(),
     collection_id: z.number().int().positive().optional(),
     brand: z.string().max(255).optional(),
-    name: z.string().min(10, "Product name must be at least 10 characters").max(200),
-    base_price: z.number().positive("Price must be greater than 0"),
-    weight: z.number().positive("Weight (g) is required and must be greater than 0"),
+    name: z.string().min(1, "Product name is required").max(200),
+    base_price: z.number().nonnegative().default(0),
+    weight: z.number().positive().optional(),
     description: z.string().optional(),
     material: z.string().max(255).optional(),
     size_info: z.string().max(500).optional(),
@@ -35,25 +48,25 @@ const createProductSchema = z.object({
     package_weight: z.number().positive().optional(),
     shipping_class: z.string().max(255).optional(),
     package_dimensions: z.string().max(255).optional(),
-    lead_time: z.number().int().min(1).default(2),
+    lead_time: z.number().int().min(1).optional(),
     status: z.enum(["Draft", "Active", "Archived"]).default("Draft"),
     images: z.array(z.object({
         image_url: z.string(),
         is_primary: z.boolean().default(false),
         display_order: z.number().int().default(0),
         color: z.string().optional()
-    })).min(1, "At least 1 product image is required").max(10, "Maximum 10 images allowed"),
+    })).max(10, "Maximum 10 images allowed").default([]),
     variants: z.array(z.object({
-        sku: z.string().min(2).max(50),
-        color: z.string().min(1, "Color is required for each variant").max(50),
+        sku: z.string().min(1).max(50),
+        color: z.string().max(50).default(""),
         color_hex: z.string().max(10).optional(),
-        size: z.string().min(1, "Size is required for each variant").max(20),
+        size: z.string().max(20).default(""),
         price: z.number().nonnegative().default(0),
         stock_quantity: z.number().int().min(0).default(0),
         image_url: z.string().optional(),
         is_active: z.boolean().default(true),
         weight_override_g: z.number().positive().optional()
-    })).min(1, "At least 1 variant (size + color) is required"),
+    })).default([]),
 }).superRefine((data, ctx) => {
     const activeVariants = data.variants.filter(v => v.is_active);
     
@@ -69,10 +82,34 @@ const createProductSchema = z.object({
 
     // Active status triggers strict domain rule checks
     if (data.status === "Active") {
+        if (data.name.trim().length < 10) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Product name must be at least 10 characters", path: ["name"] });
+        }
+        if (data.base_price <= 0) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Price must be greater than 0", path: ["base_price"] });
+        }
+        if (!data.weight || data.weight <= 0) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Weight (g) is required and must be greater than 0", path: ["weight"] });
+        }
+        if (!data.images || data.images.length === 0) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "At least 1 product image is required", path: ["images"] });
+        }
+        if (!data.variants || data.variants.length === 0) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "At least 1 variant is required", path: ["variantsGlobal"] });
+        }
+        activeVariants.forEach((v, i) => {
+            if (!v.color || v.color.trim() === "") {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Color is required for each variant", path: ["variants", i.toString(), "color"] });
+            }
+            if (!v.size || v.size.trim() === "") {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Size is required for each variant", path: ["variants", i.toString(), "size"] });
+            }
+        });
+
         if (!data.description || data.description.trim().length < 50 || data.description === "No description provided") {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Description must be at least 50 characters to publish", path: ["description"] });
         }
-        if (!data.package_weight || data.package_weight < data.weight) {
+        if (!data.package_weight || (data.weight && data.package_weight < data.weight)) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Package weight must be >= product weight", path: ["package_weight"] });
         }
         if (!data.package_dimensions || !/^\d+\s*x\s*\d+\s*x\s*\d+(\s*[a-zA-Z]+)?$/i.test(data.package_dimensions)) {
@@ -130,7 +167,7 @@ productRouter.post(
                     name: data.name,
                     slug: slug,
                     base_price: data.base_price.toString(),
-                    weight: data.weight.toString(),
+                    weight: data.weight?.toString(),
                     description: data.description,
                     material: data.material,
                     size_info: data.size_info,
@@ -188,7 +225,14 @@ productRouter.post(
 // List all products with their images and variants
 productRouter.get("/", async (c) => {
     try {
-        const allProducts = await db.select().from(products);
+        const statusParam = c.req.query("status");
+        
+        let allProducts;
+        if (statusParam) {
+            allProducts = await db.select().from(products).where(eq(products.status, statusParam as any));
+        } else {
+            allProducts = await db.select().from(products);
+        }
         
         // Fetch relations for each product
         const productsWithRelations = await Promise.all(allProducts.map(async (p) => {
@@ -303,7 +347,7 @@ productRouter.put(
                     brand: data.brand,
                     name: data.name,
                     base_price: data.base_price.toString(),
-                    weight: data.weight.toString(),
+                    weight: data.weight?.toString(),
                     description: data.description,
                     material: data.material,
                     size_info: data.size_info,

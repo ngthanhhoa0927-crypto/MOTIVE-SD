@@ -86,9 +86,7 @@ export default function CartPage() {
         (acc, item) => acc + (Number(item.product_variant.price) * item.quantity),
         0
     );
-    const shipping = subtotal === 0 ? 0 : subtotal > 50 ? 0 : 5.0;
-    const tax = subtotal * 0.1;
-    const total = subtotal + shipping + tax;
+    const total = subtotal;
 
     return (
         <div className={`min-h-screen flex flex-col bg-[#F9F8F4] ${inter.className}`}>
@@ -226,16 +224,6 @@ export default function CartPage() {
                                         <div className="flex justify-between text-sm">
                                             <span className="text-gray-500 font-medium">Subtotal</span>
                                             <span className="text-gray-900 font-bold">${subtotal.toFixed(2)}</span>
-                                        </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-500 font-medium">Shipping</span>
-                                            <span className={`${shipping === 0 ? "text-green-600" : "text-gray-900"} font-bold`}>
-                                                {shipping === 0 ? "FREE" : `$${shipping.toFixed(2)}`}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-500 font-medium">Estimated Tax</span>
-                                            <span className="text-gray-900 font-bold">${tax.toFixed(2)}</span>
                                         </div>
                                     </div>
 

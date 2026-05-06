@@ -16,7 +16,7 @@ export default function HomePage() {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const res = await fetch("http://localhost:8000/products", { cache: "no-store" });
+                const res = await fetch("http://localhost:8000/products?status=Active", { cache: "no-store" });
                 if (res.ok) {
                     const data = await res.json();
                     if (data.products && data.products.length > 0) {
@@ -43,15 +43,8 @@ export default function HomePage() {
                 console.log("Backend not reachable, using fallback products");
             }
 
-            // Fallback mock data (only when backend is unreachable)
-            setRecommendations([
-                { id: 1, name: "Black Dog Ear Baseball Cap", price: "$19.00", oldPrice: "$29.00", image: "/images/hat-dog-black.png" },
-                { id: 2, name: "Polka Dot Dog Ear Baseball Cap", price: "$21.00", oldPrice: "$29.00", image: "/images/hat-dog-dot.png" },
-                { id: 3, name: "Bear Cub Ear Baseball Cap", price: "$22.00", oldPrice: "$32.00", image: "/images/hat-bear.png" },
-                { id: 4, name: "White Bear Ear Baseball Cap", price: "$20.00", oldPrice: "$30.00", image: "/images/hat-bear-white.png" },
-                { id: 5, name: "White Rabbit Ear Baseball Cap", price: "$24.00", oldPrice: "$35.00", image: "/images/placeholder-hat.png" },
-                { id: 6, name: "Classic Beige Bucket Hat", price: "$15.00", oldPrice: "$25.00", image: "/images/hat-rabbit-white.png" },
-            ]);
+            // Fallback removed
+            setRecommendations([]);
             setLoading(false);
         };
         fetchProducts();

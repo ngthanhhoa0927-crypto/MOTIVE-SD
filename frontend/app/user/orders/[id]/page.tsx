@@ -38,14 +38,6 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: Pr
                             <h1 className={`${playfair.className} text-4xl text-gray-900 mb-2 font-bold`}>Order {orderId}</h1>
                             <p className="text-sm text-gray-500 font-medium">Placed on October 24, 2025 at 2:45 PM</p>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <button className="flex items-center gap-2 px-6 py-3 rounded-full border-2 border-gray-100 text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors">
-                                <FileText className="w-4 h-4" /> Invoice
-                            </button>
-                            <button className="flex items-center gap-2 px-6 py-3 rounded-full bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition-colors shadow-md shadow-blue-100">
-                                <Truck className="w-4 h-4" /> Track Order
-                            </button>
-                        </div>
                     </div>
 
                     {/* Progress Bar */}
@@ -53,18 +45,21 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: Pr
                         <div className="flex justify-between items-end mb-6">
                             <div className="flex items-center gap-2">
                                 <div className="w-3 h-3 bg-blue-600 rounded-full animate-pulse" />
-                                <h3 className="font-bold text-blue-600 text-lg">Shipped</h3>
+                                <h3 className="font-bold text-blue-600 text-lg">Order Created</h3>
                             </div>
-                            <span className="text-sm font-semibold text-gray-500">Arriving by March 27, 2026</span>
+                            <span className="text-sm font-semibold text-gray-500">Estimated delivery: TBD</span>
                         </div>
                         
                         <div className="relative w-full h-2 bg-gray-200 rounded-full mb-4">
-                            <div className="absolute top-0 left-0 h-full bg-blue-600 rounded-full transition-all duration-1000" style={{ width: '66%' }} />
+                            <div className="absolute top-0 left-0 h-full bg-blue-600 rounded-full transition-all duration-1000" style={{ width: '0%' }} />
                         </div>
-                        <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-wider">
-                            <span className="text-blue-600">Processing</span>
-                            <span className="text-blue-600">Shipped</span>
+                        <div className="flex justify-between text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider text-center">
+                            <span className="text-blue-600">Created</span>
+                            <span>Confirmed</span>
+                            <span>Processing</span>
+                            <span>Shipped</span>
                             <span>Delivered</span>
+                            <span>Completed</span>
                         </div>
                     </div>
 
@@ -123,13 +118,9 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: Pr
                                 </div>
                                 <div className="flex justify-between items-center px-1">
                                     <span className="text-gray-500 font-medium tracking-wide">Status</span>
-                                    <span className="font-black text-blue-600">SHIPPED</span>
+                                    <span className="font-black text-blue-600">ORDER CREATED</span>
                                 </div>
                             </div>
-                            <button className="text-blue-600 text-sm font-bold flex items-center gap-2 hover:text-blue-800 transition-colors w-full justify-center bg-blue-50 py-3 rounded-xl">
-                                <CornerDownLeft className="w-4 h-4" />
-                                RETURN ITEMS
-                            </button>
                         </div>
                     </div>
 

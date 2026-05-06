@@ -74,6 +74,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [showAllNotifs, setShowAllNotifs] = useState(false);
 
     const fetchNotifications = useCallback(async () => {
         const token = localStorage.getItem('admin_token');
@@ -150,11 +151,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return () => clearInterval(interval);
     }, [fetchNotifications]);
 
-    // Auto-close dropdown on route change
     useEffect(() => {
         setIsProfileOpen(false);
         setIsNotificationOpen(false);
         setIsSidebarOpen(false);
+        setShowAllNotifs(false);
     }, [pathname]);
 
     const handleLogout = () => {
@@ -289,11 +290,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                                     No notifications yet
                                                 </div>
                                             )}
-                                            {notifications.map((notif) => (
+                                            {(showAllNotifs ? notifications : notifications.slice(0, 3)).map((notif) => (
                                                 <div 
                                                     key={notif.id} 
                                                     className={`flex gap-4 px-5 py-4 border-b border-gray-50 hover:bg-gray-50/80 transition-colors cursor-pointer group ${!notif.isRead ? 'bg-blue-50/30' : ''}`}
-                                                    onClick={() => { if (!notif.isRead) markAsRead(notif.id); }}
+                                                    onClick={() => { 
+                                                        if (!notif.isRead) markAsRead(notif.id); 
+                                                        if (notif.type === 'account_created' || notif.type === 'password_changed') {
+                                                            if (notif.userId) {
+                                                                router.push(`/admin/customers?userId=${notif.userId}`);
+                                                                setIsNotificationOpen(false);
+                                                            }
+                                                        }
+                                                    }}
                                                 >
                                                     <div className="relative flex-shrink-0 mt-1">
                                                         <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
@@ -309,17 +318,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                                     </div>
                                                     <div className="text-[13px] text-gray-600 leading-snug">
                                                         <p className="mb-0.5"><span className={`font-semibold ${getNotifHighlight(notif.type) ? 'text-[#EF4444]' : 'text-gray-900'}`}>{notif.userName}</span> {notif.message.replace(notif.userName + ' ', '')}</p>
-                                                        <p className="text-[11px] text-gray-400 font-medium group-hover:text-blue-500 transition-colors">{timeAgo(notif.createdAt)}</p>
+                                                        <p className="text-[11px] text-gray-400 font-medium group-hover:text-blue-500 transition-colors">
+                                                            {timeAgo(notif.createdAt)} • {new Date(notif.createdAt).toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute:'2-digit' })}
+                                                        </p>
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
                                         
-                                        <div className="pt-2 pb-1 bg-gray-50/50 rounded-b-xl border-t border-gray-50">
-                                            <button className="w-full text-center py-2 text-sm font-semibold text-[#2563EB] hover:text-blue-700 transition-colors">
-                                                See all activity
-                                            </button>
-                                        </div>
+                                        {notifications.length > 3 && !showAllNotifs && (
+                                            <div className="pt-2 pb-1 bg-gray-50/50 rounded-b-xl border-t border-gray-50">
+                                                <button 
+                                                    onClick={() => setShowAllNotifs(true)}
+                                                    className="w-full text-center py-2 text-sm font-semibold text-[#2563EB] hover:text-blue-700 transition-colors"
+                                                >
+                                                    See all activity
+                                                </button>
+                                            </div>
+                                        )}
+                                        {showAllNotifs && (
+                                            <div className="pt-2 pb-1 bg-gray-50/50 rounded-b-xl border-t border-gray-50">
+                                                <button 
+                                                    onClick={() => setShowAllNotifs(false)}
+                                                    className="w-full text-center py-2 text-sm font-semibold text-gray-500 hover:text-gray-700 transition-colors"
+                                                >
+                                                    Show less
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </>
                             )}
