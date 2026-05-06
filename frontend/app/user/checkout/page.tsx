@@ -46,6 +46,7 @@ export default function CheckoutPage() {
     const [showSuccess, setShowSuccess] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [saveInfo, setSaveInfo] = useState(false);
+    const [newOrderId, setNewOrderId] = useState<number | null>(null);
 
     useEffect(() => {
         const initCheckout = async () => {
@@ -218,28 +219,58 @@ export default function CheckoutPage() {
         const validationErrors = validateForm();
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
             setErrors({});
             setIsProcessing(true);
             try {
-                if (!isBuyNow) {
-                    await Promise.all(cartItems.map(item => removeFromCart(item.id)));
-                    window.dispatchEvent(new Event("cartUpdated"));
+                const token = localStorage.getItem("token");
+                const fullAddress = `${specificAddress}, ${ward.name}, ${district.name}`;
+                
+                const response = await fetch("http://localhost:8000/orders/checkout", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        receiverName: fullName,
+                        receiverPhone: phone,
+                        shippingAddress: fullAddress,
+                        shippingCity: province.name,
+                        paymentMethod: paymentMethod,
+                        shippingMethod: shippingMethod
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    setNewOrderId(data.order.id);
+                    
+                    if (!isBuyNow) {
+                        window.dispatchEvent(new Event("cartUpdated"));
+                    }
+
+                    if (saveInfo) {
+                        localStorage.setItem("savedCheckoutInfo", JSON.stringify({
+                            email, fullName, phone, specificAddress,
+                            province, district, ward,
+                            districtsData, wardsData
+                        }));
+                    } else {
+                        localStorage.removeItem("savedCheckoutInfo");
+                    }
+                    
+                    setShowSuccess(true);
+                } else {
+                    const errorData = await response.json();
+                    alert(errorData.message || "Failed to create order. Please try again.");
                 }
             } catch (err) {
-                console.error("Error clearing cart items:", err);
+                console.error("Checkout failed:", err);
+                alert("An unexpected error occurred. Please try again later.");
             } finally {
-                if (saveInfo) {
-                    localStorage.setItem("savedCheckoutInfo", JSON.stringify({
-                        email, fullName, phone, specificAddress,
-                        province, district, ward,
-                        districtsData, wardsData
-                    }));
-                } else {
-                    localStorage.removeItem("savedCheckoutInfo");
-                }
                 setIsProcessing(false);
-                setShowSuccess(true);
             }
         }
     };
@@ -278,11 +309,13 @@ export default function CheckoutPage() {
                         <h2 className={`text-[28px] font-bold text-[#1A1A1A] mb-8 leading-tight ${inter.className}`}>Thank You for Your Order!</h2>
                         
                         <div className="w-full flex flex-col gap-4">
-                            <Link href="/user/orders/MSD-89241" className="w-full">
-                                <Button className="w-full bg-[#2B60E6] hover:bg-blue-700 text-white shadow-lg shadow-blue-200/50 py-7 rounded-2xl font-bold transition-all text-base">
-                                    View Order Details
-                                </Button>
-                            </Link>
+                            {newOrderId && (
+                                <Link href={`/user/orders/${newOrderId}`} className="w-full">
+                                    <Button className="w-full bg-[#2B60E6] hover:bg-blue-700 text-white shadow-lg shadow-blue-200/50 py-7 rounded-2xl font-bold transition-all text-base">
+                                        View Order Details
+                                    </Button>
+                                </Link>
+                            )}
                             
                             <Link href="/user/homepage" className="w-full">
                                 <Button variant="outline" className="w-full bg-transparent border-2 border-gray-200/80 text-gray-700 hover:bg-gray-50 py-7 rounded-2xl font-bold transition-all text-base">
