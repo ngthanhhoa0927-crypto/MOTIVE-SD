@@ -108,6 +108,8 @@ export default function ProductsPage() {
                 image_url: v.image_url,
                 is_active: v.is_active ?? true
             })),
+            package_dimensions: product.package_dimensions,
+            lead_time: product.lead_time,
             ...overrides
         };
     };

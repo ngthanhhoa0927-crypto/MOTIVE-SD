@@ -34,6 +34,32 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
     const [name, setName] = useState(initialData?.name || '');
     const [description, setDescription] = useState(initialData?.description || '');
     const [categoryId, setCategoryId] = useState(initialData?.category_id?.toString() || '');
+
+    useEffect(() => {
+        if (initialData) {
+            setName(initialData.name || '');
+            setDescription(initialData.description || '');
+            setCategoryId(initialData.category_id?.toString() || '');
+            setStatus(initialData.status || 'Active');
+            setMaterial(initialData.material || '');
+            setSizeInfo(initialData.size_info || '');
+            setWeight(initialData.weight ? initialData.weight.toString().replace(/g/gi, '').trim() : '');
+            setCare(initialData.care || '');
+            setPackageWeight(initialData.package_weight ? initialData.package_weight.toString().replace(/g/gi, '').trim() : '');
+            setLeadTime(initialData.lead_time ? initialData.lead_time.toString() : '');
+            
+            if (initialData.shipping_class) {
+                setShippingClass(initialData.shipping_class.split(',').map((s: string) => s.trim()).filter(Boolean));
+            }
+            
+            if (initialData.package_dimensions) {
+                const dims = initialData.package_dimensions.split('x').map((s: string) => s.replace(/[^\d.]/g, '').trim());
+                setDimL(dims[0] || '');
+                setDimW(dims[1] || '');
+                setDimH(dims[2] || '');
+            }
+        }
+    }, [initialData]);
     const [status, setStatus] = useState(initialData?.status || 'Active');
 
     // Specification States
@@ -62,6 +88,16 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
     const [isCategoryOpen, setIsCategoryOpen] = useState(false);
 
     useEffect(() => {
+        // Fetch categories
+        fetch("http://localhost:8000/categories")
+            .then(res => res.json())
+            .then(data => {
+                if (data.categories && data.categories.length > 0) {
+                    setCategories(data.categories);
+                }
+            })
+            .catch(err => console.error("Failed to fetch categories:", err));
+
         const handleClickOutside = (e: MouseEvent) => {
             if (!(e.target as Element).closest('.custom-select')) {
                 setIsStatusOpen(false);
@@ -86,13 +122,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
     const [variantsData, setVariantsData] = useState<any[]>([]);
 
     // Categories and Collections
-    const [categories, setCategories] = useState<any[]>([
-        { id: 1, name: 'Baseball Hat' },
-        { id: 2, name: 'Bucket Hat' },
-        { id: 3, name: 'Sun Protection Hat' },
-        { id: 4, name: 'Flat Cap' },
-        { id: 5, name: 'Others' }
-    ]);
+    const [categories, setCategories] = useState<any[]>([]);
 
 
 
