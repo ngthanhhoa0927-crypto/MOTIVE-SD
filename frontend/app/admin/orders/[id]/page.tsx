@@ -24,22 +24,86 @@ export default function OrderDetailsPage() {
     const [isUpdating, setIsUpdating] = useState(false);
 
     useEffect(() => {
-        // Here we would fetch actual order details using orderId
-        // fetchOrderDetails(orderId)
+        const fetchOrderDetails = async () => {
+            setIsLoading(true);
+            const token = localStorage.getItem("token");
+            try {
+                const res = await fetch(`http://localhost:8000/orders/admin/${orderId}`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    // Mapping backend data to frontend expected structure
+                    const o = data.order;
+                    setOrder({
+                        id: o.order_code,
+                        dbId: o.id,
+                        date: new Date(o.createdAt).toLocaleDateString(),
+                        status: o.status.charAt(0).toUpperCase() + o.status.slice(1),
+                        total: Number(o.total_amount),
+                        subtotal: Number(o.subtotal),
+                        customer: {
+                            fullName: o.customer.fullName,
+                            phone: o.customer.phone,
+                            email: o.customer.email
+                        },
+                        payment: {
+                            method: o.payment_method === 'card' ? 'Credit/Debit Card' : 'Cash on Delivery',
+                            methodDesc: o.payment_status,
+                            billingAddress: o.shipping_address
+                        },
+                        shipping: {
+                            method: o.shipping_method.charAt(0).toUpperCase() + o.shipping_method.slice(1),
+                            methodDesc: 'Standard Shipping',
+                            fee: Number(o.shipping_fee),
+                            deliveryTime: '3-5 Business Days',
+                            estimatedDelivery: o.estimated_delivery_date ? new Date(o.estimated_delivery_date).toLocaleDateString() : 'TBD'
+                        },
+                        delivery: {
+                            address: `${o.shipping_address}, ${o.shipping_city}`,
+                            note: o.note || ""
+                        },
+                        items: data.items.map((item: any) => ({
+                            name: item.product_name,
+                            image: item.product_image || "/images/placeholder-hat.png",
+                            color: item.color,
+                            size: item.size,
+                            qty: item.quantity,
+                            price: Number(item.price_at_purchase)
+                        }))
+                    });
+                }
+            } catch (err) {
+                console.error("Fetch error:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        if (orderId) fetchOrderDetails();
     }, [orderId]);
 
     const handleUpdateStatus = async (newStatus: string) => {
         setIsUpdating(true);
-        // Here we would call the backend API to update status
-        // e.g. await fetch(`/api/admin/orders/${order.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: newStatus }) })
-        
-        // Mock success
-        setTimeout(() => {
-            setOrder({ ...order, status: newStatus });
+        const token = localStorage.getItem("token");
+        try {
+            const res = await fetch(`http://localhost:8000/orders/admin/${order.dbId}/status`, {
+                method: "PATCH",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ status: newStatus.toLowerCase() })
+            });
+
+            if (res.ok) {
+                setOrder({ ...order, status: newStatus });
+            }
+        } catch (err) {
+            console.error("Status update error:", err);
+        } finally {
             setIsUpdating(false);
-            // Optionally show a toast here
-            // alert(`Order status updated to ${newStatus}`);
-        }, 600);
+        }
     };
 
     const getStatusStyles = (status: string) => {

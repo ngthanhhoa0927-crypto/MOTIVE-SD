@@ -251,7 +251,7 @@ export default function ProfilePage() {
             setIsDeleting(true);
             setTimeout(() => {
                 localStorage.removeItem("token");
-                router.push("/user/login");
+                window.location.href = "/user/homepage";
             }, 500);
             return;
         }
@@ -267,7 +267,7 @@ export default function ProfilePage() {
 
             if (res.ok) {
                 localStorage.removeItem("token");
-                router.push("/user/login");
+                window.location.href = "/user/homepage";
             } else {
                 const data = await res.json();
                 console.error("Failed to delete account:", data.message);

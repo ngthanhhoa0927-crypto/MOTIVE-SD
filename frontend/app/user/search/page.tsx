@@ -12,15 +12,27 @@ import { Button } from "@/components/ui/button";
 function SearchContent() {
     const searchParams = useSearchParams();
     const query = searchParams.get("q") || "";
+    const categoryId = searchParams.get("category");
+
+    const categoryMap: Record<string, string> = {
+        "1": "Baseball Hat",
+        "2": "Bucket Hat",
+        "3": "Sun Protection Hat",
+        "4": "Flat Cap",
+        "5": "Others"
+    };
+    const categoryName = categoryId ? categoryMap[categoryId] : null;
 
     // Mock data for filters
-    const filterSizes = ["Free size", "S (20-21\")", "M (21-22\")", "L (22-23\")", "XL (23-24\")"];
+    const filterSizes = ["XS", "S", "M", "L", "XL", "Free Size"];
     const filterColors = [
-        { name: "Black", color: "bg-black" },
-        { name: "White", color: "bg-white border border-gray-300" },
-        { name: "Blue", color: "bg-blue-600" },
-        { name: "Red", color: "bg-red-600" },
-        { name: "Grey", color: "bg-gray-400" },
+        { name: "Black", color: "bg-[#000000]" },
+        { name: "White", color: "bg-[#FFFFFF] border border-gray-300" },
+        { name: "Red", color: "bg-[#EF4444]" },
+        { name: "Yellow", color: "bg-[#EAB308]" },
+        { name: "Green", color: "bg-[#22C55E]" },
+        { name: "Blue", color: "bg-[#3B82F6]" },
+        { name: "Others", color: "bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500" },
     ];
     const filterPrices = ["Under $5", "$5 - $10", "$10 - $15", "Over $15"];
 
@@ -88,11 +100,15 @@ function SearchContent() {
 
 
 
+            if (categoryId) {
+                fetchedProducts = fetchedProducts.filter((p: any) => p.category_id?.toString() === categoryId);
+            }
+
             setProducts(fetchedProducts);
             setFilteredProducts(fetchedProducts);
         };
         fetchProducts();
-    }, []);
+    }, [categoryId]);
 
     const toggleSelection = (stateSetter: any, value: string) => {
         stateSetter((prev: string[]) =>
@@ -120,14 +136,14 @@ function SearchContent() {
         // Filter Size (must exist in variants if variants array used)
         if (selectedSizes.length > 0) {
             filtered = filtered.filter(p =>
-                p.variants && p.variants.some((v: any) => selectedSizes.includes(v.size))
+                p.variants && p.variants.some((v: any) => selectedSizes.some(s => s.toLowerCase() === (v.size || "").toLowerCase()))
             );
         }
 
         // Filter Color
         if (selectedColors.length > 0) {
             filtered = filtered.filter(p =>
-                p.variants && p.variants.some((v: any) => selectedColors.includes(v.color))
+                p.variants && p.variants.some((v: any) => selectedColors.some(c => c.toLowerCase() === (v.color || "").toLowerCase()))
             );
         }
 
@@ -172,7 +188,9 @@ function SearchContent() {
                 <div className="flex items-center gap-2 text-xs text-gray-500 mb-8">
                     <Link href="/user/homepage" className="hover:text-blue-600 transition">Homepage</Link>
                     <ChevronRight className="w-3 h-3" />
-                    <span className="text-gray-900 font-medium">Baseball Hat</span>
+                    <span className="text-gray-900 font-medium">
+                        {categoryName ? categoryName : query ? `Search: ${query}` : "All Products"}
+                    </span>
                 </div>
 
                 <div className="flex gap-8 relative">
@@ -363,7 +381,7 @@ function SearchContent() {
                         {/* Product Recommendations Grid (All Products) */}
                         <section>
                             <h3 className="font-bold text-lg text-blue-700 mb-6 uppercase">
-                                All Products <span className="text-sm font-medium text-gray-500 normal-case">({filteredProducts.length} items)</span>
+                                {categoryName ? `${categoryName} Products` : "All Products"} <span className="text-sm font-medium text-gray-500 normal-case">({filteredProducts.length} items)</span>
                             </h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                                 {filteredProducts.map((item: any, i: number) => (

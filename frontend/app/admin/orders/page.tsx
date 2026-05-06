@@ -27,7 +27,25 @@ export default function OrdersPage() {
 
     // In a real app, you would fetch orders here
     useEffect(() => {
-        // fetchOrders()
+        const fetchOrders = async () => {
+            setIsLoading(true);
+            const token = localStorage.getItem("token");
+            try {
+                const res = await fetch("http://localhost:8000/orders/admin/all", {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setOrders(data.data || []);
+                }
+            } catch (err) {
+                console.error("Failed to fetch orders:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchOrders();
     }, []);
 
     useEffect(() => {
@@ -65,48 +83,83 @@ export default function OrdersPage() {
 
     const handleUpdateOrder = async () => {
         if (!selectedOrder) return;
-        // Mock update
-        const updatedOrders = orders.map(o => 
-            o.id === selectedOrder.id ? { ...o, status: editData.status } : o
-        );
-        setOrders(updatedOrders);
-        alert("Order updated successfully");
-        closeModals();
+        const token = localStorage.getItem("token");
+        try {
+            const res = await fetch(`http://localhost:8000/orders/admin/${selectedOrder.id}/status`, {
+                method: "PATCH",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ status: editData.status })
+            });
+
+            if (res.ok) {
+                const updatedOrders = orders.map(o => 
+                    o.id === selectedOrder.id ? { ...o, status: editData.status } : o
+                );
+                setOrders(updatedOrders);
+                alert("Order status updated successfully");
+                closeModals();
+            } else {
+                alert("Failed to update order status");
+            }
+        } catch (err) {
+            console.error("Update error:", err);
+        }
     };
 
     const handleDeleteOrder = async () => {
         if (!selectedOrder) return;
-        // Mock delete
+        // Mock delete as per original code since no delete endpoint was specified
         const updatedOrders = orders.filter(o => o.id !== selectedOrder.id);
         setOrders(updatedOrders);
         alert("Order deleted successfully");
         closeModals();
     };
 
-    const handleUpdateOrderStatus = (order: any, newStatus: string) => {
-        const updatedOrders = orders.map(o => 
-            o.id === order.id ? { ...o, status: newStatus } : o
-        );
-        setOrders(updatedOrders);
-        // alert(`Order status updated to ${newStatus}`);
-        setOpenMenuId(null);
+    const handleUpdateOrderStatus = async (order: any, newStatus: string) => {
+        const token = localStorage.getItem("token");
+        try {
+            const res = await fetch(`http://localhost:8000/orders/admin/${order.id}/status`, {
+                method: "PATCH",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ status: newStatus })
+            });
+
+            if (res.ok) {
+                const updatedOrders = orders.map(o => 
+                    o.id === order.id ? { ...o, status: newStatus } : o
+                );
+                setOrders(updatedOrders);
+                setOpenMenuId(null);
+            }
+        } catch (err) {
+            console.error("Quick update error:", err);
+        }
     };
 
     const filteredOrders = orders.filter(order => {
-        const matchesSearch = order.customerName.toLowerCase().includes(search.toLowerCase()) || 
-                              order.id.toLowerCase().includes(search.toLowerCase());
-        const matchesStatus = statusFilter === 'All Status' || order.status === statusFilter;
+        const orderCode = order.order_code || "";
+        const customerName = order.customerName || "";
+        const matchesSearch = customerName.toLowerCase().includes(search.toLowerCase()) || 
+                             orderCode.toLowerCase().includes(search.toLowerCase());
+        const matchesStatus = statusFilter === 'All Status' || order.status.toLowerCase() === statusFilter.toLowerCase();
         return matchesSearch && matchesStatus;
     });
 
     const getStatusStyles = (status: string) => {
         const s = (status || "").toLowerCase();
         switch(s) {
-            case 'pending': return { bg: 'bg-yellow-50', text: 'text-yellow-700', dot: 'bg-yellow-500' };
+            case 'processing': return { bg: 'bg-yellow-50', text: 'text-yellow-700', dot: 'bg-yellow-500' };
             case 'confirmed': return { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-500' };
             case 'shipping': return { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' };
+            case 'delivered':
             case 'completed': return { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' };
-            case 'cancelled': return { bg: 'bg-gray-100', text: 'text-gray-700', dot: 'bg-gray-500' };
+            case 'cancelled': return { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' };
             default: return { bg: 'bg-gray-50', text: 'text-gray-500', dot: 'bg-gray-400' };
         }
     };
@@ -174,7 +227,7 @@ export default function OrdersPage() {
                                 return (
                                 <tr key={order.id} className="hover:bg-gray-50/50 transition-colors group">
                                     <td className="py-4 px-6 font-bold text-gray-900 whitespace-nowrap">
-                                        {order.id}
+                                        {order.order_code}
                                     </td>
                                     <td className="py-4 px-6">
                                         <div>

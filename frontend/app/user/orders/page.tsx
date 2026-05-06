@@ -46,7 +46,8 @@ export default function MyOrdersPage() {
                 if (ordersRes.ok) {
                     const data = await ordersRes.json();
                     const mappedOrders = (data.data || []).map((o: any) => ({
-                        id: o.order_code,
+                        id: o.id,
+                        order_code: o.order_code,
                         date: new Date(o.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                         total: `$${Number(o.total_amount).toFixed(2)}`,
                         status: o.status.charAt(0).toUpperCase() + o.status.slice(1),
@@ -130,7 +131,7 @@ export default function MyOrdersPage() {
                                     <div key={i} className="border border-gray-200 rounded-xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-blue-300 transition-colors shadow-sm bg-white">
                                         <div>
                                             <div className="flex items-center gap-3 mb-2">
-                                                <h3 className="font-bold text-gray-900">{order.id}</h3>
+                                                <h3 className="font-bold text-gray-900">{order.order_code}</h3>
                                                 <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
                                                     order.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' :
                                                     order.status === 'Confirmed' ? 'bg-purple-100 text-purple-700' :
@@ -145,7 +146,7 @@ export default function MyOrdersPage() {
                                         </div>
                                         <div className="sm:text-right flex sm:flex-col items-center sm:items-end justify-between sm:justify-center">
                                             <p className="font-bold text-gray-900 text-lg">{order.total}</p>
-                                            <Link href={`/user/orders/${order.id.replace('#', '')}`} className="text-sm text-blue-600 font-semibold mt-1 flex items-center gap-1 hover:text-blue-800 transition">
+                                            <Link href={`/user/orders/${order.id}`} className="text-sm text-blue-600 font-semibold mt-1 flex items-center gap-1 hover:text-blue-800 transition">
                                                 View Details
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
                                             </Link>

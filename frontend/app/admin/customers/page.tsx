@@ -25,57 +25,6 @@ export default function CustomersPage() {
     const fetchUsers = async () => {
         setIsLoading(true);
         
-        // TEMPORARY MOCK DATA FOR TESTING
-        const mockData = [
-            {
-                id: 1,
-                full_name: "Trần Văn Bình",
-                email: "binh.tran@example.com",
-                role: "user",
-                isActive: true,
-                status: "Active"
-            },
-            {
-                id: 2,
-                full_name: "Lê Thị Chúc",
-                email: "chuc.le@example.com",
-                role: "user",
-                isActive: false,
-                status: "Inactive"
-            },
-            {
-                id: 3,
-                full_name: "Phạm Văn Dũng",
-                email: "dung.pham@example.com",
-                role: "user",
-                isActive: false,
-                status: "Suspended"
-            },
-            {
-                id: 4,
-                full_name: "Hoàng Thị Em",
-                email: "em.hoang@example.com",
-                role: "user",
-                isActive: false,
-                status: "Banned"
-            },
-            {
-                id: 5,
-                full_name: "System Admin",
-                email: "admin@motive.com",
-                role: "admin",
-                isActive: true,
-                status: "Active"
-            }
-        ];
-
-        // Simulate network delay
-        setTimeout(() => {
-            setUsers(mockData);
-            setIsLoading(false);
-        }, 600);
-
-        /* ORIGINAL API FETCH LOGIC (Commented out while using mock data)
         const token = localStorage.getItem('admin_token');
         try {
             const res = await fetch("http://localhost:8000/auth/users", {
@@ -83,14 +32,13 @@ export default function CustomersPage() {
             });
             if (res.ok) {
                 const data = await res.json();
-                setUsers(data.users);
+                setUsers(data.users || []);
             }
         } catch (error) {
             console.error("Failed to fetch users:", error);
         } finally {
             setIsLoading(false);
         }
-        */
     };
 
     useEffect(() => {
@@ -195,8 +143,10 @@ export default function CustomersPage() {
     };
 
     const filteredUsers = users.filter(user => {
-        const matchesSearch = user.full_name.toLowerCase().includes(search.toLowerCase()) || 
-                             user.email.toLowerCase().includes(search.toLowerCase());
+        const fullName = user.full_name || '';
+        const email = user.email || '';
+        const matchesSearch = fullName.toLowerCase().includes(search.toLowerCase()) || 
+                             email.toLowerCase().includes(search.toLowerCase());
         const matchesStatus = statusFilter === 'All Status' || 
                              (statusFilter === 'Active' && user.isActive) ||
                              (statusFilter === 'Inactive' && !user.isActive) ||
@@ -206,6 +156,7 @@ export default function CustomersPage() {
     });
 
     const getInitials = (name: string) => {
+        if (!name) return 'U';
         return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
     };
 

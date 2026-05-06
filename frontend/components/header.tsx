@@ -19,17 +19,7 @@ export default function Header() {
     const [cartCount, setCartCount] = useState(0);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const [selectedCategory, setSelectedCategory] = useState({ id: "all", name: "All categories" });
-    const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
-    const categoryDropdownRef = useRef<HTMLDivElement>(null);
-    const categories = [
-        { id: "all", name: "All categories" },
-        { id: "1", name: "Baseball Hat" },
-        { id: "2", name: "Bucket Hat" },
-        { id: "3", name: "Sun Protection Hat" },
-        { id: "4", name: "Flat Cap" },
-        { id: "5", name: "Others" }
-    ];
+
     const userMenuRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
     const pathname = usePathname();
@@ -72,9 +62,7 @@ export default function Header() {
             if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
                 setUserMenuOpen(false);
             }
-            if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
-                setIsCategoryDropdownOpen(false);
-            }
+
         }
         document.addEventListener("mousedown", handleClickOutside);
 
@@ -124,7 +112,7 @@ export default function Header() {
         setUserMenuOpen(false);
         setIsDropdownOpen(false);
         setIsCartOpen(false);
-        setIsCategoryDropdownOpen(false);
+
     }, [pathname]);
 
     const handleSearchSubmit = (e: React.FormEvent) => {
@@ -155,43 +143,10 @@ export default function Header() {
                 {/* Search Bar */}
                 <div className="flex-1 max-w-2xl mx-8 relative" ref={dropdownRef}>
                     <form onSubmit={handleSearchSubmit} className="flex border-2 border-blue-600 rounded-md h-10 bg-white shadow-sm hover:shadow-md transition-shadow">
-                        <div className="relative border-r border-gray-200 flex items-center" ref={categoryDropdownRef}>
-                            <button
-                                type="button"
-                                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                                className="flex items-center justify-between w-[150px] px-4 py-2 bg-gray-50 hover:bg-gray-100 transition-colors h-full text-[13px] font-bold text-gray-700 focus:outline-none rounded-l-[4px]"
-                            >
-                                <span className="truncate">{selectedCategory.name}</span>
-                                <svg className={`w-3.5 h-3.5 ml-2 text-gray-500 transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
-
-                            {isCategoryDropdownOpen && (
-                                <div className="absolute top-[calc(100%+4px)] left-0 w-[200px] bg-white border border-gray-100 shadow-2xl rounded-xl z-[60] overflow-hidden py-2 animate-in fade-in zoom-in-95 duration-100">
-                                    {categories.map((cat) => (
-                                        <button
-                                            key={cat.id}
-                                            type="button"
-                                            onClick={() => {
-                                                setSelectedCategory(cat);
-                                                setIsCategoryDropdownOpen(false);
-                                            }}
-                                            className={`w-full text-left px-4 py-2.5 text-[13px] transition-colors flex items-center justify-between ${selectedCategory.id === cat.id ? 'bg-blue-50/80 text-blue-700 font-bold' : 'text-gray-700 font-medium hover:bg-gray-50 hover:text-blue-600'}`}
-                                        >
-                                            {cat.name}
-                                            {selectedCategory.id === cat.id && (
-                                                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-                                            )}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
                         <input
                             type="text"
                             placeholder="Search fashion hats..."
-                            className="flex-1 px-4 outline-none text-[13px] font-medium text-gray-700 bg-transparent"
+                            className="flex-1 px-4 outline-none text-[13px] font-medium text-gray-700 bg-transparent rounded-l-[4px]"
                             value={searchQuery}
                             onChange={(e) => {
                                 setSearchQuery(e.target.value);
@@ -295,22 +250,22 @@ export default function Header() {
             {/* --- NAVIGATION --- */}
             <nav className="bg-white px-8 border-b shadow-sm">
                 <ul className="flex justify-center gap-12 text-sm font-medium text-gray-600 py-3">
-                    <li className="text-blue-600 border-b-2 border-blue-600 pb-3 -mb-3 cursor-pointer">
+                    <li className={`pb-3 -mb-3 border-b-2 transition ${pathname === '/user/homepage' ? 'text-blue-600 border-blue-600' : 'border-transparent hover:text-blue-600 hover:border-blue-600'}`}>
                         <Link href="/user/homepage">Homepage</Link>
                     </li>
-                    <li className="cursor-pointer hover:text-blue-600 transition pb-3 -mb-3 border-b-2 border-transparent hover:border-blue-600">
-                        <Link href="/category/baseball-hat">Baseball Hat</Link>
+                    <li className={`pb-3 -mb-3 border-b-2 transition ${pathname === '/user/search' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('category') === '1' ? 'text-blue-600 border-blue-600' : 'border-transparent hover:text-blue-600 hover:border-blue-600'}`}>
+                        <Link href="/user/search?category=1">Baseball Hat</Link>
                     </li>
-                    <li className="cursor-pointer hover:text-blue-600 transition pb-3 -mb-3 border-b-2 border-transparent hover:border-blue-600">
-                        <Link href="/category/bucket-hat">Bucket Hat</Link>
+                    <li className={`pb-3 -mb-3 border-b-2 transition ${pathname === '/user/search' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('category') === '2' ? 'text-blue-600 border-blue-600' : 'border-transparent hover:text-blue-600 hover:border-blue-600'}`}>
+                        <Link href="/user/search?category=2">Bucket Hat</Link>
                     </li>
-                    <li className="cursor-pointer hover:text-blue-600 transition pb-3 -mb-3 border-b-2 border-transparent hover:border-blue-600">
-                        <Link href="/category/sun-protection">Sun Protection Hat</Link>
+                    <li className={`pb-3 -mb-3 border-b-2 transition ${pathname === '/user/search' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('category') === '3' ? 'text-blue-600 border-blue-600' : 'border-transparent hover:text-blue-600 hover:border-blue-600'}`}>
+                        <Link href="/user/search?category=3">Sun Protection Hat</Link>
                     </li>
-                    <li className="cursor-pointer hover:text-blue-600 transition pb-3 -mb-3 border-b-2 border-transparent hover:border-blue-600">
-                        <Link href="/category/flat-cap">Flat Cap</Link>
+                    <li className={`pb-3 -mb-3 border-b-2 transition ${pathname === '/user/search' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('category') === '4' ? 'text-blue-600 border-blue-600' : 'border-transparent hover:text-blue-600 hover:border-blue-600'}`}>
+                        <Link href="/user/search?category=4">Flat Cap</Link>
                     </li>
-                    <li className="cursor-pointer hover:text-blue-600 transition pb-3 -mb-3 border-b-2 border-transparent hover:border-blue-600">
+                    <li className={`pb-3 -mb-3 border-b-2 transition ${pathname === '/user/search' && typeof window !== 'undefined' && (!new URLSearchParams(window.location.search).get('category') || new URLSearchParams(window.location.search).get('category') === '5') ? 'text-blue-600 border-blue-600' : 'border-transparent hover:text-blue-600 hover:border-blue-600'}`}>
                         <Link href="/user/search">Others</Link>
                     </li>
                 </ul>

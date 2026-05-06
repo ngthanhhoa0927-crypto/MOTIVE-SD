@@ -4,7 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 import { db } from "../db/index.js";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { carts, cartItems, orders, orderItems, productVariants, users, products, productImages } from "../db/schema.js";
-import { authMiddleware } from "./auth.route.js";
+import { authMiddleware, adminMiddleware } from "./auth.route.js";
 import { createNotification } from "../utils/notification.js";
 import { getPresignedDownloadUrl } from "../utils/s3.js";
 
@@ -351,6 +351,137 @@ ordersRouter.get(
         } catch (error) {
             console.error("Failed to fetch order details:", error);
             return c.json({ message: "Failed to fetch order details" }, 500);
+        }
+    }
+);
+
+// GET /api/orders/admin - Admin: Get all orders with pagination
+ordersRouter.get(
+    "/admin/all",
+    adminMiddleware,
+    zValidator("query", paginationSchema),
+    async (c) => {
+        try {
+            const { page, limit } = c.req.valid("query");
+            const offset = (page - 1) * limit;
+
+            // Get total count
+            const [countResult] = await db
+                .select({ count: sql<number>`cast(count(*) as integer)` })
+                .from(orders);
+
+            const totalCount = countResult?.count || 0;
+            const totalPages = Math.ceil(totalCount / limit);
+
+            // Get paginated orders with user info
+            const allOrders = await db
+                .select({
+                    id: orders.id,
+                    order_code: orders.order_code,
+                    created_at: orders.createdAt,
+                    total_amount: orders.total_amount,
+                    status: orders.status,
+                    customerName: users.full_name,
+                    email: users.email,
+                })
+                .from(orders)
+                .innerJoin(users, eq(orders.userId, users.id))
+                .orderBy(desc(orders.createdAt))
+                .limit(limit)
+                .offset(offset);
+
+            return c.json({
+                data: allOrders.map((order) => ({
+                    id: order.id,
+                    order_code: order.order_code,
+                    created_at: order.created_at,
+                    total_amount: Number(order.total_amount),
+                    status: order.status,
+                    customerName: order.customerName,
+                    email: order.email,
+                })),
+                pagination: {
+                    current_page: page,
+                    total_pages: totalPages,
+                    total_count: totalCount,
+                    limit: limit,
+                },
+            }, 200);
+        } catch (error) {
+            console.error("Failed to fetch admin orders:", error);
+            return c.json({ message: "Failed to fetch orders" }, 500);
+        }
+    }
+);
+
+// GET /api/orders/admin/:orderId - Admin: Get any order details
+ordersRouter.get(
+    "/admin/:orderId",
+    adminMiddleware,
+    async (c) => {
+        try {
+            const orderId = Number(c.req.param("orderId"));
+            if (isNaN(orderId)) return c.json({ message: "Invalid order ID" }, 400);
+
+            const order = await db
+                .select({
+                    order: orders,
+                    user: users
+                })
+                .from(orders)
+                .innerJoin(users, eq(orders.userId, users.id))
+                .where(eq(orders.id, orderId));
+
+            if (order.length === 0) return c.json({ message: "Order not found" }, 404);
+
+            const { order: orderData, user: userData } = order[0];
+            const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+
+            return c.json({
+                order: {
+                    ...orderData,
+                    subtotal: Number(orderData.subtotal),
+                    shipping_fee: Number(orderData.shipping_fee),
+                    tax: Number(orderData.tax),
+                    total_amount: Number(orderData.total_amount),
+                    customer: {
+                        fullName: userData.full_name,
+                        email: userData.email,
+                        phone: userData.phone_number,
+                    }
+                },
+                items: items.map(item => ({
+                    ...item,
+                    price_at_purchase: Number(item.price_at_purchase)
+                }))
+            }, 200);
+        } catch (error) {
+            return c.json({ message: "Failed to fetch order details" }, 500);
+        }
+    }
+);
+
+// PATCH /api/orders/admin/:orderId/status - Admin: Update order status
+ordersRouter.patch(
+    "/admin/:orderId/status",
+    adminMiddleware,
+    zValidator("json", z.object({ status: z.string() })),
+    async (c) => {
+        try {
+            const orderId = Number(c.req.param("orderId"));
+            const { status } = c.req.valid("json");
+
+            const [updatedOrder] = await db
+                .update(orders)
+                .set({ status: status as any, updatedAt: new Date() })
+                .where(eq(orders.id, orderId))
+                .returning();
+
+            if (!updatedOrder) return c.json({ message: "Order not found" }, 404);
+
+            return c.json({ message: "Order status updated", order: updatedOrder }, 200);
+        } catch (error) {
+            return c.json({ message: "Failed to update order status" }, 500);
         }
     }
 );
