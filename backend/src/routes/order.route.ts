@@ -473,7 +473,7 @@ ordersRouter.patch(
 
             const [updatedOrder] = await db
                 .update(orders)
-                .set({ status: status as any, updatedAt: new Date() })
+                .set({ status: status.toLowerCase() as any, updatedAt: new Date() })
                 .where(eq(orders.id, orderId))
                 .returning();
 

@@ -201,6 +201,34 @@ export default function ProductsPage() {
         }
     };
 
+    const handleActive = async (product: any) => {
+        const token = localStorage.getItem('admin_token');
+        setIsLoading(true);
+        try {
+            const payload = buildProductPayload(product, { status: 'Active' });
+
+            const response = await fetch(`http://localhost:8000/products/${product.id}`, {
+                method: 'PUT',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            if (response.ok) {
+                setProducts(products.map(p => p.id === product.id ? { ...p, status: 'Active' } : p));
+                setOpenDropdownId(null);
+            } else {
+                alert("Failed to activate product");
+            }
+        } catch (e) {
+            console.error("Failed to activate product", e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const confirmBulkAction = (type: 'delete' | 'archive') => {
         if (selectedIds.size === 0) return;
         setBulkActionType(type);
@@ -496,13 +524,23 @@ export default function ProductsPage() {
                                                                 <svg className="w-4 h-4 mr-2.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 0c0 2-4 6-9 6s-9-4-9-6 4-6 9-6 9 4 9 6z" /></svg>
                                                                 View detail
                                                             </Link>
-                                                            <button 
-                                                                onClick={(e) => { e.stopPropagation(); confirmArchive(p); }} 
-                                                                className="flex w-full px-3 py-2.5 text-[13.5px] font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-left items-center group transition-all"
-                                                            >
-                                                                <svg className="w-4 h-4 mr-2.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-                                                                Archive
-                                                            </button>
+                                                            {p.status === 'Archived' ? (
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); handleActive(p); }} 
+                                                                    className="flex w-full px-3 py-2.5 text-[13.5px] font-bold text-emerald-600 hover:bg-emerald-50 rounded-lg text-left items-center group transition-all"
+                                                                >
+                                                                    <svg className="w-4 h-4 mr-2.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                                    Restore Active
+                                                                </button>
+                                                            ) : (
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); confirmArchive(p); }} 
+                                                                    className="flex w-full px-3 py-2.5 text-[13.5px] font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-left items-center group transition-all"
+                                                                >
+                                                                    <svg className="w-4 h-4 mr-2.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                                                                    Archive
+                                                                </button>
+                                                            )}
                                                             <div className="my-1 border-t border-gray-100"></div>
                                                             <button 
                                                                 onClick={(e) => { e.stopPropagation(); confirmDelete(p); }} 
