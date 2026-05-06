@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import * as bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { users, otps, otpTypeEnum, auditLogs } from "../db/schema.js";
 import { z } from "zod";
@@ -492,12 +492,13 @@ authRouter.put(
 // Lấy danh sách tất cả người dùng
 authRouter.get("/users", authMiddleware, adminMiddleware, async (c) => {
     try {
-        const allUsers = await db.select().from(users);
+        const allUsers = await db.select().from(users).where(isNull(users.deletedAt));
 
         // Loại bỏ mật khẩu trước khi gửi về client
         const safeUsers = allUsers.map(u => {
             const { password_hash, ...safeUser } = u;
-            return safeUser;
+            const status = u.isActive ? 'Active' : (u.disabledReason || 'Inactive');
+            return { ...safeUser, status };
         });
 
         return c.json({ users: safeUsers }, 200);
@@ -518,7 +519,8 @@ authRouter.get("/users/:id", authMiddleware, adminMiddleware, async (c) => {
         }
 
         const { password_hash, ...safeUser } = userRecord[0];
-        return c.json({ user: safeUser }, 200);
+        const status = safeUser.isActive ? 'Active' : (safeUser.disabledReason || 'Inactive');
+        return c.json({ user: { ...safeUser, status } }, 200);
     } catch (error) {
         console.error("Error fetching user:", error);
         return c.json({ message: "Server error" }, 500);
@@ -530,7 +532,7 @@ const adminUpdateUserSchema = z.object({
     full_name: z.string().min(3).max(255).optional(),
     email: z.string().email().optional(),
     role: z.enum(["user", "admin"]).optional(),
-    isActive: z.boolean().optional(),
+    status: z.enum(["Active", "Inactive", "Suspended", "Banned"]).optional(),
     phone_number: z.string().optional(),
     address: z.string().optional(),
 });
@@ -547,10 +549,21 @@ authRouter.put(
     async (c) => {
         try {
             const id = parseInt(c.req.param("id"));
-            const updateData = c.req.valid('json');
+            const { status, ...updateData } = c.req.valid('json');
+
+            let dbUpdateData: any = { ...updateData, updatedAt: new Date() };
+            if (status) {
+                if (status === 'Active') {
+                    dbUpdateData.isActive = true;
+                    dbUpdateData.disabledReason = null;
+                } else {
+                    dbUpdateData.isActive = false;
+                    dbUpdateData.disabledReason = status;
+                }
+            }
 
             const [updatedUser] = await db.update(users)
-                .set({ ...updateData, updatedAt: new Date() })
+                .set(dbUpdateData)
                 .where(eq(users.id, id))
                 .returning();
 
@@ -559,7 +572,8 @@ authRouter.put(
             }
 
             const { password_hash, ...safeUser } = updatedUser;
-            return c.json({ message: "User updated successfully", user: safeUser }, 200);
+            const updatedStatus = safeUser.isActive ? 'Active' : (safeUser.disabledReason || 'Inactive');
+            return c.json({ message: "User updated successfully", user: { ...safeUser, status: updatedStatus } }, 200);
         } catch (error) {
             console.error("Error updating user by admin:", error);
             return c.json({ message: "Server error" }, 500);
@@ -615,8 +629,8 @@ authRouter.delete("/users/:id", authMiddleware, adminMiddleware, async (c) => {
             return c.json({ message: "You cannot delete your own account" }, 400);
         }
 
-        // Xóa
-        await db.delete(users).where(eq(users.id, id));
+        // Soft delete instead of hard delete to prevent FK constraint violations
+        await db.update(users).set({ deletedAt: new Date(), isActive: false, disabledReason: 'Deleted' }).where(eq(users.id, id));
 
         // Log successful deletion
         await logAudit(c, {

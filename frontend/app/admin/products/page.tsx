@@ -25,7 +25,7 @@ export default function ProductsPage() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isCategoryOpen]);
 
-    const [activeTab, setActiveTab] = useState('All');
+    const [activeTab, setActiveTab] = useState('Active');
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [currentPage, setCurrentPage] = useState(1);
     
@@ -283,10 +283,10 @@ export default function ProductsPage() {
                 matchesCategory = categoryNames[p.category_id] === selectedCategory;
             }
             
-            if (activeTab === 'Active') matchesTab = p.status === 'Active';
-            if (activeTab === 'Drafts') matchesTab = p.status === 'Draft';
+            if (activeTab === 'Active') matchesTab = p.status === 'Active' && stock > 0;
+            if (activeTab === 'Draft') matchesTab = p.status === 'Draft';
             if (activeTab === 'Archived') matchesTab = p.status === 'Archived';
-            if (activeTab === 'Out of Stock') matchesTab = stock === 0;
+            if (activeTab === 'Out of Stock') matchesTab = p.status === 'Active' && stock === 0;
             
             return matchesSearch && matchesTab && matchesCategory;
         });
@@ -335,12 +335,11 @@ export default function ProductsPage() {
             <div className="bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.05)] border border-gray-100/80 overflow-hidden">
                 {/* Tabs */}
                 <div className="px-6 flex items-center gap-8 border-b border-gray-100 overflow-x-auto hide-scrollbar">
-                    {['All', 'Active', 'Out of Stock', 'Drafts', 'Archived'].map(tab => {
-                        const count = tab === 'All' ? products.length : 
-                                      tab === 'Active' ? products.filter(p=>p.status==='Active').length :
-                                      tab === 'Drafts' ? products.filter(p=>p.status==='Draft').length :
+                    {['Active', 'Out of Stock', 'Draft', 'Archived'].map(tab => {
+                        const count = tab === 'Active' ? products.filter(p=>p.status==='Active' && (p.variants?.reduce((sum:number, v:any)=>sum+v.stock_quantity,0)||0) > 0).length :
+                                      tab === 'Draft' ? products.filter(p=>p.status==='Draft').length :
                                       tab === 'Archived' ? products.filter(p=>p.status==='Archived').length :
-                                      products.filter(p=>(p.variants?.reduce((sum:number, v:any)=>sum+v.stock_quantity,0)||0)===0).length;
+                                      products.filter(p=>p.status==='Active' && (p.variants?.reduce((sum:number, v:any)=>sum+v.stock_quantity,0)||0)===0).length;
 
                         return (
                             <button 

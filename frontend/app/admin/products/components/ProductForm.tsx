@@ -149,25 +149,40 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
             return;
         }
 
+        const getBaseProductCode = () => {
+            const n = name.trim();
+            if (n.length >= 3) return n.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'X');
+            return 'PRD';
+        };
+        const productCode = getBaseProductCode() + (initialData?.id ? String(initialData.id).padStart(2, '0') : Math.floor(Math.random() * 100).toString().padStart(2, '0'));
+
+        const generateSku = (s: string, c: string) => {
+            let sku = productCode;
+            if (s) sku += `-${s.trim().toUpperCase()}`;
+            if (c) sku += `-${c.trim().toUpperCase()}`;
+            if (!s && !c) sku += `-DEF`;
+            return sku.replace(/\s+/g, '');
+        };
+
         const generated: any[] = [];
         if (sizeOptions.length > 0 && colorOptions.length > 0) {
             sizeOptions.forEach(size => {
                 colorOptions.forEach(color => {
                     const cHex = PREDEFINED_COLORS.find(c => c.name === color)?.hex || '';
-                    generated.push({ name: `${size} - ${color}`, size, color, price: '', stock: '', sku: '', color_hex: cHex, image_url: '', image_preview: '', is_active: true });
+                    generated.push({ name: `${size} - ${color}`, size, color, price: '', stock: '', sku: generateSku(size, color), color_hex: cHex, image_url: '', image_preview: '', is_active: true });
                 });
             });
         } else if (sizeOptions.length > 0) {
             sizeOptions.forEach(size => {
-                generated.push({ name: size, size, color: '', price: '', stock: '', sku: '', color_hex: '', image_url: '', image_preview: '', is_active: true });
+                generated.push({ name: size, size, color: '', price: '', stock: '', sku: generateSku(size, ''), color_hex: '', image_url: '', image_preview: '', is_active: true });
             });
         } else if (colorOptions.length > 0) {
             colorOptions.forEach(color => {
                 const cHex = PREDEFINED_COLORS.find(c => c.name === color)?.hex || '';
-                generated.push({ name: color, size: '', color, price: '', stock: '', sku: '', color_hex: cHex, image_url: '', image_preview: '', is_active: true });
+                generated.push({ name: color, size: '', color, price: '', stock: '', sku: generateSku('', color), color_hex: cHex, image_url: '', image_preview: '', is_active: true });
             });
         } else {
-            generated.push({ name: 'Default', size: '', color: '', price: '', stock: '', sku: '', color_hex: '', image_url: '', image_preview: '', is_active: true });
+            generated.push({ name: 'Default', size: '', color: '', price: '', stock: '', sku: generateSku('', ''), color_hex: '', image_url: '', image_preview: '', is_active: true });
         }
 
         setVariantsData(prev => {
@@ -176,7 +191,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                 return existing ? existing : g;
             });
         });
-    }, [sizeOptions, colorOptions]);
+    }, [sizeOptions, colorOptions, name, initialData]);
 
     const handleFileUpload = async (file: File) => {
         const formData = new FormData();
@@ -306,21 +321,26 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
         const finalStatus = overrideStatus || status;
         const newErrors: any = {};
 
-        if (!name.trim()) newErrors.name = "This field cannot be left blank";
-        else if (name.trim().length < 10) newErrors.name = "Product name must be at least 10 characters";
+        if (!categoryId) newErrors.category = "Please select a category";
 
-        if (images.length === 0) newErrors.images = "This field cannot be left blank";
-        else if (images.filter(img => img.is_primary).length === 0) newErrors.images = "A primary image is required";
+        if (!name.trim()) newErrors.name = "This field cannot be left blank";
+        else if (finalStatus === 'Active' && name.trim().length < 10) newErrors.name = "Product name must be at least 10 characters";
 
         const parsedWeight = parseFloat(weight);
-        if (!weight) {
-            newErrors.weight = "This field cannot be left blank";
-        } else if (isNaN(parsedWeight) || parsedWeight <= 0) {
-            newErrors.weight = "Product weight (g) must be greater than 0";
-        }
 
-        if (variantsData.length === 0) {
-            newErrors.variantsGlobal = "At least 1 variant (size + color) is required";
+        if (finalStatus === 'Active') {
+            if (images.length === 0) newErrors.images = "This field cannot be left blank";
+            else if (images.filter(img => img.is_primary).length === 0) newErrors.images = "A primary image is required";
+
+            if (!weight) {
+                newErrors.weight = "This field cannot be left blank";
+            } else if (isNaN(parsedWeight) || parsedWeight <= 0) {
+                newErrors.weight = "Product weight (g) must be greater than 0";
+            }
+
+            if (variantsData.length === 0) {
+                newErrors.variantsGlobal = "At least 1 variant (size + color) is required";
+            }
         }
 
         let hasVariantErrors = false;
@@ -331,14 +351,26 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
             const v = variantsData[i];
             if (!v.is_active) continue;
 
-            if (!v.size || !v.size.trim()) {
-                newErrors.variants[i] = { ...newErrors.variants[i], size: "This field cannot be left blank" };
-                hasVariantErrors = true;
+            if (finalStatus === 'Active') {
+                if (!v.size || !v.size.trim()) {
+                    newErrors.variants[i] = { ...newErrors.variants[i], size: "This field cannot be left blank" };
+                    hasVariantErrors = true;
+                }
+                if (!v.color || !v.color.trim()) {
+                    newErrors.variants[i] = { ...newErrors.variants[i], color: "This field cannot be left blank" };
+                    hasVariantErrors = true;
+                }
+                
+                const stockNum = parseInt(v.stock);
+                if (v.stock === '') {
+                    newErrors.variants[i] = { ...newErrors.variants[i], stock: "This field cannot be left blank" };
+                    hasVariantErrors = true;
+                } else if (isNaN(stockNum) || stockNum < 0) {
+                    newErrors.variants[i] = { ...newErrors.variants[i], stock: "Stock must be ≥ 0" };
+                    hasVariantErrors = true;
+                }
             }
-            if (!v.color || !v.color.trim()) {
-                newErrors.variants[i] = { ...newErrors.variants[i], color: "This field cannot be left blank" };
-                hasVariantErrors = true;
-            }
+
             if (v.size && v.color) {
                 const combo = `${v.size.trim()}||${v.color.trim()}`;
                 if (sizeColorCombos.has(combo)) {
@@ -347,26 +379,18 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                 }
                 sizeColorCombos.add(combo);
             }
-            const stockNum = parseInt(v.stock);
-            if (v.stock === '') {
-                newErrors.variants[i] = { ...newErrors.variants[i], stock: "This field cannot be left blank" };
+        }
+
+        const basePriceNum = parseFloat(variantsData[0]?.price || '0');
+        if (finalStatus === 'Active') {
+            if (!variantsData[0]?.price || variantsData[0]?.price.trim() === '') {
+                newErrors.variants[0] = { ...newErrors.variants[0], price: "This field cannot be left blank" };
                 hasVariantErrors = true;
-            } else if (isNaN(stockNum) || stockNum < 0) {
-                newErrors.variants[i] = { ...newErrors.variants[i], stock: "Stock must be ≥ 0" };
+            } else if (isNaN(basePriceNum) || basePriceNum <= 0) {
+                newErrors.variants[0] = { ...newErrors.variants[0], price: "Price must be greater than 0" };
                 hasVariantErrors = true;
             }
-        }
 
-        const basePriceNum = parseFloat(variantsData[0]?.price || '');
-        if (!variantsData[0]?.price || variantsData[0]?.price.trim() === '') {
-            newErrors.variants[0] = { ...newErrors.variants[0], price: "This field cannot be left blank" };
-            hasVariantErrors = true;
-        } else if (isNaN(basePriceNum) || basePriceNum <= 0) {
-            newErrors.variants[0] = { ...newErrors.variants[0], price: "Price must be greater than 0" };
-            hasVariantErrors = true;
-        }
-
-        if (finalStatus === 'Active') {
             if (!description || !description.trim()) {
                 newErrors.description = "This field cannot be left blank";
             } else if (description.trim().length < 50 || description.trim() === "No description provided") {
@@ -376,7 +400,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
             const parsedPkgWeight = parseFloat(packageWeight);
             if (!packageWeight) {
                 newErrors.packageWeight = "This field cannot be left blank";
-            } else if (isNaN(parsedPkgWeight) || parsedPkgWeight < parsedWeight) {
+            } else if (isNaN(parsedPkgWeight) || (weight && parsedPkgWeight < parsedWeight)) {
                 newErrors.packageWeight = "Package weight must be >= product weight";
             }
 
@@ -408,7 +432,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
 
         setErrors(newErrors);
 
-        if (newErrors.name || newErrors.images || newErrors.weight || newErrors.description || newErrors.packageWeight || newErrors.packageDimensions || newErrors.shippingClass || newErrors.leadTime || newErrors.variantsGlobal || hasVariantErrors) {
+        if (newErrors.category || newErrors.name || newErrors.images || newErrors.weight || newErrors.description || newErrors.packageWeight || newErrors.packageDimensions || newErrors.shippingClass || newErrors.leadTime || newErrors.variantsGlobal || hasVariantErrors) {
             setErrors({ ...newErrors, global: "Please fix all validation errors before saving." });
             window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
@@ -426,9 +450,9 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
         const payload = {
             name: name.trim(),
             description: description || undefined,
-            category_id: parseInt(categoryId) || categories[0]?.id || 1,
+            category_id: parseInt(categoryId),
             base_price: basePriceNum,
-            weight: parsedWeight,
+            weight: !isNaN(parsedWeight) && parsedWeight > 0 ? parsedWeight : undefined,
             status: finalStatus,
             material: material || undefined,
             size_info: sizeInfo || undefined,
@@ -730,8 +754,46 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                                                 <p className="text-red-500 text-[10px] font-bold mt-1 leading-tight">{errors.variants[idx].stock}</p>
                                                             )}
                                                         </td>
-                                                        <td className="py-3 px-2">
-                                                            <input type="text" value={v.sku} onChange={(e) => handleVariantChange(idx, 'sku', e.target.value)} disabled={!v.is_active} placeholder="SKU-..." className="w-full px-2 py-1.5 bg-[#F9FAFB] border border-gray-200 rounded text-[13px] font-medium focus:bg-white focus:outline-none focus:border-blue-500 disabled:bg-gray-100 min-w-[70px]" />
+                                                        <td className="py-3 px-2 align-top">
+                                                            <input 
+                                                                type="text" 
+                                                                value={v.sku} 
+                                                                onChange={(e) => handleVariantChange(idx, 'sku', e.target.value)} 
+                                                                onBlur={async (e) => {
+                                                                    const val = e.target.value.trim();
+                                                                    if (!val) return;
+                                                                    
+                                                                    const duplicateIndex = variantsData.findIndex((va, i) => i !== idx && va.sku === val);
+                                                                    if (duplicateIndex !== -1) {
+                                                                        setErrors(prev => ({ ...prev, variants: { ...prev.variants, [idx]: { ...prev.variants?.[idx], sku: "Duplicate SKU" } } }));
+                                                                        return;
+                                                                    }
+                                                                    
+                                                                    try {
+                                                                        const res = await fetch(`http://localhost:8000/products/check-sku?sku=${encodeURIComponent(val)}`);
+                                                                        if (res.ok) {
+                                                                            const data = await res.json();
+                                                                            if (!data.available && (!initialData || !initialData.variants.some((iv:any) => iv.sku === val))) {
+                                                                                setErrors(prev => ({ ...prev, variants: { ...prev.variants, [idx]: { ...prev.variants?.[idx], sku: "SKU already exists" } } }));
+                                                                            } else {
+                                                                                if (errors.variants?.[idx]?.sku) {
+                                                                                    const newErrs = { ...errors };
+                                                                                    if (newErrs.variants && newErrs.variants[idx]) {
+                                                                                        delete newErrs.variants[idx].sku;
+                                                                                    }
+                                                                                    setErrors(newErrs);
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    } catch (err) {}
+                                                                }}
+                                                                disabled={!v.is_active} 
+                                                                placeholder="SKU-..." 
+                                                                className={`w-full px-2 py-1.5 bg-[#F9FAFB] border ${errors.variants?.[idx]?.sku ? 'border-red-500 bg-red-50 focus:ring-red-500' : 'border-gray-200 focus:border-blue-500'} rounded text-[13px] font-medium focus:bg-white focus:outline-none disabled:bg-gray-100 min-w-[70px]`} 
+                                                            />
+                                                            {errors.variants?.[idx]?.sku && (
+                                                                <p className="text-red-500 text-[10px] font-bold mt-1 leading-tight">{errors.variants[idx].sku}</p>
+                                                            )}
                                                         </td>
                                                         <td className="py-3 px-2 align-top pt-4">
                                                             <div className="flex justify-center w-full">
@@ -800,7 +862,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                 <div className="relative custom-select">
                                     <button
                                         onClick={() => { setIsCategoryOpen(!isCategoryOpen); setIsStatusOpen(false); }}
-                                        className={`flex items-center justify-between w-full px-4 py-2.5 bg-[#F9FAFB] border ${isCategoryOpen ? 'border-blue-500 ring-1 ring-blue-500 bg-white' : 'border-gray-200'} rounded-lg text-[13px] font-medium text-gray-900 transition-all`}
+                                        className={`flex items-center justify-between w-full px-4 py-2.5 bg-[#F9FAFB] border ${errors.category ? 'border-red-500 bg-red-50 focus:ring-red-500' : isCategoryOpen ? 'border-blue-500 ring-1 ring-blue-500 bg-white' : 'border-gray-200'} rounded-lg text-[13px] font-medium text-gray-900 transition-all`}
                                     >
                                         <span className={!categoryId ? 'text-gray-400' : ''}>
                                             {categoryId ? categories.find(c => c.id.toString() === categoryId)?.name || 'Select category' : 'Select category'}
@@ -812,7 +874,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                             {categories.map(cat => (
                                                 <button
                                                     key={cat.id}
-                                                    onClick={() => { setCategoryId(cat.id.toString()); setIsCategoryOpen(false); }}
+                                                    onClick={() => { setCategoryId(cat.id.toString()); setIsCategoryOpen(false); setErrors({ ...errors, category: undefined, global: undefined }); }}
                                                     className={`w-full text-left px-4 py-2 text-[13px] flex items-center justify-between transition-colors ${categoryId === cat.id.toString() ? 'bg-blue-50/80 text-blue-900 font-bold' : 'text-gray-700 font-medium hover:bg-gray-50'}`}
                                                 >
                                                     {cat.name}
@@ -822,6 +884,7 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                         </div>
                                     )}
                                 </div>
+                                {errors.category && <p className="text-red-500 text-[12px] font-bold mt-1.5">{errors.category}</p>}
                             </div>
                         </div>
                     </div>

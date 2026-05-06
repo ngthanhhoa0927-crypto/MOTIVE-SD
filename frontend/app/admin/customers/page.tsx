@@ -12,17 +12,70 @@ export default function CustomersPage() {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [openMenuId, setOpenMenuId] = useState<number | null>(null);
 
     // Form states for Editing
     const [editData, setEditData] = useState({
         full_name: '',
         email: '',
         role: '',
-        isActive: true
+        status: 'Active'
     });
 
     const fetchUsers = async () => {
         setIsLoading(true);
+        
+        // TEMPORARY MOCK DATA FOR TESTING
+        const mockData = [
+            {
+                id: 1,
+                full_name: "Trần Văn Bình",
+                email: "binh.tran@example.com",
+                role: "user",
+                isActive: true,
+                status: "Active"
+            },
+            {
+                id: 2,
+                full_name: "Lê Thị Chúc",
+                email: "chuc.le@example.com",
+                role: "user",
+                isActive: false,
+                status: "Inactive"
+            },
+            {
+                id: 3,
+                full_name: "Phạm Văn Dũng",
+                email: "dung.pham@example.com",
+                role: "user",
+                isActive: false,
+                status: "Suspended"
+            },
+            {
+                id: 4,
+                full_name: "Hoàng Thị Em",
+                email: "em.hoang@example.com",
+                role: "user",
+                isActive: false,
+                status: "Banned"
+            },
+            {
+                id: 5,
+                full_name: "System Admin",
+                email: "admin@motive.com",
+                role: "admin",
+                isActive: true,
+                status: "Active"
+            }
+        ];
+
+        // Simulate network delay
+        setTimeout(() => {
+            setUsers(mockData);
+            setIsLoading(false);
+        }, 600);
+
+        /* ORIGINAL API FETCH LOGIC (Commented out while using mock data)
         const token = localStorage.getItem('admin_token');
         try {
             const res = await fetch("http://localhost:8000/auth/users", {
@@ -37,11 +90,36 @@ export default function CustomersPage() {
         } finally {
             setIsLoading(false);
         }
+        */
     };
 
     useEffect(() => {
         fetchUsers();
+        
+        const handleClickOutside = (e: MouseEvent) => {
+            if (!(e.target as HTMLElement).closest('.action-menu')) {
+                setOpenMenuId(null);
+            }
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
     }, []);
+
+    useEffect(() => {
+        if (users.length > 0 && typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const userIdStr = params.get('userId');
+            if (userIdStr) {
+                const id = parseInt(userIdStr);
+                const user = users.find(u => u.id === id);
+                if (user) {
+                    openViewModal(user);
+                    // Clear the query parameter so it doesn't re-open on refresh
+                    window.history.replaceState({}, '', '/admin/customers');
+                }
+            }
+        }
+    }, [users]);
 
     const openEditModal = (user: any) => {
         setSelectedUser(user);
@@ -49,7 +127,7 @@ export default function CustomersPage() {
             full_name: user.full_name,
             email: user.email,
             role: user.role,
-            isActive: user.isActive
+            status: user.status || (user.isActive ? 'Active' : 'Inactive')
         });
         setIsEditModalOpen(true);
     };
@@ -211,17 +289,43 @@ export default function CustomersPage() {
                                     </div>
                                 </td>
                                 <td className="py-4 px-6 text-right">
-                                    <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => openViewModal(user)} className="text-gray-400 hover:text-blue-600 transition-colors p-1" title="View">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                    <div className="relative flex justify-end action-menu">
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setOpenMenuId(openMenuId === user.id ? null : user.id);
+                                            }}
+                                            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                                        >
+                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" /></svg>
                                         </button>
-                                        <button onClick={() => openEditModal(user)} className="text-gray-400 hover:text-gray-900 transition-colors p-1" title="Edit">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                        </button>
-                                        {user.role !== 'admin' && (
-                                            <button onClick={() => openDeleteModal(user)} className="text-gray-400 hover:text-red-600 transition-colors p-1" title="Delete">
-                                                <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            </button>
+                                        
+                                        {openMenuId === user.id && (
+                                            <div className="absolute right-0 mt-8 w-36 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-20 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); openViewModal(user); setOpenMenuId(null); }}
+                                                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                                                >
+                                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                    View Details
+                                                </button>
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); openEditModal(user); setOpenMenuId(null); }}
+                                                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                                                >
+                                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                                    Edit User
+                                                </button>
+                                                {user.role !== 'admin' && (
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); openDeleteModal(user); setOpenMenuId(null); }}
+                                                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+                                                    >
+                                                        <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                        Delete User
+                                                    </button>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 </td>
@@ -291,12 +395,14 @@ export default function CustomersPage() {
                             <label className="block text-[13px] font-bold text-gray-700 mb-1.5">User Status</label>
                             <div className="relative">
                                 <select 
-                                    value={editData.isActive ? 'true' : 'false'} 
-                                    onChange={(e) => setEditData({...editData, isActive: e.target.value === 'true'})}
+                                    value={editData.status} 
+                                    onChange={(e) => setEditData({...editData, status: e.target.value})}
                                     className="w-full appearance-none pl-4 pr-10 py-2.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 font-medium focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none shadow-sm"
                                 >
-                                    <option value="true">Active</option>
-                                    <option value="false">Inactive</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                    <option value="Suspended">Suspended</option>
+                                    <option value="Banned">Banned</option>
                                 </select>
                                 <svg className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                             </div>
@@ -352,9 +458,14 @@ export default function CustomersPage() {
                         <div className="bg-[#FAFBFD] p-3 rounded-xl border border-gray-100">
                             <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Account Status</label>
                             <div className="flex items-center gap-1.5">
-                                <div className={`w-2 h-2 rounded-full ${selectedUser.isActive ? 'bg-emerald-500' : 'bg-red-400'}`}></div>
+                                <div className={`w-2 h-2 rounded-full ${
+                                    selectedUser.status === 'Active' ? 'bg-emerald-500' : 
+                                    selectedUser.status === 'Suspended' ? 'bg-orange-400' :
+                                    selectedUser.status === 'Banned' ? 'bg-red-500' :
+                                    'bg-gray-400'
+                                }`}></div>
                                 <p className="text-[13px] font-bold text-gray-900 leading-tight">
-                                    {selectedUser.isActive ? 'Active' : 'Inactive'}
+                                    {selectedUser.status || (selectedUser.isActive ? 'Active' : 'Inactive')}
                                 </p>
                             </div>
                         </div>
