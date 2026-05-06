@@ -179,7 +179,7 @@ productRouter.post(
                     status: data.status,
                 }).returning();
 
-                // 2. Insert Images (≥1 guaranteed by schema)
+                // 2. Insert Images (if any)
                 const imageValues = data.images.map(img => ({
                     product_id: product.id,
                     image_url: img.image_url,
@@ -187,9 +187,11 @@ productRouter.post(
                     display_order: img.display_order,
                     color: img.color
                 }));
-                await tx.insert(productImages).values(imageValues);
+                if (imageValues.length > 0) {
+                    await tx.insert(productImages).values(imageValues);
+                }
 
-                // 3. Insert Variants (≥1 guaranteed by schema, each has size + color)
+                // 3. Insert Variants (if any)
                 const variantValues = data.variants.map(v => ({
                     product_id: product.id,
                     sku: v.sku,
@@ -201,7 +203,11 @@ productRouter.post(
                     image_url: v.image_url,
                     is_active: v.is_active
                 }));
-                await tx.insert(productVariants).values(variantValues);
+                if (variantValues.length > 0) {
+                    await tx.insert(productVariants).values(variantValues);
+                }
+
+
 
                 return product;
             });
@@ -360,7 +366,7 @@ productRouter.put(
                     updatedAt: new Date()
                 }).where(eq(products.id, id)).returning();
 
-                // 2. Replace Images (≥1 guaranteed by schema)
+                // 2. Replace Images (if any)
                 await tx.delete(productImages).where(eq(productImages.product_id, id));
                 const imageValues = data.images.map(img => ({
                     product_id: id,
@@ -369,9 +375,12 @@ productRouter.put(
                     display_order: img.display_order,
                     color: img.color
                 }));
-                await tx.insert(productImages).values(imageValues);
+                if (imageValues.length > 0) {
+                    await tx.insert(productImages).values(imageValues);
+                }
 
-                // 3. Replace Variants (≥1 guaranteed by schema, each has size + color)
+
+                // 3. Replace Variants (if any)
                 await tx.delete(productVariants).where(eq(productVariants.product_id, id));
                 const variantValues = data.variants.map(v => ({
                     product_id: id,
@@ -384,7 +393,11 @@ productRouter.put(
                     image_url: v.image_url,
                     is_active: v.is_active
                 }));
-                await tx.insert(productVariants).values(variantValues);
+                if (variantValues.length > 0) {
+                    await tx.insert(productVariants).values(variantValues);
+                }
+
+
                 
                 return product;
             });

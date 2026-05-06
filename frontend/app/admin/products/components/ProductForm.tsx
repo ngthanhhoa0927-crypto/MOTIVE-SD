@@ -432,7 +432,8 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
 
         setErrors(newErrors);
 
-        if (newErrors.category || newErrors.name || newErrors.images || newErrors.weight || newErrors.description || newErrors.packageWeight || newErrors.packageDimensions || newErrors.shippingClass || newErrors.leadTime || newErrors.variantsGlobal || hasVariantErrors) {
+        const isDraft = finalStatus === 'Draft';
+        if (newErrors.category || newErrors.name || newErrors.variantsGlobal || hasVariantErrors || (!isDraft && (newErrors.images || newErrors.weight || newErrors.description || newErrors.packageWeight || newErrors.packageDimensions || newErrors.shippingClass || newErrors.leadTime))) {
             setErrors({ ...newErrors, global: "Please fix all validation errors before saving." });
             window.scrollTo({ top: 0, behavior: 'smooth' });
             return;
@@ -765,7 +766,8 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                                                     
                                                                     const duplicateIndex = variantsData.findIndex((va, i) => i !== idx && va.sku === val);
                                                                     if (duplicateIndex !== -1) {
-                                                                        setErrors(prev => ({ ...prev, variants: { ...prev.variants, [idx]: { ...prev.variants?.[idx], sku: "Duplicate SKU" } } }));
+                                                                        setErrors((prev: any) => ({ ...prev, variants: { ...prev.variants, [idx]: { ...prev.variants?.[idx], sku: "Duplicate SKU" } } }));
+
                                                                         return;
                                                                     }
                                                                     
@@ -774,7 +776,8 @@ export default function ProductForm({ initialData = null, isEditingMode = true, 
                                                                         if (res.ok) {
                                                                             const data = await res.json();
                                                                             if (!data.available && (!initialData || !initialData.variants.some((iv:any) => iv.sku === val))) {
-                                                                                setErrors(prev => ({ ...prev, variants: { ...prev.variants, [idx]: { ...prev.variants?.[idx], sku: "SKU already exists" } } }));
+                                                                                setErrors((prev: any) => ({ ...prev, variants: { ...prev.variants, [idx]: { ...prev.variants?.[idx], sku: "SKU already exists" } } }));
+
                                                                             } else {
                                                                                 if (errors.variants?.[idx]?.sku) {
                                                                                     const newErrs = { ...errors };
