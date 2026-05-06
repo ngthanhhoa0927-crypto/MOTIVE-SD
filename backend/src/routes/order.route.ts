@@ -266,6 +266,7 @@ ordersRouter.get(
 
             return c.json({
                 data: userOrders.map((order) => ({
+                    id: order.id,
                     order_code: order.order_code,
                     created_at: order.created_at,
                     total_amount: Number(order.total_amount),
