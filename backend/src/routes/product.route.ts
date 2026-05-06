@@ -112,8 +112,8 @@ const createProductSchema = z.object({
         if (!data.package_weight || (data.weight && data.package_weight < data.weight)) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Package weight must be >= product weight", path: ["package_weight"] });
         }
-        if (!data.package_dimensions || !/^\d+\s*x\s*\d+\s*x\s*\d+(\s*[a-zA-Z]+)?$/i.test(data.package_dimensions)) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Package dimensions required format 'L x W x H' (e.g. 25 x 15 x 10)", path: ["package_dimensions"] });
+        if (!data.package_dimensions || !/^\d+(\.\d+)?\s*x\s*\d+(\.\d+)?\s*x\s*\d+(\.\d+)?(\s*[a-zA-Z]+)?$/i.test(data.package_dimensions)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Package dimensions required format 'L x W x H' (e.g. 25.5 x 15 x 10)", path: ["package_dimensions"] });
         }
         if (!data.shipping_class || data.shipping_class.trim() === "") {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Shipping class is required to publish", path: ["shipping_class"] });
